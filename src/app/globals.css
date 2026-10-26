@@ -1,22 +1,54 @@
 @import "tailwindcss";
 
-/* Brand tokens: Creek teal for trust and action, Date amber reserved for
-   prices on the map and promoted listings, everything else stays quiet. */
+/* Brand palette drawn from Philippine scenery:
+   Deep sea (Tubbataha blues) for trust and primary actions, Lagoon (El Nido
+   turquoise) as the lively accent, Mango and Coral from Manila Bay sunsets for
+   prices, promotions and calls to action, Palay green from the rice terraces,
+   and Sand for warm section tints. */
 @theme {
-  --color-creek-50: #eef6f5;
-  --color-creek-100: #dcedea;
-  --color-creek-200: #b5d8d3;
-  --color-creek-500: #1d6c75;
-  --color-creek-700: #0e4a52;
-  --color-creek-900: #08343a;
-  --color-date-400: #f0b54f;
-  --color-date-500: #e2a23b;
-  --color-date-700: #9a6414;
-  --color-ink: #17262a;
-  --color-ink-soft: #4d5e62;
-  --color-line: #dce3e4;
-  --color-mist: #f3f6f6;
+  --color-sea-50: #eef7fb;
+  --color-sea-100: #d4ebf5;
+  --color-sea-600: #0f6a8f;
+  --color-sea-700: #0d5b7c;
+  --color-sea-800: #0b4a68;
+  --color-sea-900: #093a52;
+  --color-sea-950: #06283a;
+  --color-lagoon-50: #e8fbf9;
+  --color-lagoon-100: #c8f3ee;
+  --color-lagoon-300: #6fdccf;
+  --color-lagoon-400: #2fcbbb;
+  --color-lagoon-500: #12b2a3;
+  --color-lagoon-600: #0a9488;
+  --color-lagoon-700: #087a71;
+  --color-sand-50: #fffaf0;
+  --color-sand-100: #fcf0d9;
+  --color-sand-200: #f6e0b5;
+  --color-mango-300: #ffd76e;
+  --color-mango-400: #ffc53d;
+  --color-mango-500: #ffb000;
+  --color-mango-700: #a86a00;
+  --color-coral-400: #ff7a6b;
+  --color-coral-500: #f2554a;
+  --color-coral-600: #d93d33;
+  --color-palay-500: #3f9d4a;
+  --color-palay-600: #2f8a3b;
+  --color-viber: #7360f2;
   --color-whatsapp: #128c4b;
+
+  /* Legacy names used by the earlier pages, mapped onto the new palette */
+  --color-creek-50: #e8fbf9;
+  --color-creek-100: #c8f3ee;
+  --color-creek-200: #9fe3da;
+  --color-creek-500: #0a9488;
+  --color-creek-700: #0b4a68;
+  --color-creek-900: #06283a;
+  --color-date-400: #ffc53d;
+  --color-date-500: #ffb000;
+  --color-date-700: #a86a00;
+  --color-ink: #0f2a36;
+  --color-ink-soft: #4a6470;
+  --color-line: #dbe8ea;
+  --color-mist: #f1f8f8;
 
   --font-display: "Bricolage Grotesque Variable", "Manrope Variable", system-ui, sans-serif;
   --font-sans: "Manrope Variable", system-ui, sans-serif;
@@ -39,7 +71,7 @@ h1, h2, h3 {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-creek-500);
+  outline: 2px solid var(--color-lagoon-600);
   outline-offset: 2px;
 }
 

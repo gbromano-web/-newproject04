@@ -101,6 +101,38 @@ export const PH_LOCATIONS: LocationNode[] = [
     ],
   },
   {
+    name: "Cordillera Administrative Region",
+    level: "REGION",
+    aliases: ["CAR", "Cordilleras"],
+    children: [
+      { name: "Benguet", level: "PROVINCE", lat: 16.4023, lng: 120.5960, children: [city("Baguio", 16.4023, 120.5960, [], true)] },
+      { name: "Ifugao", level: "PROVINCE", lat: 16.8331, lng: 121.1710, children: [{ name: "Banaue", level: "MUNICIPALITY", lat: 16.9110, lng: 121.0590 }] },
+    ],
+  },
+  {
+    name: "MIMAROPA",
+    level: "REGION",
+    aliases: ["Region IV-B"],
+    children: [
+      {
+        name: "Palawan", level: "PROVINCE", popular: true, lat: 9.8349, lng: 118.7384,
+        children: [
+          city("Puerto Princesa", 9.7392, 118.7353),
+          { name: "El Nido", level: "MUNICIPALITY", lat: 11.1956, lng: 119.4075, popular: true },
+          { name: "Coron", level: "MUNICIPALITY", lat: 11.9986, lng: 120.2043 },
+        ],
+      },
+    ],
+  },
+  {
+    name: "Bicol Region",
+    level: "REGION",
+    aliases: ["Region V"],
+    children: [
+      { name: "Albay", level: "PROVINCE", lat: 13.1775, lng: 123.5280, children: [city("Legazpi", 13.1391, 123.7438)] },
+    ],
+  },
+  {
     name: "Central Luzon",
     level: "REGION",
     aliases: ["Region III"],
@@ -129,6 +161,14 @@ export const PH_LOCATIONS: LocationNode[] = [
           ], true),
           city("Mandaue", 10.3236, 123.9223),
           city("Lapu-Lapu", 10.3103, 123.9494, [district("Mactan", 10.2950, 123.9650, ["Mactan Island"])]),
+        ],
+      },
+      {
+        name: "Bohol", level: "PROVINCE", popular: true, lat: 9.8500, lng: 124.1435,
+        children: [
+          city("Tagbilaran", 9.6475, 123.8556),
+          { name: "Panglao", level: "MUNICIPALITY", lat: 9.5790, lng: 123.7440, popular: true },
+          { name: "Carmen", level: "MUNICIPALITY", lat: 9.8210, lng: 124.1960, aliases: ["Chocolate Hills"] },
         ],
       },
     ],

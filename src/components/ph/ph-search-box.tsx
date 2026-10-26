@@ -21,7 +21,7 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
 
   return (
     <div className="mx-auto w-full max-w-4xl">
-      <div role="tablist" aria-label="Transaction type" className="mb-3 flex justify-center gap-1">
+      <div role="tablist" aria-label="Transaction type" className="mx-auto mb-3 flex w-fit justify-center gap-1 rounded-full bg-sea-950/45 p-1 backdrop-blur-md">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -30,7 +30,7 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
             onClick={() => setTab(t.key)}
             className={clsx(
               "rounded-full px-4 py-1.5 text-sm font-semibold transition-colors",
-              tab === t.key ? "bg-white text-[#14214f]" : "text-white/85 hover:bg-white/15",
+              tab === t.key ? "bg-white text-sea-900" : "text-white hover:bg-white/15",
             )}
           >
             {t.label}
@@ -41,13 +41,13 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
       {/* Glass panel */}
       <form
         action="/search"
-        className="rounded-2xl border border-white/30 bg-white/15 p-3 shadow-[0_30px_80px_-30px_rgba(10,12,40,.8)] backdrop-blur-xl sm:p-4"
+        className="rounded-2xl border border-white/35 bg-sea-950/25 p-3 shadow-[0_30px_80px_-30px_rgba(6,40,58,.8)] backdrop-blur-xl sm:p-4"
       >
         <input type="hidden" name="type" value={tab} />
         <div className="grid grid-cols-2 gap-2 md:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]">
           <label className="relative col-span-2 md:col-span-1">
             <span className="sr-only">Location</span>
-            <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#4a2f78]" />
+            <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-lagoon-600" />
             <input name="location" placeholder="City, barangay or project, e.g. BGC" className={clsx(field, "pl-9")} />
           </label>
           <select name="propertyType" aria-label="Property type" className={field} defaultValue="">
@@ -70,7 +70,7 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
             {[1, 2, 3, 4].map((b) => <option key={b} value={b}>{b} BR</option>)}
             <option value="5">5+ BR</option>
           </select>
-          <button className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-[#f6b83c] px-6 text-sm font-bold text-[#14214f] hover:brightness-105 md:col-span-1">
+          <button className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-mango-500 px-6 text-sm font-bold text-sea-900 hover:brightness-105 md:col-span-1">
             <Search className="size-4" /> Search
           </button>
         </div>

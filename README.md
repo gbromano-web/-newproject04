@@ -59,7 +59,9 @@ src/
 
 ## Philippine edition
 
-The platform is being localised for the Philippines. Phase 1, the data model, is done: see [docs/data-model.md](docs/data-model.md). The pages below still show the earlier UAE demo and will be converted in Phase 2.
+The platform is being localised for the Philippines. Phase 1, the data model, is done: see [docs/data-model.md](docs/data-model.md). The homepage is the Philippine design: a rotating scenic hero (El Nido, BGC, Banaue, Mayon, Chocolate Hills), destination cards, empty developer slots and peso/sqm listing cards. The search, property and dashboard pages still use the earlier demo data and will be converted in Phase 2.
+
+![Philippine homepage](docs/screenshots/ph/home-full.png)
 
 ## Roadmap
 

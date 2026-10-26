@@ -1,94 +1,121 @@
-import Image from "next/image";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { BadgeCheck, Building, FileCheck2, MessageCircle } from "lucide-react";
-import { HeroSkyline } from "@/components/hero-skyline";
-import { ListingCard } from "@/components/listing-card";
-import { SearchBar } from "@/components/search-bar";
-import { communities, countInCommunity, properties } from "@/lib/mock-data";
+import { ArrowUpRight, Calculator, ShieldCheck } from "lucide-react";
+import { DeveloperSlider } from "@/components/ph/developer-slider";
+import { PhListingCard } from "@/components/ph/ph-listing-card";
+import { PhSearchBox } from "@/components/ph/ph-search-box";
+import { SCENES, type SceneKey } from "@/components/ph/scenes";
+import { ScenicHero } from "@/components/ph/scenic-hero";
+import { flattenLocations } from "@/lib/ph/locations";
+import { PH_SAMPLE_LISTINGS } from "@/lib/ph/sample-listings";
+
+export const metadata: Metadata = {
+  title: "Condos, house and lot, beach lots and more for sale and rent in the Philippines",
+  description:
+    "Search condominiums, house and lot, beach lots, pre-selling and foreclosed properties from Metro Manila to Palawan, with PRC and DHSUD-verified agents.",
+};
+
+const POPULAR = ["Bonifacio Global City", "Makati CBD", "Cebu IT Park", "El Nido", "Baguio", "Panglao"];
+
+const DESTINATIONS: { scene: SceneKey; name: string; line: string; location: string; span?: string }[] = [
+  { scene: "lagoon", name: "Palawan", line: "Beach lots, resort homes and island investments", location: "Palawan", span: "md:col-span-2 md:row-span-2" },
+  { scene: "city", name: "Metro Manila", line: "Condos near work in BGC, Makati and Ortigas", location: "Metro Manila" },
+  { scene: "terraces", name: "Baguio and the Cordilleras", line: "Cool-climate houses and vacation homes", location: "Baguio" },
+  { scene: "hills", name: "Bohol", line: "Retirement and beach homes around Panglao", location: "Bohol" },
+  { scene: "volcano", name: "Albay", line: "House and lot with Mayon views in Legazpi", location: "Albay" },
+];
 
 export default function HomePage() {
-  const featured = properties.filter((p) => p.featured).slice(0, 6);
+  const flat = flattenLocations();
+  const popular = POPULAR.map((name) => flat.find((l) => l.name === name)!).map((l) => ({
+    key: l.key,
+    label: l.aliases.includes("BGC") ? "BGC" : l.name,
+  }));
 
   return (
     <>
-      <section className="relative overflow-hidden">
-        <HeroSkyline />
-        <div className="absolute inset-0 bg-gradient-to-r from-creek-900/95 via-creek-900/70 to-creek-900/10" />
-        <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24 lg:pb-24">
-          <h1 className="max-w-2xl text-4xl font-bold leading-[1.05] text-white sm:text-6xl">
-            Find a home in the UAE, from people you can verify.
-          </h1>
-          <p className="mt-4 max-w-xl text-lg text-creek-100">
-            Apartments, villas and townhouses across the Emirates, each with a checked permit number and a licensed agent.
-          </p>
-          <div className="mt-10 max-w-5xl">
-            <SearchBar />
+      <ScenicHero>
+        <h1 className="mx-auto max-w-4xl text-center text-4xl font-extrabold leading-[1.02] text-white drop-shadow-[0_2px_18px_rgba(6,40,58,.55)] sm:text-6xl lg:text-7xl">
+          From city condos to island lots
+        </h1>
+        <p className="mx-auto mt-4 max-w-xl text-center text-lg font-medium text-white/90 drop-shadow">
+          Homes across all 7,641 islands, listed by PRC and DHSUD-verified agents.
+        </p>
+        <div className="mt-9">
+          <PhSearchBox popular={popular} />
+        </div>
+      </ScenicHero>
+
+      {/* Destinations */}
+      <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-3xl font-extrabold text-sea-900 sm:text-4xl">Live where you&apos;d vacation</h2>
+            <p className="mt-2 max-w-xl text-ink-soft">Explore homes by destination, from beachfront lots in Palawan to pine-country houses in Baguio.</p>
           </div>
+          <Link href="/search" className="rounded-full bg-lagoon-50 px-4 py-2 text-sm font-bold text-lagoon-700 hover:bg-lagoon-100">See every province</Link>
+        </div>
+        <div className="mt-8 grid auto-rows-[220px] gap-4 md:grid-cols-4">
+          {DESTINATIONS.map((d) => {
+            const Scene = SCENES[d.scene];
+            return (
+              <Link
+                key={d.name}
+                href={`/search?location=${encodeURIComponent(d.location)}`}
+                className={`group relative isolate overflow-hidden rounded-3xl ${d.span ?? ""}`}
+              >
+                <div className="absolute inset-0 -z-10 transition-transform duration-700 group-hover:scale-105">
+                  <Scene uid={`dest-${d.scene}`} />
+                </div>
+                <div className="absolute inset-0 -z-10 bg-gradient-to-t from-sea-950/80 via-sea-950/10 to-transparent" />
+                <div className="flex h-full flex-col justify-end p-5 text-white">
+                  <p className={`font-display font-extrabold leading-tight ${d.span ? "text-4xl" : "text-2xl"}`}>{d.name}</p>
+                  <p className="mt-1 max-w-sm text-sm text-white/90">{d.line}</p>
+                </div>
+                <span className="absolute right-4 top-4 grid size-9 place-items-center rounded-full bg-white/90 text-sea-900 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5">
+                  <ArrowUpRight className="size-4" />
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
-      <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6">
-        <div className="flex items-end justify-between">
-          <h2 className="text-2xl font-bold sm:text-3xl">Popular communities in Dubai</h2>
-          <Link href="/search?purpose=rent&location=Dubai" className="text-sm font-semibold text-creek-700 hover:underline">See all of Dubai</Link>
-        </div>
-        <div className="no-scrollbar mt-6 flex snap-x gap-4 overflow-x-auto pb-2">
-          {communities.map((c) => (
-            <Link
-              key={c.name}
-              href={`/search?purpose=rent&location=${encodeURIComponent(c.name)}`}
-              className="group relative h-44 w-60 shrink-0 snap-start overflow-hidden rounded-xl"
-            >
-              <Image src={c.image} alt="" fill sizes="240px" className="object-cover transition-transform duration-500 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-gradient-to-t from-creek-900/85 via-creek-900/10" />
-              <div className="absolute bottom-3 left-3 text-white">
-                <p className="font-display text-lg font-bold">{c.name}</p>
-                <p className="text-sm text-creek-100">{countInCommunity(c.name)} {countInCommunity(c.name) === 1 ? "listing" : "listings"}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <div className="mt-20">
+        <DeveloperSlider slides={[]} />
+      </div>
 
-      <section className="mx-auto mt-16 max-w-7xl px-4 sm:px-6">
-        <div className="flex items-end justify-between">
-          <h2 className="text-2xl font-bold sm:text-3xl">Featured homes this week</h2>
-          <Link href="/search?purpose=buy" className="text-sm font-semibold text-creek-700 hover:underline">Browse all homes</Link>
-        </div>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((p, i) => <ListingCard key={p.id} p={p} priority={i < 3} />)}
-        </div>
-      </section>
-
+      {/* Listings */}
       <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6">
-        <h2 className="text-2xl font-bold sm:text-3xl">How we keep listings honest</h2>
-        <div className="mt-8 grid gap-8 md:grid-cols-3">
-          {[
-            { icon: FileCheck2, title: "Permit on every listing", body: "Each property shows its DLD permit number. Listings without a valid permit are not published." },
-            { icon: BadgeCheck, title: "Verified means visited", body: "The verified badge is only given after an agent uploads a dated video walkthrough of the unit." },
-            { icon: MessageCircle, title: "Talk to the agent directly", body: "Call, WhatsApp or email the listing agent. Your details go to that agent only." },
-          ].map(({ icon: Icon, title, body }) => (
-            <div key={title} className="flex gap-4">
-              <Icon className="mt-1 size-6 shrink-0 text-creek-500" />
-              <div>
-                <h3 className="font-sans text-base font-bold">{title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-ink-soft">{body}</p>
-              </div>
-            </div>
-          ))}
+        <div className="flex items-end justify-between">
+          <h2 className="text-3xl font-extrabold text-sea-900 sm:text-4xl">Latest listings</h2>
+          <Link href="/search" className="text-sm font-bold text-lagoon-700 hover:underline">View all listings</Link>
+        </div>
+        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {PH_SAMPLE_LISTINGS.map((l) => <PhListingCard key={l.id} l={l} />)}
         </div>
       </section>
 
+      {/* Financing */}
       <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6">
-        <div className="flex flex-col items-start justify-between gap-6 rounded-2xl bg-creek-50 p-8 sm:flex-row sm:items-center sm:p-10">
-          <div className="flex gap-4">
-            <Building className="mt-1 size-8 shrink-0 text-creek-700" />
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-coral-500 via-mango-500 to-mango-400 p-8 text-sea-950 sm:p-12">
+          <svg viewBox="0 0 400 200" className="absolute -right-10 -top-6 h-64 w-auto opacity-25" aria-hidden>
+            <circle cx="260" cy="120" r="90" fill="#fff" />
+            <path d="M0 150 C60 130 120 130 180 150 S300 170 400 150" stroke="#fff" strokeWidth="10" fill="none" />
+            <path d="M0 175 C60 155 120 155 180 175 S300 195 400 175" stroke="#fff" strokeWidth="10" fill="none" />
+          </svg>
+          <div className="relative grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <h2 className="text-2xl font-bold">Are you an agent or agency?</h2>
-              <p className="mt-1 max-w-xl text-ink-soft">Publish listings, promote the ones that matter and track every WhatsApp and call lead in one dashboard.</p>
+              <h2 className="text-3xl font-extrabold sm:text-4xl">Pag-IBIG or bank financing?</h2>
+              <p className="mt-2 max-w-xl font-medium text-sea-950/85">
+                Compare monthly amortization for both, then request a sample computation from the listing agent with your numbers already filled in.
+              </p>
+              <p className="mt-4 flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="size-4" /> Rates come from published Pag-IBIG and bank figures.</p>
             </div>
+            <Link href="/search" className="flex items-center justify-center gap-2 rounded-full bg-sea-950 px-6 py-3.5 font-bold text-white hover:bg-sea-900">
+              <Calculator className="size-5" /> Open the calculator
+            </Link>
           </div>
-          <Link href="/dashboard" className="rounded-full bg-creek-700 px-6 py-3 font-semibold text-white hover:bg-creek-900">Open the agent dashboard</Link>
         </div>
       </section>
     </>

@@ -24,12 +24,12 @@ export function DeveloperSlider({ slides, emptySlots = 3 }: { slides: DeveloperS
     <section aria-labelledby="dev-heading" className="mx-auto max-w-7xl px-4 sm:px-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 id="dev-heading" className="text-2xl font-bold text-[#14214f] sm:text-3xl">Featured developers</h2>
-          <p className="mt-1 text-sm text-slate-600">New projects from partner developers, with DHSUD License to Sell numbers shown on each project.</p>
+          <h2 id="dev-heading" className="text-2xl font-bold text-sea-900 sm:text-3xl">Featured developers</h2>
+          <p className="mt-1 text-sm text-ink-soft">New projects from partner developers, with DHSUD License to Sell numbers shown on each project.</p>
         </div>
         <div className="hidden gap-2 sm:flex">
-          <button onClick={() => scroll(-1)} className="rounded-full border border-slate-300 p-2 text-slate-700 hover:bg-slate-100" aria-label="Previous"><ChevronLeft className="size-4" /></button>
-          <button onClick={() => scroll(1)} className="rounded-full border border-slate-300 p-2 text-slate-700 hover:bg-slate-100" aria-label="Next"><ChevronRight className="size-4" /></button>
+          <button onClick={() => scroll(-1)} className="rounded-full border border-line p-2 text-sea-800 hover:bg-lagoon-50" aria-label="Previous"><ChevronLeft className="size-4" /></button>
+          <button onClick={() => scroll(1)} className="rounded-full border border-line p-2 text-sea-800 hover:bg-lagoon-50" aria-label="Next"><ChevronRight className="size-4" /></button>
         </div>
       </div>
 
@@ -47,11 +47,11 @@ export function DeveloperSlider({ slides, emptySlots = 3 }: { slides: DeveloperS
         {Array.from({ length: Math.max(0, emptySlots - slides.length) }, (_, i) => (
           <div
             key={`empty-${i}`}
-            className="flex h-56 w-[85%] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-center sm:w-[48%] lg:w-[32%]"
+            className="flex h-56 w-[85%] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-lagoon-300 bg-lagoon-50/60 text-center sm:w-[48%] lg:w-[32%]"
           >
-            <Building2 className="size-7 text-slate-400" />
-            <p className="font-semibold text-slate-600">Developer slot available</p>
-            <p className="max-w-[24ch] text-sm text-slate-500">This space shows a partner developer&apos;s project once a banner is added.</p>
+            <span className="grid size-12 place-items-center rounded-full bg-white text-lagoon-600 shadow-sm"><Building2 className="size-6" /></span>
+            <p className="font-bold text-sea-800">Developer slot available</p>
+            <p className="max-w-[24ch] text-sm text-ink-soft">This space shows a partner developer&apos;s project once a banner is added.</p>
           </div>
         ))}
       </div>
