@@ -156,6 +156,23 @@ def interior(r):
     return g
 
 
+def lot(r):
+    g = [sky(r),
+         '<path d="M0 470 Q200 380 420 430 T820 400 T1200 440 V560 H0 Z" fill="#8fb09a" opacity=".55"/>',
+         '<path d="M0 520 Q300 470 600 500 T1200 490 V800 H0 Z" fill="#7fae63"/>',
+         '<path d="M0 640 L1200 600 V800 H0 Z" fill="#94bf74"/>']
+    for i in range(14):
+        x = 80 + i * 80
+        g.append(f'<rect x="{x}" y="{560 + i * 1.5}" width="8" height="70" fill="#7a5c3e"/>')
+    g.append('<path d="M80 590 L1120 610 M80 615 L1120 635" stroke="#7a5c3e" stroke-width="3"/>')
+    for x, s_ in ((150, 1.2), (980, 1.4)):
+        g.append(f'<circle cx="{x}" cy="{470 - 40 * s_}" r="{60 * s_}" fill="#3f6b3a"/>')
+        g.append(f'<rect x="{x - 6}" y="{470 - 10 * s_}" width="12" height="{60 * s_}" fill="#6b4f33"/>')
+    g.append('<rect x="520" y="660" width="160" height="70" rx="6" fill="#fff" opacity=".92"/>')
+    g.append('<text x="600" y="705" font-family="sans-serif" font-size="30" font-weight="700" fill="#2f4a2f" text-anchor="middle">LOT</text>')
+    return g
+
+
 def floor_plan(r):
     g = [f'<rect width="{W}" height="{H}" fill="#fbfaf7"/>',
          '<g stroke="#17262a" stroke-width="8" fill="none">',
@@ -185,4 +202,5 @@ for kind, fn in makers.items():
 for i in range(1, 5):
     write(f"interior-{i}", interior(random.Random(f"int{i}")))
 write("floor-plan", floor_plan(random.Random(1)))
+write("lot-1", lot(random.Random("lot1")))
 print("wrote", len(list(OUT.glob("*.svg"))), "images to", OUT)

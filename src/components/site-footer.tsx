@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Logo } from "./logo";
 
 const cols = [
-  { title: "Search", links: [["Apartments for rent in Dubai", "/search?purpose=rent&type=apartment&location=Dubai"], ["Villas for sale in Dubai", "/search?purpose=buy&type=villa"], ["Townhouses for rent", "/search?purpose=rent&type=townhouse"], ["Studios in JVC", "/search?purpose=rent&beds=0&location=Jumeirah Village Circle"]] },
-  { title: "For professionals", links: [["Agent dashboard", "/dashboard"], ["Advertise with us", "/dashboard"], ["Listing feed API", "/dashboard"]] },
-  { title: "Company", links: [["About", "/"], ["Contact", "/"], ["Terms", "/"], ["Privacy", "/"]] },
+  { title: "Search", links: [["Condos for rent in BGC", "/search?type=RENT&location=BGC"], ["House and lot for sale in Cavite", "/search?type=SALE&propertyType=HOUSE_AND_LOT&location=Cavite"], ["Pre-selling condos in Makati", "/search?type=PRE_SELLING&location=Makati"], ["Foreclosed properties", "/search?type=FORECLOSED"]] },
+  { title: "For professionals", links: [["Agent dashboard", "/dashboard"], ["Advertise a project", "/dashboard"], ["Get verified (PRC / DHSUD)", "/dashboard"]] },
+  { title: "Company", links: [["About", "/"], ["Contact", "/"], ["Terms", "/"], ["Privacy notice", "/"]] },
 ];
 
 export function SiteFooter() {
@@ -14,7 +14,7 @@ export function SiteFooter() {
         <div className="space-y-3">
           <Logo inverted />
           <p className="max-w-xs text-sm leading-relaxed text-creek-200">
-            Every listing shows its permit number, so you can check it with the Dubai Land Department before you visit.
+            Every agent shows their license number, so you can check it before you visit a property.
           </p>
         </div>
         {cols.map((c) => (
