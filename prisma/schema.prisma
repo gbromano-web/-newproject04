@@ -1,7 +1,17 @@
-// SA Realty data model: PostgreSQL + PostGIS (Supabase or any managed Postgres).
-// Enable PostGIS once:  CREATE EXTENSION IF NOT EXISTS postgis;
-// The `geo` column is maintained by a trigger from lat/lng (see prisma/sql/postgis.sql)
-// and indexed with GiST for radius / bounding-box queries.
+// ─────────────────────────────────────────────────────────────────────────────
+// Philippine real estate portal: data model
+// PostgreSQL + PostGIS (Supabase or any managed Postgres), Prisma 6.
+//
+// Conventions
+//   • Money is stored in Philippine pesos as Decimal(15,2). Display formatting
+//     (₱35,000/mo, ₱4.8M, ₱120M) lives in src/lib/ph/format.ts.
+//   • Areas are square meters (sqm). Floor area and lot area are separate.
+//   • Locations follow the PSGC hierarchy: Region > Province > City/Municipality
+//     > Barangay, plus named districts/CBDs (BGC, Makati CBD, Ortigas Center)
+//     that sit under a city and may span several barangays.
+//   • `geo` columns are PostGIS types kept in sync by triggers in
+//     prisma/sql/postgis.sql, which also creates the GiST indexes.
+// ─────────────────────────────────────────────────────────────────────────────
 
 generator client {
   provider        = "prisma-client-js"
@@ -15,55 +25,59 @@ datasource db {
   extensions = [postgis]
 }
 
-// ─── Enums ───────────────────────────────────────────────────────────────────
+// ═══ Enums ═══════════════════════════════════════════════════════════════════
 
 enum Role {
-  BUYER          // also tenants
-  AGENT
-  AGENCY_ADMIN
+  BUYER // buyers and tenants
+  AGENT // PRC-licensed broker or DHSUD-accredited salesperson
+  AGENCY_ADMIN // manages a brokerage
+  DEVELOPER_ADMIN // manages a developer's projects and banners
   SYSTEM_ADMIN
 }
 
-enum Purpose {
-  RENT
+enum ListingType {
   SALE
+  RENT
+  PRE_SELLING
+  FORECLOSED
 }
 
 enum PropertyType {
-  APARTMENT
-  VILLA
+  CONDOMINIUM
   TOWNHOUSE
-  PENTHOUSE
-  DUPLEX
-  HOTEL_APARTMENT
-  LAND
-  OFFICE
-  RETAIL
+  HOUSE_AND_LOT
+  LOT_ONLY
+  COMMERCIAL
+  AGRICULTURAL
   WAREHOUSE
 }
 
-enum RentFrequency {
-  YEARLY
+enum CommercialSubtype {
+  OFFICE
+  RETAIL
+  BUILDING
+  RESTAURANT
+  HOTEL_RESORT
+  INDUSTRIAL
+}
+
+enum RentPeriod {
   MONTHLY
-  WEEKLY
+  YEARLY
   DAILY
 }
 
-enum CompletionStatus {
-  READY
-  OFF_PLAN
-}
-
 enum Furnishing {
-  FURNISHED
+  FULLY_FURNISHED
   SEMI_FURNISHED
   UNFURNISHED
+  BARE // common for condo turnovers
 }
 
 enum ListingStatus {
   DRAFT
-  PENDING_REVIEW // waiting for permit validation
-  LIVE
+  PENDING_REVIEW // awaiting agent licence / listing checks
+  ACTIVE
   PAUSED
   EXPIRED
   REJECTED
@@ -72,11 +86,39 @@ enum ListingStatus {
 }
 
 enum LocationLevel {
-  EMIRATE
+  REGION // e.g. NCR, Region VII (Central Visayas)
+  PROVINCE // e.g. Cavite. NCR has no provinces; "Metro Manila" is stored here as its grouping
   CITY
-  COMMUNITY
-  SUB_COMMUNITY
-  BUILDING
+  MUNICIPALITY
+  BARANGAY
+  DISTRICT // named CBD / township: BGC, Makati CBD, Ortigas Center, Cebu IT Park
+}
+
+enum TitleType {
+  TCT // Transfer Certificate of Title (land, house and lot)
+  CCT // Condominium Certificate of Title
+  OCT // Original Certificate of Title
+  TAX_DECLARATION // untitled / rights only
+  CONTRACT_TO_SELL // pre-selling, title not yet issued
+}
+
+enum ProjectStatus {
+  PRE_SELLING
+  UNDER_CONSTRUCTION
+  READY_FOR_OCCUPANCY // RFO
+  COMPLETED
+}
+
+enum ForeclosureSaleMode {
+  NEGOTIATED
+  PUBLIC_AUCTION
+  SEALED_BID
+}
+
+enum OccupancyStatus {
+  VACANT
+  OCCUPIED
+  UNKNOWN
 }
 
 enum MediaKind {
@@ -84,12 +126,29 @@ enum MediaKind {
   FLOOR_PLAN
   VIDEO
   VIRTUAL_TOUR
+  BROCHURE_PDF
+  SITE_DEVELOPMENT_PLAN
+}
+
+enum LicenseType {
+  REAL_ESTATE_BROKER // PRC-licensed broker
+  REAL_ESTATE_SALESPERSON // DHSUD-accredited, works under a supervising broker
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  EXPIRED
+  REJECTED
 }
 
 enum LeadChannel {
+  VIBER
   WHATSAPP
+  INQUIRY // "Send Inquiry" form
+  SAMPLE_COMPUTATION // "Request Sample Computation"
   CALL
-  EMAIL
   CALLBACK
   SMS
 }
@@ -97,25 +156,34 @@ enum LeadChannel {
 enum LeadStatus {
   NEW
   CONTACTED
-  VIEWING_BOOKED
-  NEGOTIATING
+  SITE_VIEWING_SCHEDULED
+  RESERVED // reservation fee paid
   WON
   LOST
   SPAM
 }
 
-enum AmenityCategory {
-  INTERIOR
-  BUILDING
-  OUTDOOR
-  SECURITY
-  LIFESTYLE
+enum FinancingType {
+  PAGIBIG
+  BANK
+  IN_HOUSE // developer in-house financing
+  CASH
+  SPOT_CASH // lump sum with developer discount
 }
 
-enum PromotionTier {
-  FEATURED
-  PREMIUM
-  SPOTLIGHT
+enum BannerPlacement {
+  HOME_HERO // full-width background behind the search box
+  DEVELOPER_SLIDER // promotional slider for featured developers / projects
+  SEARCH_TOP
+  PROPERTY_SIDEBAR
+}
+
+enum AmenityCategory {
+  UNIT
+  BUILDING
+  COMMUNITY
+  SECURITY
+  UTILITIES
 }
 
 enum AlertFrequency {
@@ -124,185 +192,315 @@ enum AlertFrequency {
   WEEKLY
 }
 
-// ─── Users, agencies, agents ─────────────────────────────────────────────────
+// ═══ Users ═══════════════════════════════════════════════════════════════════
 
 model User {
-  id            String    @id @default(cuid())
-  // With Supabase Auth, set id = auth.users.id and keep auth in Supabase.
-  email         String    @unique
-  phone         String?   @unique
-  name          String?
-  avatarUrl     String?
-  role          Role      @default(BUYER)
-  locale        String    @default("en")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String   @id @default(cuid()) // with Supabase Auth, use auth.users.id
+  email     String   @unique
+  mobile    String?  @unique // E.164, e.g. +639171234567
+  name      String?
+  avatarUrl String?
+  role      Role     @default(BUYER)
+  locale    String   @default("en-PH")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  agent         Agent?
-  favorites     Favorite[]
-  savedSearches SavedSearch[]
-  leads         Lead[]    @relation("LeadUser")
+  agent                Agent?
+  developerMemberships DeveloperMember[]
+  favorites            Favorite[]
+  savedSearches        SavedSearch[]
+  leads                Lead[]
 
   @@index([role])
 }
 
-model Agency {
-  id              String    @id @default(cuid())
-  name            String
-  slug            String    @unique
-  logoUrl         String?
-  brandColor      String?   // hex, used on listing cards
-  coverUrl        String?
-  description     String?
-  reraOrn         String?   @unique // RERA Office Registration Number (Dubai)
-  tradeLicense    String?
-  verified        Boolean   @default(false)
-  verifiedAt      DateTime?
-  phone           String?
-  email           String?
-  website         String?
-  address         String?
-  creditsBalance  Int       @default(0) // promotion credits
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  agents          Agent[]
-  properties      Property[]
-  promotions      Promotion[]
-
-  @@index([verified])
-}
-
-model Agent {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agencyId       String
-  agency         Agency    @relation(fields: [agencyId], references: [id], onDelete: Restrict)
-  title          String?
-  bio            String?
-  photoUrl       String?
-  brn            String?   @unique // Broker Registration Number
-  phone          String
-  whatsappNumber String    // E.164 without "+", used for wa.me links
-  languages      String[]
-  specialities   String[]
-  superAgent     Boolean   @default(false)
-  verified       Boolean   @default(false)
-  isAgencyAdmin  Boolean   @default(false)
-  // Denormalised counters, refreshed by a trigger or job
-  activeListingsCount Int  @default(0)
-  medianReplyMinutes  Int?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  properties     Property[]
-  leads          Lead[]
-
-  @@index([agencyId])
-}
-
-// ─── Locations (City > Community > Sub-community > Building) ─────────────────
+// ═══ Locations: Region > Province > City/Municipality > Barangay / District ══
 
 model Location {
-  id         String        @id @default(cuid())
-  name       String
-  nameAr     String?
-  slug       String        @unique // e.g. "dubai/dubai-marina/marina-promenade"
-  level      LocationLevel
-  parentId   String?
-  parent     Location?     @relation("LocationTree", fields: [parentId], references: [id])
-  children   Location[]    @relation("LocationTree")
-  // Materialised path of ancestor ids for fast "everything inside Dubai Marina" queries
-  path       String[]
-  lat        Float?
-  lng        Float?
-  boundary   Unsupported("geometry(MultiPolygon, 4326)")?
-  listingCount Int         @default(0)
+  id           String                                       @id @default(cuid())
+  psgcCode     String?                                      @unique // Philippine Standard Geographic Code from PSA
+  name         String // "Taguig", "Bonifacio Global City"
+  displayName  String // "Bonifacio Global City, Taguig"
+  slug         String                                       @unique // "ncr/metro-manila/taguig/bonifacio-global-city"
+  level        LocationLevel
+  parentId     String?
+  parent       Location?                                    @relation("LocationTree", fields: [parentId], references: [id])
+  children     Location[]                                   @relation("LocationTree")
+  ancestorIds  String[] // materialised path, root first, for "everything in Taguig" filters
+  aliases      String[] // "BGC", "The Fort", "Fort Bonifacio" for autocomplete
+  isPopular    Boolean                                      @default(false) // shown as quick picks under the search box
+  lat          Float?
+  lng          Float?
+  boundary     Unsupported("geometry(MultiPolygon, 4326)")?
+  listingCount Int                                          @default(0) // refreshed by a job
 
   properties Property[]
+  projects   Project[]
+  banners    HeroBanner[]
 
   @@index([parentId])
   @@index([level])
-  @@index([path], type: Gin)
+  @@index([ancestorIds], type: Gin)
 }
 
-// ─── Properties ──────────────────────────────────────────────────────────────
+// ═══ Developers & projects ═══════════════════════════════════════════════════
+// Developer rows start empty. Add a developer only with a signed partnership,
+// since its name and logo appear in promotional banners.
+
+model Developer {
+  id              String             @id @default(cuid())
+  name            String
+  slug            String             @unique
+  logoKey         String? // storage key, rendered through the image CDN
+  coverKey        String?
+  description     String?
+  website         String?
+  secRegistration String? // SEC company registration number
+  verification    VerificationStatus @default(UNVERIFIED)
+  verifiedAt      DateTime?
+  isFeatured      Boolean            @default(false) // eligible for the developer slider
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  projects Project[]
+  members  DeveloperMember[]
+  banners  HeroBanner[]
+
+  @@index([isFeatured])
+}
+
+model DeveloperMember {
+  developerId String
+  userId      String
+  developer   Developer @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([developerId, userId])
+  @@index([userId])
+}
+
+model Project {
+  id          String                                 @id @default(cuid())
+  developerId String
+  developer   Developer                              @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String                                 @unique
+  description String?
+  status      ProjectStatus
+  locationId  String
+  location    Location                               @relation(fields: [locationId], references: [id])
+  lat         Float
+  lng         Float
+  geo         Unsupported("geography(Point, 4326)")?
+
+  // DHSUD compliance: a project may only be sold pre-selling with a License to Sell
+  dhsudLicenseToSell String? // LTS number
+  dhsudLtsIssuedAt   DateTime?
+  turnoverQuarter    Int? // 1-4
+  turnoverYear       Int?
+  totalUnits         Int?
+  towers             Int?
+  priceFrom          Decimal?  @db.Decimal(15, 2)
+  priceTo            Decimal?  @db.Decimal(15, 2)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  properties Property[]
+  media      ProjectMedia[]
+  banners    HeroBanner[]
+
+  @@index([developerId])
+  @@index([locationId, status])
+}
+
+model ProjectMedia {
+  id         String    @id @default(cuid())
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind       MediaKind // includes BROCHURE_PDF and SITE_DEVELOPMENT_PLAN
+  storageKey String
+  fileName   String?
+  width      Int?
+  height     Int?
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([projectId, kind, sortOrder])
+}
+
+// ═══ Brokerages & verified agents ════════════════════════════════════════════
+
+model Agency {
+  id                   String             @id @default(cuid())
+  name                 String
+  slug                 String             @unique
+  logoKey              String?
+  brandColor           String?
+  description          String?
+  dhsudRegistrationNo  String? // brokerage registration with DHSUD
+  secOrDtiRegistration String?
+  officeAddress        String?
+  locationId           String? // city of the main office
+  phone                String?
+  email                String?
+  verification         VerificationStatus @default(UNVERIFIED)
+  verifiedAt           DateTime?
+  promotionCredits     Int                @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  agents     Agent[]
+  properties Property[]
+}
+
+model Agent {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+
+  // RESA (RA 9646) compliance
+  licenseType                  LicenseType
+  prcLicenseNumber             String?            @unique // required for brokers
+  prcLicenseValidUntil         DateTime?
+  dhsudAccreditationNumber     String?            @unique // required for salespersons
+  dhsudAccreditationValidUntil DateTime?
+  supervisingBrokerId          String? // salespersons must work under a licensed broker
+  supervisingBroker            Agent?             @relation("BrokerSalespersons", fields: [supervisingBrokerId], references: [id], onDelete: SetNull)
+  salespersons                 Agent[]            @relation("BrokerSalespersons")
+  licenseDocKey                String? // uploaded PRC ID / DHSUD certificate, private bucket
+  verification                 VerificationStatus @default(PENDING)
+  verifiedAt                   DateTime?
+  verifiedById                 String? // admin user id
+
+  // Contact (Viber is the primary channel in PH)
+  displayName    String
+  photoKey       String?
+  title          String?
+  bio            String?
+  mobile         String // E.164
+  viberNumber    String? // E.164; deep link viber://chat?number=%2B63...
+  whatsappNumber String? // E.164 without "+", for wa.me links
+  languages      String[] @default(["English", "Filipino"])
+  serviceAreaIds String[] // Location ids the agent covers
+
+  activeListingsCount Int      @default(0)
+  medianReplyMinutes  Int?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  properties Property[]
+  leads      Lead[]
+
+  @@index([agencyId])
+  @@index([verification])
+  @@index([supervisingBrokerId])
+}
+
+// ═══ Properties ══════════════════════════════════════════════════════════════
 
 model Property {
-  id              String           @id @default(cuid())
-  reference       String           @unique // agency's own reference, e.g. CP-RENT-1042
-  slug            String           @unique
-  title           String
-  titleAr         String?
-  description     String
-  descriptionAr   String?
+  id          String @id @default(cuid())
+  reference   String @unique // agent / agency reference
+  slug        String @unique
+  title       String
+  description String
 
-  purpose         Purpose
-  type            PropertyType
-  status          ListingStatus    @default(DRAFT)
-  completion      CompletionStatus @default(READY)
-  handoverDate    DateTime?        // off-plan
-  paymentPlan     Json?            // off-plan, e.g. [{ "milestone": "On booking", "percent": 10 }]
+  listingType       ListingType
+  propertyType      PropertyType
+  commercialSubtype CommercialSubtype?
+  status            ListingStatus      @default(DRAFT)
 
-  price           Decimal          @db.Decimal(14, 2)
-  currency        String           @default("AED")
-  rentFrequency   RentFrequency?   // required when purpose = RENT
-  cheques         Int?             // UAE: number of rent cheques accepted
-  serviceCharge   Decimal?         @db.Decimal(10, 2) // per sqft per year
+  // Price in PHP
+  price             Decimal     @db.Decimal(15, 2)
+  rentPeriod        RentPeriod? // required when listingType = RENT
+  pricePerSqm       Decimal?    @db.Decimal(12, 2) // computed on save for sorting/filtering
+  priceNegotiable   Boolean     @default(false)
+  associationDues   Decimal?    @db.Decimal(10, 2) // monthly condo / HOA dues
+  rentDepositMonths Int? // e.g. 2 months deposit
+  rentAdvanceMonths Int? // e.g. 1 month advance
+  minLeaseMonths    Int?
 
-  bedrooms        Int              // 0 = studio
-  bathrooms       Int
-  areaSqft        Int
-  plotSqft        Int?
-  furnishing      Furnishing       @default(UNFURNISHED)
-  floorNumber     Int?
-  parkingSpaces   Int?
+  // Size & layout (sqm)
+  floorAreaSqm Decimal?    @db.Decimal(10, 2)
+  lotAreaSqm   Decimal?    @db.Decimal(12, 2) // house and lot, lot only, agricultural, warehouse
+  bedrooms     Int? // 0 = studio, null for lots
+  bathrooms    Int?
+  parkingSlots Int?
+  floorLevel   Int?
+  unitType     String? // "Studio", "1BR", "Loft", "Penthouse"
+  furnishing   Furnishing?
 
-  locationId      String
-  location        Location         @relation(fields: [locationId], references: [id])
-  addressLine     String?
-  lat             Float
-  lng             Float
-  geo             Unsupported("geography(Point, 4326)")?
+  // Ownership
+  titleType                TitleType?
+  foreignOwnershipEligible Boolean    @default(false) // condos within the 40% foreign cap
 
-  // Compliance (UAE)
-  permitNumber    String?          // DLD / Trakheesi / ADREC permit
-  permitQrUrl     String?
-  permitVerifiedAt DateTime?
-  verified        Boolean          @default(false) // passed video/visit check
-  verifiedAt      DateTime?
+  // Location
+  locationId   String
+  location     Location                               @relation(fields: [locationId], references: [id])
+  addressLine  String? // street / building, shown after an inquiry if hidden
+  showExactPin Boolean                                @default(true)
+  lat          Float
+  lng          Float
+  geo          Unsupported("geography(Point, 4326)")?
 
-  agencyId        String
-  agency          Agency           @relation(fields: [agencyId], references: [id])
-  agentId         String
-  agent           Agent            @relation(fields: [agentId], references: [id])
+  // Pre-selling (listingType = PRE_SELLING) — inherits project defaults
+  projectId               String?
+  project                 Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  turnoverQuarter         Int? // 1-4
+  turnoverYear            Int?
+  reservationFee          Decimal? @db.Decimal(12, 2)
+  downpaymentPercent      Decimal? @db.Decimal(5, 2)
+  downpaymentTermMonths   Int? // spread over N months
+  spotCashDiscountPercent Decimal? @db.Decimal(5, 2)
 
-  qualityScore    Int              @default(0) // 0-100, photos/description/permit completeness
-  viewsCount      Int              @default(0)
-  leadsCount      Int              @default(0)
+  // Foreclosed / bank-assigned (listingType = FORECLOSED)
+  foreclosingInstitution  String? // "Pag-IBIG Fund", bank name
+  institutionPropertyCode String?
+  minimumBidPrice         Decimal?             @db.Decimal(15, 2)
+  saleMode                ForeclosureSaleMode?
+  auctionDate             DateTime?
+  occupancy               OccupancyStatus?
+  asIsWhereIs             Boolean              @default(true)
 
-  publishedAt     DateTime?
-  expiresAt       DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  // Ownership of the listing
+  agencyId String?
+  agency   Agency? @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  agentId  String
+  agent    Agent   @relation(fields: [agentId], references: [id])
 
-  media           PropertyMedia[]
-  amenities       PropertyAmenity[]
-  priceHistory    PriceChange[]
-  promotions      Promotion[]
-  leads           Lead[]
-  favorites       Favorite[]
-  nearby          NearbyPlace[]
+  // Ranking & stats
+  isFeatured    Boolean   @default(false)
+  featuredUntil DateTime?
+  qualityScore  Int       @default(0) // 0-100
+  viewsCount    Int       @default(0)
+  leadsCount    Int       @default(0)
 
-  @@index([status, purpose, type])
-  @@index([locationId])
-  @@index([agencyId, status])
-  @@index([agentId])
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  media        PropertyMedia[]
+  amenities    PropertyAmenity[]
+  priceHistory PriceChange[]
+  leads        Lead[]
+  favorites    Favorite[]
+  nearby       NearbyPlace[]
+
+  @@index([status, listingType, propertyType])
+  @@index([locationId, status])
   @@index([price])
+  @@index([pricePerSqm])
+  @@index([floorAreaSqm])
   @@index([bedrooms])
-  @@index([publishedAt])
-  // GiST index on geo is created in prisma/sql/postgis.sql
+  @@index([turnoverYear, turnoverQuarter])
+  @@index([agentId])
+  @@index([agencyId, status])
+  @@index([projectId])
+  @@index([isFeatured, publishedAt])
 }
 
 model PropertyMedia {
@@ -310,10 +508,10 @@ model PropertyMedia {
   propertyId  String
   property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   kind        MediaKind
-  storageKey  String    // S3 / Supabase Storage object key; CDN URL is derived
+  storageKey  String // S3 / Supabase Storage key; CDN URL derived at render time
   width       Int?
   height      Int?
-  blurDataUrl String?   // tiny LQIP for next/image placeholder
+  blurDataUrl String? // LQIP for next/image placeholder
   caption     String?
   sortOrder   Int       @default(0)
   createdAt   DateTime  @default(now())
@@ -322,12 +520,11 @@ model PropertyMedia {
 }
 
 model Amenity {
-  id         String          @id @default(cuid())
-  key        String          @unique // "balcony", "central-ac", "private-pool", "maid-room"...
-  label      String
-  labelAr    String?
-  category   AmenityCategory
-  icon       String?         // lucide icon name
+  id       String          @id @default(cuid())
+  key      String          @unique // "swimming-pool", "24-7-security", "backup-generator", "flood-free"
+  label    String
+  category AmenityCategory
+  icon     String? // lucide icon name
 
   properties PropertyAmenity[]
 }
@@ -346,10 +543,10 @@ model NearbyPlace {
   id          String   @id @default(cuid())
   propertyId  String
   property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  kind        String   // school | hospital | metro | mall | beach | park
+  kind        String // school | hospital | mall | mrt_lrt | bus_terminal | church | airport
   name        String
   distanceM   Int
-  durationMin Int?     // from the distance-matrix provider
+  durationMin Int?
   updatedAt   DateTime @updatedAt
 
   @@index([propertyId, kind])
@@ -359,59 +556,87 @@ model PriceChange {
   id         String   @id @default(cuid())
   propertyId String
   property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  oldPrice   Decimal  @db.Decimal(14, 2)
-  newPrice   Decimal  @db.Decimal(14, 2)
+  oldPrice   Decimal  @db.Decimal(15, 2)
+  newPrice   Decimal  @db.Decimal(15, 2)
   changedAt  DateTime @default(now())
 
   @@index([propertyId, changedAt])
 }
 
-model Promotion {
-  id         String        @id @default(cuid())
-  propertyId String
-  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  agencyId   String
-  agency     Agency        @relation(fields: [agencyId], references: [id])
-  tier       PromotionTier
-  credits    Int
-  startsAt   DateTime
-  endsAt     DateTime
-  createdAt  DateTime      @default(now())
+// ═══ Hero banners & developer slider ═════════════════════════════════════════
 
-  @@index([propertyId, endsAt])
-  @@index([agencyId])
+model HeroBanner {
+  id             String          @id @default(cuid())
+  placement      BannerPlacement
+  title          String? // headline over the image; null = image only
+  subtitle       String?
+  imageKey       String // desktop image (e.g. 2400×1000)
+  mobileImageKey String? // portrait crop for phones
+  altText        String
+  ctaLabel       String?
+  ctaUrl         String?
+  // Optional sponsor; HOME_HERO banners are usually unsponsored scenery
+  developerId    String?
+  developer      Developer?      @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  projectId      String?
+  project        Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // Targeting: show only to visitors browsing this region/city
+  locationId     String?
+  location       Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  sortOrder      Int             @default(0)
+  isActive       Boolean         @default(true)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  impressions    Int             @default(0)
+  clicks         Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([placement, isActive, sortOrder])
+  @@index([developerId])
 }
 
-// ─── Leads, favorites, saved searches ────────────────────────────────────────
+// ═══ Leads ═══════════════════════════════════════════════════════════════════
 
 model Lead {
-  id          String      @id @default(cuid())
-  propertyId  String
-  property    Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  agentId     String
-  agent       Agent       @relation(fields: [agentId], references: [id])
-  userId      String?
-  user        User?       @relation("LeadUser", fields: [userId], references: [id])
-  channel     LeadChannel
-  status      LeadStatus  @default(NEW)
-  name        String?
-  email       String?
-  phone       String?
-  message     String?
-  preferredCallbackAt DateTime?
-  // Attribution
-  sessionId   String?
-  sourcePage  String?     // "pdp" | "search-card" | "map"
-  utmSource   String?
-  utmMedium   String?
-  utmCampaign String?
-  userAgent   String?
-  ipHash      String?     // hashed, for spam/rate limiting
-  firstReplyAt DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id         String      @id @default(cuid())
+  propertyId String?
+  property   Property?   @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  agentId    String
+  agent      Agent       @relation(fields: [agentId], references: [id])
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  channel    LeadChannel
+  status     LeadStatus  @default(NEW)
 
-  events      LeadEvent[]
+  name               String?
+  email              String?
+  mobile             String?
+  message            String?
+  preferredContactAt DateTime?
+
+  // "Request Sample Computation" inputs, so the agent can send an exact quote
+  financingType      FinancingType?
+  downpaymentPercent Decimal?       @db.Decimal(5, 2)
+  loanTermYears      Int?
+  grossMonthlyIncome Decimal?       @db.Decimal(12, 2)
+  computation        Json? // snapshot of the calculator result shown to the buyer
+
+  // Attribution
+  sessionId    String?
+  sourcePage   String? // "pdp" | "search-card" | "map" | "banner"
+  bannerId     String?
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign  String?
+  userAgent    String?
+  ipHash       String? // hashed for rate limiting; Data Privacy Act: no raw IPs
+  consentAt    DateTime? // DPA consent checkbox timestamp
+  firstReplyAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  events LeadEvent[]
 
   @@index([agentId, status, createdAt])
   @@index([propertyId, createdAt])
@@ -422,11 +647,26 @@ model LeadEvent {
   id        String   @id @default(cuid())
   leadId    String
   lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  type      String   // "status_changed" | "note" | "viewing_scheduled"
+  type      String // "status_changed" | "note" | "site_viewing_scheduled" | "computation_sent"
   data      Json?
   createdAt DateTime @default(now())
 
   @@index([leadId, createdAt])
+}
+
+// ═══ Saved searches & favorites ══════════════════════════════════════════════
+
+model SavedSearch {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  filters    Json // same shape as the /search URL params (validated with Zod)
+  frequency  AlertFrequency @default(DAILY)
+  lastSentAt DateTime?
+  createdAt  DateTime       @default(now())
+
+  @@index([userId])
 }
 
 model Favorite {
@@ -440,15 +680,28 @@ model Favorite {
   @@index([propertyId])
 }
 
-model SavedSearch {
-  id          String         @id @default(cuid())
-  userId      String
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  filters     Json           // same shape as the /search URL params
-  frequency   AlertFrequency @default(DAILY)
-  lastSentAt  DateTime?
-  createdAt   DateTime       @default(now())
+// ═══ Financing programs (drives the amortization calculator) ═════════════════
+// Rates and caps change, so they live in the database and are edited by
+// admins, never hard-coded in the calculator.
 
-  @@index([userId])
+model FinancingProgram {
+  id                String        @id @default(cuid())
+  type              FinancingType // PAGIBIG | BANK | IN_HOUSE
+  provider          String // "Pag-IBIG Fund", or a bank name
+  name              String // "Regular housing loan, 3-year fixing"
+  annualRatePercent Decimal       @db.Decimal(6, 3)
+  rateFixingYears   Int? // repricing period
+  maxTermYears      Int
+  maxLoanAmount     Decimal?      @db.Decimal(15, 2)
+  maxLoanToValuePct Decimal?      @db.Decimal(5, 2)
+  minDownpaymentPct Decimal?      @db.Decimal(5, 2)
+  maxBorrowerAge    Int? // age at loan maturity
+  incomeRatioPct    Decimal?      @db.Decimal(5, 2) // max amortization as % of gross income
+  sourceUrl         String? // where the figures were published
+  effectiveFrom     DateTime
+  effectiveTo       DateTime?
+  isActive          Boolean       @default(true)
+  updatedAt         DateTime      @updatedAt
+
+  @@index([type, isActive])
 }

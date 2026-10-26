@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:ph": "tsx scripts/check-ph-data.mts",
+    "db:postgis": "psql \"$DIRECT_URL\" -f prisma/sql/postgis.sql"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
@@ -27,6 +29,10 @@
     "eslint-config-next": "16.4.3",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }
