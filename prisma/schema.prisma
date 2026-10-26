@@ -1,0 +1,454 @@
+// SA Realty data model: PostgreSQL + PostGIS (Supabase or any managed Postgres).
+// Enable PostGIS once:  CREATE EXTENSION IF NOT EXISTS postgis;
+// The `geo` column is maintained by a trigger from lat/lng (see prisma/sql/postgis.sql)
+// and indexed with GiST for radius / bounding-box queries.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [postgis]
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  BUYER          // also tenants
+  AGENT
+  AGENCY_ADMIN
+  SYSTEM_ADMIN
+}
+
+enum Purpose {
+  RENT
+  SALE
+}
+
+enum PropertyType {
+  APARTMENT
+  VILLA
+  TOWNHOUSE
+  PENTHOUSE
+  DUPLEX
+  HOTEL_APARTMENT
+  LAND
+  OFFICE
+  RETAIL
+  WAREHOUSE
+}
+
+enum RentFrequency {
+  YEARLY
+  MONTHLY
+  WEEKLY
+  DAILY
+}
+
+enum CompletionStatus {
+  READY
+  OFF_PLAN
+}
+
+enum Furnishing {
+  FURNISHED
+  SEMI_FURNISHED
+  UNFURNISHED
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW // waiting for permit validation
+  LIVE
+  PAUSED
+  EXPIRED
+  REJECTED
+  SOLD
+  RENTED
+}
+
+enum LocationLevel {
+  EMIRATE
+  CITY
+  COMMUNITY
+  SUB_COMMUNITY
+  BUILDING
+}
+
+enum MediaKind {
+  PHOTO
+  FLOOR_PLAN
+  VIDEO
+  VIRTUAL_TOUR
+}
+
+enum LeadChannel {
+  WHATSAPP
+  CALL
+  EMAIL
+  CALLBACK
+  SMS
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  VIEWING_BOOKED
+  NEGOTIATING
+  WON
+  LOST
+  SPAM
+}
+
+enum AmenityCategory {
+  INTERIOR
+  BUILDING
+  OUTDOOR
+  SECURITY
+  LIFESTYLE
+}
+
+enum PromotionTier {
+  FEATURED
+  PREMIUM
+  SPOTLIGHT
+}
+
+enum AlertFrequency {
+  INSTANT
+  DAILY
+  WEEKLY
+}
+
+// ─── Users, agencies, agents ─────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  // With Supabase Auth, set id = auth.users.id and keep auth in Supabase.
+  email         String    @unique
+  phone         String?   @unique
+  name          String?
+  avatarUrl     String?
+  role          Role      @default(BUYER)
+  locale        String    @default("en")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  agent         Agent?
+  favorites     Favorite[]
+  savedSearches SavedSearch[]
+  leads         Lead[]    @relation("LeadUser")
+
+  @@index([role])
+}
+
+model Agency {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  logoUrl         String?
+  brandColor      String?   // hex, used on listing cards
+  coverUrl        String?
+  description     String?
+  reraOrn         String?   @unique // RERA Office Registration Number (Dubai)
+  tradeLicense    String?
+  verified        Boolean   @default(false)
+  verifiedAt      DateTime?
+  phone           String?
+  email           String?
+  website         String?
+  address         String?
+  creditsBalance  Int       @default(0) // promotion credits
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  agents          Agent[]
+  properties      Property[]
+  promotions      Promotion[]
+
+  @@index([verified])
+}
+
+model Agent {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agencyId       String
+  agency         Agency    @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  title          String?
+  bio            String?
+  photoUrl       String?
+  brn            String?   @unique // Broker Registration Number
+  phone          String
+  whatsappNumber String    // E.164 without "+", used for wa.me links
+  languages      String[]
+  specialities   String[]
+  superAgent     Boolean   @default(false)
+  verified       Boolean   @default(false)
+  isAgencyAdmin  Boolean   @default(false)
+  // Denormalised counters, refreshed by a trigger or job
+  activeListingsCount Int  @default(0)
+  medianReplyMinutes  Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  properties     Property[]
+  leads          Lead[]
+
+  @@index([agencyId])
+}
+
+// ─── Locations (City > Community > Sub-community > Building) ─────────────────
+
+model Location {
+  id         String        @id @default(cuid())
+  name       String
+  nameAr     String?
+  slug       String        @unique // e.g. "dubai/dubai-marina/marina-promenade"
+  level      LocationLevel
+  parentId   String?
+  parent     Location?     @relation("LocationTree", fields: [parentId], references: [id])
+  children   Location[]    @relation("LocationTree")
+  // Materialised path of ancestor ids for fast "everything inside Dubai Marina" queries
+  path       String[]
+  lat        Float?
+  lng        Float?
+  boundary   Unsupported("geometry(MultiPolygon, 4326)")?
+  listingCount Int         @default(0)
+
+  properties Property[]
+
+  @@index([parentId])
+  @@index([level])
+  @@index([path], type: Gin)
+}
+
+// ─── Properties ──────────────────────────────────────────────────────────────
+
+model Property {
+  id              String           @id @default(cuid())
+  reference       String           @unique // agency's own reference, e.g. CP-RENT-1042
+  slug            String           @unique
+  title           String
+  titleAr         String?
+  description     String
+  descriptionAr   String?
+
+  purpose         Purpose
+  type            PropertyType
+  status          ListingStatus    @default(DRAFT)
+  completion      CompletionStatus @default(READY)
+  handoverDate    DateTime?        // off-plan
+  paymentPlan     Json?            // off-plan, e.g. [{ "milestone": "On booking", "percent": 10 }]
+
+  price           Decimal          @db.Decimal(14, 2)
+  currency        String           @default("AED")
+  rentFrequency   RentFrequency?   // required when purpose = RENT
+  cheques         Int?             // UAE: number of rent cheques accepted
+  serviceCharge   Decimal?         @db.Decimal(10, 2) // per sqft per year
+
+  bedrooms        Int              // 0 = studio
+  bathrooms       Int
+  areaSqft        Int
+  plotSqft        Int?
+  furnishing      Furnishing       @default(UNFURNISHED)
+  floorNumber     Int?
+  parkingSpaces   Int?
+
+  locationId      String
+  location        Location         @relation(fields: [locationId], references: [id])
+  addressLine     String?
+  lat             Float
+  lng             Float
+  geo             Unsupported("geography(Point, 4326)")?
+
+  // Compliance (UAE)
+  permitNumber    String?          // DLD / Trakheesi / ADREC permit
+  permitQrUrl     String?
+  permitVerifiedAt DateTime?
+  verified        Boolean          @default(false) // passed video/visit check
+  verifiedAt      DateTime?
+
+  agencyId        String
+  agency          Agency           @relation(fields: [agencyId], references: [id])
+  agentId         String
+  agent           Agent            @relation(fields: [agentId], references: [id])
+
+  qualityScore    Int              @default(0) // 0-100, photos/description/permit completeness
+  viewsCount      Int              @default(0)
+  leadsCount      Int              @default(0)
+
+  publishedAt     DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  media           PropertyMedia[]
+  amenities       PropertyAmenity[]
+  priceHistory    PriceChange[]
+  promotions      Promotion[]
+  leads           Lead[]
+  favorites       Favorite[]
+  nearby          NearbyPlace[]
+
+  @@index([status, purpose, type])
+  @@index([locationId])
+  @@index([agencyId, status])
+  @@index([agentId])
+  @@index([price])
+  @@index([bedrooms])
+  @@index([publishedAt])
+  // GiST index on geo is created in prisma/sql/postgis.sql
+}
+
+model PropertyMedia {
+  id          String    @id @default(cuid())
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  kind        MediaKind
+  storageKey  String    // S3 / Supabase Storage object key; CDN URL is derived
+  width       Int?
+  height      Int?
+  blurDataUrl String?   // tiny LQIP for next/image placeholder
+  caption     String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([propertyId, kind, sortOrder])
+}
+
+model Amenity {
+  id         String          @id @default(cuid())
+  key        String          @unique // "balcony", "central-ac", "private-pool", "maid-room"...
+  label      String
+  labelAr    String?
+  category   AmenityCategory
+  icon       String?         // lucide icon name
+
+  properties PropertyAmenity[]
+}
+
+model PropertyAmenity {
+  propertyId String
+  amenityId  String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, amenityId])
+  @@index([amenityId])
+}
+
+model NearbyPlace {
+  id          String   @id @default(cuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  kind        String   // school | hospital | metro | mall | beach | park
+  name        String
+  distanceM   Int
+  durationMin Int?     // from the distance-matrix provider
+  updatedAt   DateTime @updatedAt
+
+  @@index([propertyId, kind])
+}
+
+model PriceChange {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  oldPrice   Decimal  @db.Decimal(14, 2)
+  newPrice   Decimal  @db.Decimal(14, 2)
+  changedAt  DateTime @default(now())
+
+  @@index([propertyId, changedAt])
+}
+
+model Promotion {
+  id         String        @id @default(cuid())
+  propertyId String
+  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  agencyId   String
+  agency     Agency        @relation(fields: [agencyId], references: [id])
+  tier       PromotionTier
+  credits    Int
+  startsAt   DateTime
+  endsAt     DateTime
+  createdAt  DateTime      @default(now())
+
+  @@index([propertyId, endsAt])
+  @@index([agencyId])
+}
+
+// ─── Leads, favorites, saved searches ────────────────────────────────────────
+
+model Lead {
+  id          String      @id @default(cuid())
+  propertyId  String
+  property    Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  agentId     String
+  agent       Agent       @relation(fields: [agentId], references: [id])
+  userId      String?
+  user        User?       @relation("LeadUser", fields: [userId], references: [id])
+  channel     LeadChannel
+  status      LeadStatus  @default(NEW)
+  name        String?
+  email       String?
+  phone       String?
+  message     String?
+  preferredCallbackAt DateTime?
+  // Attribution
+  sessionId   String?
+  sourcePage  String?     // "pdp" | "search-card" | "map"
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  userAgent   String?
+  ipHash      String?     // hashed, for spam/rate limiting
+  firstReplyAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  events      LeadEvent[]
+
+  @@index([agentId, status, createdAt])
+  @@index([propertyId, createdAt])
+  @@index([channel, createdAt])
+}
+
+model LeadEvent {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      String   // "status_changed" | "note" | "viewing_scheduled"
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+model Favorite {
+  userId     String
+  propertyId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([userId, propertyId])
+  @@index([propertyId])
+}
+
+model SavedSearch {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  filters     Json           // same shape as the /search URL params
+  frequency   AlertFrequency @default(DAILY)
+  lastSentAt  DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@index([userId])
+}

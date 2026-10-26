@@ -1,26 +1,51 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Brand tokens: Creek teal for trust and action, Date amber reserved for
+   prices on the map and promoted listings, everything else stays quiet. */
+@theme {
+  --color-creek-50: #eef6f5;
+  --color-creek-100: #dcedea;
+  --color-creek-200: #b5d8d3;
+  --color-creek-500: #1d6c75;
+  --color-creek-700: #0e4a52;
+  --color-creek-900: #08343a;
+  --color-date-400: #f0b54f;
+  --color-date-500: #e2a23b;
+  --color-date-700: #9a6414;
+  --color-ink: #17262a;
+  --color-ink-soft: #4d5e62;
+  --color-line: #dce3e4;
+  --color-mist: #f3f6f6;
+  --color-whatsapp: #128c4b;
+
+  --font-display: "Bricolage Grotesque Variable", "Manrope Variable", system-ui, sans-serif;
+  --font-sans: "Manrope Variable", system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color: var(--color-ink);
+  background: #fff;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-creek-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
