@@ -65,7 +65,8 @@ const bgcRow = store.locations.get(bgc.key)!;
 assert.equal(bgcRow.parentId, taguig.id);
 assert.equal(bgcRow.ancestorIds.length, 3);
 assert.ok(bgcRow.ancestorIds.every(Boolean), "ancestor ids resolved");
-const cebuBanner = store.banners.find((b) => (b as { imageKey: string }).imageKey.includes("cebu")) as { locationId: string | null };
-assert.ok(cebuBanner.locationId, "Cebu banner targets the Cebu province");
+const boholBanner = store.banners.find((b) => (b as { imageKey: string }).imageKey.includes("chocolate-hills")) as { locationId: string | null; photoCredit: string };
+assert.ok(boholBanner.locationId, "Chocolate Hills banner targets Bohol");
+assert.ok(boholBanner.photoCredit.includes("Unsplash"), "banner carries photo credit");
 
 console.log(`All PH data checks passed (${flat.length} locations, ${first.amenities} amenities, ${first.heroBackgrounds} hero backgrounds).`);

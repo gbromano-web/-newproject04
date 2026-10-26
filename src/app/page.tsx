@@ -4,7 +4,9 @@ import { ArrowUpRight, Calculator, ShieldCheck } from "lucide-react";
 import { DeveloperSlider } from "@/components/ph/developer-slider";
 import { PhListingCard } from "@/components/ph/ph-listing-card";
 import { PhSearchBox } from "@/components/ph/ph-search-box";
-import { SCENES, type SceneKey } from "@/components/ph/scenes";
+import { ScenePhoto } from "@/components/ph/scene-photo";
+import type { SceneKey } from "@/components/ph/scenes";
+import type { PhotoKey } from "@/lib/ph/photos";
 import { ScenicHero } from "@/components/ph/scenic-hero";
 import { flattenLocations } from "@/lib/ph/locations";
 import { PH_SAMPLE_LISTINGS } from "@/lib/ph/sample-listings";
@@ -17,12 +19,12 @@ export const metadata: Metadata = {
 
 const POPULAR = ["Bonifacio Global City", "Makati CBD", "Cebu IT Park", "El Nido", "Baguio", "Panglao"];
 
-const DESTINATIONS: { scene: SceneKey; name: string; line: string; location: string; span?: string }[] = [
-  { scene: "lagoon", name: "Palawan", line: "Beach lots, resort homes and island investments", location: "Palawan", span: "md:col-span-2 md:row-span-2" },
-  { scene: "city", name: "Metro Manila", line: "Condos near work in BGC, Makati and Ortigas", location: "Metro Manila" },
-  { scene: "terraces", name: "Baguio and the Cordilleras", line: "Cool-climate houses and vacation homes", location: "Baguio" },
-  { scene: "hills", name: "Bohol", line: "Retirement and beach homes around Panglao", location: "Bohol" },
-  { scene: "volcano", name: "Albay", line: "House and lot with Mayon views in Legazpi", location: "Albay" },
+const DESTINATIONS: { photo: PhotoKey; scene: SceneKey; name: string; line: string; location: string; span?: string }[] = [
+  { photo: "elNidoLagoon", scene: "lagoon", name: "Palawan", line: "Beach lots, resort homes and island investments", location: "Palawan", span: "md:col-span-2 md:row-span-2" },
+  { photo: "bgc", scene: "city", name: "Metro Manila", line: "Condos near work in BGC, Makati and Ortigas", location: "Metro Manila" },
+  { photo: "batad", scene: "terraces", name: "Baguio and the Cordilleras", line: "Cool-climate houses and vacation homes", location: "Baguio" },
+  { photo: "chocolateHills", scene: "hills", name: "Bohol", line: "Retirement and beach homes around Panglao", location: "Bohol" },
+  { photo: "mayon", scene: "volcano", name: "Albay", line: "House and lot with Mayon views in Legazpi", location: "Albay" },
 ];
 
 export default function HomePage() {
@@ -57,7 +59,6 @@ export default function HomePage() {
         </div>
         <div className="mt-8 grid auto-rows-[220px] gap-4 md:grid-cols-4">
           {DESTINATIONS.map((d) => {
-            const Scene = SCENES[d.scene];
             return (
               <Link
                 key={d.name}
@@ -65,7 +66,7 @@ export default function HomePage() {
                 className={`group relative isolate overflow-hidden rounded-3xl ${d.span ?? ""}`}
               >
                 <div className="absolute inset-0 -z-10 transition-transform duration-700 group-hover:scale-105">
-                  <Scene uid={`dest-${d.scene}`} />
+                  <ScenePhoto photo={d.photo} scene={d.scene} uid={`dest-${d.scene}`} sizes={d.span ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 768px) 25vw, 100vw"} />
                 </div>
                 <div className="absolute inset-0 -z-10 bg-gradient-to-t from-sea-950/80 via-sea-950/10 to-transparent" />
                 <div className="flex h-full flex-col justify-end p-5 text-white">

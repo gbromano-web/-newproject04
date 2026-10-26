@@ -39,14 +39,15 @@ export const AMENITIES: { key: string; label: string; category: Category; icon: 
   { key: "flood-free-claimed", label: "Flood-free (per seller)", category: "UTILITIES", icon: "cloud-rain" },
 ];
 
-// Unsponsored scenery for the homepage hero. Upload the images to the
-// `banners/` folder of the public bucket under these keys.
+// Unsponsored scenery for the homepage hero: free Unsplash License photos
+// (see src/lib/ph/photos.ts). Upload them to the `banners/` folder of the
+// public bucket under these keys.
 export const HERO_BACKGROUNDS = [
-  { imageKey: "banners/hero-bgc-skyline.jpg", mobileImageKey: "banners/hero-bgc-skyline-portrait.jpg", altText: "Bonifacio Global City skyline at dusk", locationKey: null },
-  { imageKey: "banners/hero-makati-skyline.jpg", mobileImageKey: "banners/hero-makati-skyline-portrait.jpg", altText: "Makati skyline seen from across the Pasig River", locationKey: null },
-  { imageKey: "banners/hero-coastal-condos.jpg", mobileImageKey: "banners/hero-coastal-condos-portrait.jpg", altText: "Condominium towers along Manila Bay", locationKey: null },
-  { imageKey: "banners/hero-subdivision.jpg", mobileImageKey: "banners/hero-subdivision-portrait.jpg", altText: "Tree-lined street in a house and lot subdivision", locationKey: null },
-  { imageKey: "banners/hero-cebu-it-park.jpg", mobileImageKey: "banners/hero-cebu-it-park-portrait.jpg", altText: "Cebu IT Park towers", locationKey: "central-visayas/cebu" },
+  { imageKey: "banners/hero-el-nido.jpg", altText: "Limestone cliffs around a turquoise cove in El Nido, Palawan", photoCredit: "Jared Rice on Unsplash", photoCreditUrl: "https://unsplash.com/photos/Tm0XygW6gN8", locationKey: null },
+  { imageKey: "banners/hero-bgc.jpg", altText: "Aerial view of high-rise buildings in Bonifacio Global City, Taguig", photoCredit: "OJ Serrano on Unsplash", photoCreditUrl: "https://unsplash.com/photos/iacKpANQHNA", locationKey: null },
+  { imageKey: "banners/hero-batad.jpg", altText: "Batad rice terraces and village in Banaue, Ifugao", photoCredit: "Omri D. Cohen on Unsplash", photoCreditUrl: "https://unsplash.com/photos/pozDysoeJ9Y", locationKey: null },
+  { imageKey: "banners/hero-mayon.jpg", altText: "Mayon Volcano behind the Cagsawa Ruins bell tower in Legazpi, Albay", photoCredit: "Camille San Vicente on Unsplash", photoCreditUrl: "https://unsplash.com/photos/Z5xHpUH9o8Y", locationKey: null },
+  { imageKey: "banners/hero-chocolate-hills.jpg", altText: "Rolling Chocolate Hills in Bohol", photoCredit: "Zed Benson on Unsplash", photoCreditUrl: "https://unsplash.com/photos/tyMVaFXcksU", locationKey: "central-visayas/bohol" },
 ] as const;
 
 /** Minimal surface used here, so the seed can be exercised without a database. */
@@ -86,8 +87,9 @@ export async function seed(db: SeedClient) {
       data: {
         placement: "HOME_HERO",
         imageKey: b.imageKey,
-        mobileImageKey: b.mobileImageKey,
         altText: b.altText,
+        photoCredit: b.photoCredit,
+        photoCreditUrl: b.photoCreditUrl,
         sortOrder: i,
         locationId: b.locationKey ? idByKey.get(b.locationKey) ?? null : null,
       },

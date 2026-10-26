@@ -4,20 +4,23 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { MapPin, Pause, Play } from "lucide-react";
 import clsx from "clsx";
-import { SCENES, type SceneKey } from "./scenes";
+import { PHOTOS, type PhotoKey } from "@/lib/ph/photos";
+import { ScenePhoto } from "./scene-photo";
+import type { SceneKey } from "./scenes";
 
 export interface HeroSlide {
-  scene: SceneKey; // production: HeroBanner.imageKey rendered with next/image
+  photo: PhotoKey; // production: HeroBanner.imageKey from Supabase Storage
+  scene: SceneKey; // illustration shown while the photo loads, or if it fails
   place: string;
   note: string;
 }
 
 export const DEFAULT_SLIDES: HeroSlide[] = [
-  { scene: "lagoon", place: "El Nido, Palawan", note: "Beach lots and resort homes" },
-  { scene: "city", place: "Bonifacio Global City, Taguig", note: "Condos close to work" },
-  { scene: "terraces", place: "Banaue, Ifugao", note: "Cool-climate homes in the Cordilleras" },
-  { scene: "volcano", place: "Mayon Volcano, Albay", note: "House and lot with mountain views" },
-  { scene: "hills", place: "Chocolate Hills, Bohol", note: "Retirement and vacation homes" },
+  { photo: "elNido", scene: "lagoon", place: "El Nido, Palawan", note: "Beach lots and resort homes" },
+  { photo: "bgc", scene: "city", place: "Bonifacio Global City, Taguig", note: "Condos close to work" },
+  { photo: "batad", scene: "terraces", place: "Batad, Banaue, Ifugao", note: "Cool-climate homes in the Cordilleras" },
+  { photo: "mayon", scene: "volcano", place: "Mayon Volcano, Albay", note: "House and lot with mountain views" },
+  { photo: "chocolateHills", scene: "hills", place: "Chocolate Hills, Bohol", note: "Retirement and vacation homes" },
 ];
 
 const SLIDE_MS = 7000;
@@ -34,7 +37,7 @@ export function ScenicHero({ slides = DEFAULT_SLIDES, children }: { slides?: Her
   }, [index, playing, slides.length]);
 
   const slide = slides[index];
-  const Scene = SCENES[slide.scene];
+  const credit = PHOTOS[slide.photo];
 
   return (
     <section className="relative isolate overflow-hidden bg-sea-950" aria-roledescription="carousel" aria-label="Philippine destinations">
@@ -47,7 +50,7 @@ export function ScenicHero({ slides = DEFAULT_SLIDES, children }: { slides?: Her
           exit={{ opacity: 0 }}
           transition={{ opacity: { duration: 1.2, ease: "easeInOut" }, scale: { duration: SLIDE_MS / 1000 + 1.5, ease: "linear" } }}
         >
-          <Scene uid={`hero-${slide.scene}`} />
+          <ScenePhoto photo={slide.photo} scene={slide.scene} uid={`hero-${slide.scene}`} priority={index === 0} />
         </motion.div>
       </AnimatePresence>
       {/* Readability: darken top for the headline and bottom for the controls */}
@@ -71,7 +74,14 @@ export function ScenicHero({ slides = DEFAULT_SLIDES, children }: { slides?: Her
               <span className="grid size-8 place-items-center rounded-full bg-lagoon-500"><MapPin className="size-4" /></span>
               <span className="leading-tight">
                 <span className="block text-sm font-bold">{slide.place}</span>
-                <span className="block text-xs text-white/80">{slide.note}</span>
+                <span className="block text-xs text-white/80">
+                  {slide.note}
+                  <span className="hidden sm:inline">
+                    {". Photo: "}
+                    <a href={credit.profileUrl} target="_blank" rel="noopener noreferrer" className="underline decoration-white/40 underline-offset-2 hover:decoration-white">{credit.photographer}</a>
+                    {" on Unsplash"}
+                  </span>
+                </span>
               </span>
             </motion.div>
           </AnimatePresence>

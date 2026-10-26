@@ -573,6 +573,8 @@ model HeroBanner {
   imageKey       String // desktop image (e.g. 2400×1000)
   mobileImageKey String? // portrait crop for phones
   altText        String
+  photoCredit    String? // e.g. "Jared Rice on Unsplash"
+  photoCreditUrl String? // photographer or licence page
   ctaLabel       String?
   ctaUrl         String?
   // Optional sponsor; HOME_HERO banners are usually unsponsored scenery
