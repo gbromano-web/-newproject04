@@ -64,6 +64,7 @@ npx prisma db seed
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | Lint |
+| `npm run typecheck` | Generate route types and type-check |
 | `npm run check:ph` | Test peso formatting, the location tree and the seed |
 | `npm run db:postgis` | Apply PostGIS triggers, indexes and CHECK rules |
 

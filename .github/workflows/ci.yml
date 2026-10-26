@@ -21,7 +21,7 @@ jobs:
           DATABASE_URL: postgresql://user:pass@localhost:5432/db
           DIRECT_URL: postgresql://user:pass@localhost:5432/db
       - name: Type-check
-        run: npx tsc --noEmit
+        run: npm run typecheck
       - name: Lint
         run: npm run lint
       - name: Philippine data checks
