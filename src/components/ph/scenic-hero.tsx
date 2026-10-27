@@ -54,9 +54,9 @@ export function ScenicHero({ slides = DEFAULT_SLIDES, children }: { slides?: Her
         </motion.div>
       </AnimatePresence>
       {/* Readability: darken top for the headline and bottom for the controls */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-sea-950/45 via-transparent to-sea-950/55" />
+      <div className="grain absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(7,29,43,.55)_0%,rgba(7,29,43,.15)_38%,rgba(7,29,43,.25)_62%,rgba(7,29,43,.75)_100%)]" />
 
-      <div className="relative mx-auto flex min-h-[640px] max-w-7xl flex-col justify-center px-4 pb-28 pt-16 sm:px-6">{children}</div>
+      <div className="relative mx-auto flex min-h-[680px] max-w-7xl flex-col justify-center px-4 pb-28 pt-16 sm:px-6">{children}</div>
 
       {/* Caption and controls */}
       <div className="absolute inset-x-0 bottom-0">
@@ -68,10 +68,10 @@ export function ScenicHero({ slides = DEFAULT_SLIDES, children }: { slides?: Her
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.4 }}
-              className="flex items-center gap-3 rounded-full bg-sea-950/45 py-1.5 pl-2 pr-4 text-white backdrop-blur-md"
+              className="flex items-center gap-3 text-white"
               aria-live="polite"
             >
-              <span className="grid size-8 place-items-center rounded-full bg-lagoon-500"><MapPin className="size-4" /></span>
+              <span className="grid size-8 place-items-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur-md"><MapPin className="size-4" /></span>
               <span className="leading-tight">
                 <span className="block text-sm font-bold">{slide.place}</span>
                 <span className="block text-xs text-white/80">
@@ -99,7 +99,7 @@ export function ScenicHero({ slides = DEFAULT_SLIDES, children }: { slides?: Her
                   {i === index && (
                     <motion.span
                       key={`${index}-${playing}`}
-                      className="absolute inset-y-0 left-0 bg-mango-400"
+                      className="absolute inset-y-0 left-0 bg-white"
                       initial={{ width: playing ? "0%" : "100%" }}
                       animate={{ width: "100%" }}
                       transition={{ duration: playing ? SLIDE_MS / 1000 : 0, ease: "linear" }}

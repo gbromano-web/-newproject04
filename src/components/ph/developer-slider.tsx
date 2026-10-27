@@ -24,8 +24,8 @@ export function DeveloperSlider({ slides, emptySlots = 3 }: { slides: DeveloperS
     <section aria-labelledby="dev-heading" className="mx-auto max-w-7xl px-4 sm:px-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 id="dev-heading" className="text-2xl font-bold text-sea-900 sm:text-3xl">Featured developers</h2>
-          <p className="mt-1 text-sm text-ink-soft">New projects from partner developers, with DHSUD License to Sell numbers shown on each project.</p>
+          <h2 id="dev-heading" className="text-[28px] font-bold leading-tight text-sea-950 sm:text-4xl">Featured developers</h2>
+          <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-soft">New projects from partner developers, each showing its DHSUD License to Sell number.</p>
         </div>
         <div className="hidden gap-2 sm:flex">
           <button onClick={() => scroll(-1)} className="rounded-full border border-line p-2 text-sea-800 hover:bg-lagoon-50" aria-label="Previous"><ChevronLeft className="size-4" /></button>
@@ -47,10 +47,10 @@ export function DeveloperSlider({ slides, emptySlots = 3 }: { slides: DeveloperS
         {Array.from({ length: Math.max(0, emptySlots - slides.length) }, (_, i) => (
           <div
             key={`empty-${i}`}
-            className="flex h-56 w-[85%] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-lagoon-300 bg-lagoon-50/60 text-center sm:w-[48%] lg:w-[32%]"
+            className="flex h-56 w-[85%] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-sea-100 bg-sea-50 text-center sm:w-[48%] lg:w-[32%]"
           >
-            <span className="grid size-12 place-items-center rounded-full bg-white text-lagoon-600 shadow-sm"><Building2 className="size-6" /></span>
-            <p className="font-bold text-sea-800">Developer slot available</p>
+            <span className="grid size-11 place-items-center rounded-full bg-white text-sea-700 ring-1 ring-line"><Building2 className="size-5" /></span>
+            <p className="font-semibold text-sea-900">Developer slot available</p>
             <p className="max-w-[24ch] text-sm text-ink-soft">This space shows a partner developer&apos;s project once a banner is added.</p>
           </div>
         ))}

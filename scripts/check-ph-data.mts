@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { formatBedrooms, formatPeso, formatPricePerSqm, formatRent, formatSqm, formatTurnover } from "../src/lib/ph/format";
 import { flattenLocations, slugify } from "../src/lib/ph/locations";
 import { seed, type SeedClient } from "../prisma/seed";
+import { convertPeso } from "../src/lib/ph/currency";
 
 // Peso formatting
 assert.equal(formatRent(35_000, "MONTHLY"), "₱35,000/mo");
@@ -20,6 +21,14 @@ assert.equal(formatSqm(1250), "1,250 sqm");
 assert.equal(formatTurnover(4, 2029), "Q4 2029");
 assert.equal(formatBedrooms(0), "Studio");
 assert.equal(formatBedrooms(2), "2 BR");
+
+// Currency estimates
+assert.equal(convertPeso(18_600_000, "USD"), "≈ US$293K");
+assert.equal(convertPeso(45_000, "USD"), "≈ US$710");
+assert.equal(convertPeso(18_600_000, "JPY"), "≈ ¥46M");
+assert.equal(convertPeso(18_600_000, "KRW"), "≈ ₩388M");
+assert.equal(convertPeso(4_800_000, "SGD"), "≈ S$96.7K");
+assert.equal(convertPeso(4_800_000, "PHP"), null);
 
 // Location tree
 assert.equal(slugify("Parañaque"), "paranaque");

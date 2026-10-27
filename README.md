@@ -9,6 +9,10 @@ A property marketplace for buying, renting, pre-selling and foreclosed homes acr
 ## Features
 
 **Homepage**
+- Premium, internationally minded design: Plus Jakarta Sans (a typeface from Jakarta), a calm sea-navy, lagoon and gold palette, and photography-led layouts
+- Currency switcher: every peso price also shows an estimate in one of 12 currencies (USD, SGD, HKD, JPY, KRW, CNY, AUD, CAD, EUR, GBP, AED, SAR), using Bangko Sentral ng Pilipinas reference rates with their date
+- "Buying from abroad" section for overseas Filipinos and foreign buyers (condo 40% rule, land, 99-year investor leases, RA 9225), with sources and a not-legal-advice note
+- Condos open to foreign buyers are marked on listing cards
 - Rotating hero of professional photographs (El Nido, BGC, Batad rice terraces, Mayon Volcano, Chocolate Hills) with crossfade, slow zoom, pause control and reduced-motion support
 - Glass search box with Buy / Rent / Pre-selling / Foreclosed tabs, Philippine property types, peso price ranges and popular-location shortcuts
 - Destination cards (Palawan, Metro Manila, Baguio, Bohol, Albay)
@@ -97,7 +101,7 @@ scripts/                 Data checks and placeholder image generator
 
 ## Photo credits
 
-Homepage photos are free to use under the [Unsplash License](https://unsplash.com/license):
+Homepage and sample listing photos are free to use under the [Unsplash License](https://unsplash.com/license); the full list with links is in `src/lib/ph/photos.ts`. Hero photos:
 [Jared Rice](https://unsplash.com/photos/Tm0XygW6gN8) (El Nido),
 [Roman Lezhnin](https://unsplash.com/photos/Vb2eRgWU7rc) (El Nido),
 [OJ Serrano](https://unsplash.com/photos/iacKpANQHNA) (BGC),

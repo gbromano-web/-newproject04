@@ -13,20 +13,20 @@ OUT.mkdir(parents=True, exist_ok=True)
 W, H = 1200, 800
 
 SKIES = [
-    ("#f6c98f", "#fbe7cf", "#e8954f"),  # late afternoon
-    ("#9fd3dd", "#e4f3f2", "#f2c46b"),  # clear morning
-    ("#e9a77f", "#f7d9c4", "#d9774a"),  # sunset
-    ("#b9d9e8", "#eef6f9", "#f5d27a"),  # haze
+    ("#cfd9de", "#eef1ef", "#f3dcae"),  # soft overcast
+    ("#b9cfdb", "#eaf1f3", "#f1d9a6"),  # clear morning
+    ("#d9c7b8", "#f1ebe4", "#efcf9c"),  # golden hour
+    ("#c5d6dd", "#f0f3f3", "#f2dcb0"),  # haze
 ]
-STONE = ["#efe4d2", "#e6d6bd", "#f3ede3", "#dccbb0", "#ece7df"]
-GLASS = ["#5f8e96", "#4b7c86", "#6c9aa1", "#3f6f78"]
+STONE = ["#ebe6dd", "#e2dbcf", "#f1eee8", "#d8d0c2", "#e9e6e0"]
+GLASS = ["#6f8791", "#5d7781", "#7d949c", "#4f6973"]
 
 
 def palm(x, ground, s, r):
     h = 150 * s
     lean = r.uniform(-14, 14) * s
     out = [f'<path d="M{x} {ground} Q{x + lean / 2} {ground - h / 2} {x + lean} {ground - h}" '
-           f'stroke="#6b4f33" stroke-width="{7 * s:.1f}" fill="none" stroke-linecap="round"/>']
+           f'stroke="#2c332c" stroke-width="{5 * s:.1f}" fill="none" stroke-linecap="round"/>']
     tx, ty = x + lean, ground - h
     for a in range(-160, 30, 32):
         import math
@@ -34,7 +34,7 @@ def palm(x, ground, s, r):
         ex, ey = tx + math.cos(rad) * 70 * s, ty + math.sin(rad) * 40 * s + 22 * s
         cx, cy = tx + math.cos(rad) * 40 * s, ty + math.sin(rad) * 40 * s - 18 * s
         out.append(f'<path d="M{tx:.0f} {ty:.0f} Q{cx:.0f} {cy:.0f} {ex:.0f} {ey:.0f}" '
-                   f'stroke="#3f6b3a" stroke-width="{9 * s:.1f}" fill="none" stroke-linecap="round"/>')
+                   f'stroke="#2e3f31" stroke-width="{6 * s:.1f}" fill="none" stroke-linecap="round" opacity=".9"/>')
     return "".join(out)
 
 
@@ -44,7 +44,8 @@ def sky(r):
     return (f'<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1">'
             f'<stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient></defs>'
             f'<rect width="{W}" height="{H}" fill="url(#s)"/>'
-            f'<circle cx="{sx}" cy="{sy}" r="58" fill="{sun}" opacity=".85"/>')
+            f'<radialGradient id="g"><stop offset="0" stop-color="{sun}" stop-opacity=".9"/><stop offset="1" stop-color="{sun}" stop-opacity="0"/></radialGradient>'
+            f'<circle cx="{sx}" cy="{sy}" r="220" fill="url(#g)"/>')
 
 
 def distant_skyline(r, base):
@@ -80,8 +81,8 @@ def tower(r):
         for c in range(4):
             g.append(f'<rect x="{sx + 16 + c * 40}" y="{y}" width="26" height="18" fill="{glass}" opacity=".8"/>')
         y += 30
-    g.append(f'<rect y="{ground}" width="{W}" height="{H - ground}" fill="#d8c8a8"/>')
-    g.append(f'<rect y="{ground + 40}" width="{W}" height="40" fill="#8d8d88"/>')
+    g.append(f'<rect y="{ground}" width="{W}" height="{H - ground}" fill="#d9d3c7"/>')
+    g.append(f'<rect y="{ground + 40}" width="{W}" height="40" fill="#9a9c98"/>')
     for px in (120, 260, 980, 1110):
         g.append(palm(px, ground + 20, r.uniform(.9, 1.2), r))
     return g
@@ -91,7 +92,7 @@ def villa(r):
     ground = 600
     g = [sky(r)]
     stone = r.choice(STONE)
-    g.append(f'<rect y="{ground - 30}" width="{W}" height="40" fill="#6f9a62"/>')
+    g.append(f'<rect y="{ground - 30}" width="{W}" height="40" fill="#7f9478"/>')
     # two-storey modern villa
     g.append(f'<rect x="260" y="330" width="680" height="{ground - 330}" fill="{stone}"/>')
     g.append(f'<rect x="200" y="310" width="800" height="26" fill="#f8f4ee"/>')
@@ -104,8 +105,8 @@ def villa(r):
         g.append(f'<rect x="{300 + i * 150 + 53}" y="370" width="4" height="{ground - 400}" fill="#fff" opacity=".6"/>')
     g.append(f'<rect x="300" y="250" width="160" height="60" fill="#7a6a55" opacity=".25"/>')
     # pool
-    g.append(f'<rect y="{ground + 10}" width="{W}" height="{H - ground}" fill="#e6d9c0"/>')
-    g.append(f'<rect x="240" y="{ground + 50}" width="720" height="90" rx="4" fill="#5cc0cf"/>')
+    g.append(f'<rect y="{ground + 10}" width="{W}" height="{H - ground}" fill="#e4ddd0"/>')
+    g.append(f'<rect x="240" y="{ground + 50}" width="720" height="90" rx="4" fill="#8fc3c6"/>')
     g.append(f'<rect x="260" y="{ground + 64}" width="680" height="10" fill="#fff" opacity=".35"/>')
     for px in (110, 1080):
         g.append(palm(px, ground + 10, 1.3, r))
@@ -115,19 +116,19 @@ def villa(r):
 def townhouse(r):
     ground = 610
     g = [sky(r)]
-    g.append(f'<rect y="{ground - 20}" width="{W}" height="30" fill="#77a06a"/>')
+    g.append(f'<rect y="{ground - 20}" width="{W}" height="30" fill="#83977c"/>')
     x = 70
     for i in range(4):
         stone = STONE[(i + r.randint(0, 4)) % len(STONE)]
         w = 260
         g.append(f'<rect x="{x}" y="300" width="{w}" height="{ground - 300}" fill="{stone}"/>')
-        g.append(f'<polygon points="{x - 10},304 {x + w / 2},210 {x + w + 10},304" fill="#9b6b4f"/>')
+        g.append(f'<polygon points="{x - 10},304 {x + w / 2},210 {x + w + 10},304" fill="#6e6a64"/>')
         glass = r.choice(GLASS)
         g.append(f'<rect x="{x + 30}" y="340" width="80" height="80" fill="{glass}" opacity=".85"/>')
         g.append(f'<rect x="{x + 150}" y="340" width="80" height="80" fill="{glass}" opacity=".85"/>')
-        g.append(f'<rect x="{x + 95}" y="460" width="70" height="{ground - 460}" fill="#6b4f3a"/>')
+        g.append(f'<rect x="{x + 95}" y="460" width="70" height="{ground - 460}" fill="#5b544b"/>')
         x += w + 10
-    g.append(f'<rect y="{ground + 10}" width="{W}" height="{H - ground}" fill="#cfc3ab"/>')
+    g.append(f'<rect y="{ground + 10}" width="{W}" height="{H - ground}" fill="#d6cfc2"/>')
     for px in (40, 1160):
         g.append(palm(px, ground + 10, 1.1, r))
     return g
@@ -158,15 +159,15 @@ def interior(r):
 
 def lot(r):
     g = [sky(r),
-         '<path d="M0 470 Q200 380 420 430 T820 400 T1200 440 V560 H0 Z" fill="#8fb09a" opacity=".55"/>',
-         '<path d="M0 520 Q300 470 600 500 T1200 490 V800 H0 Z" fill="#7fae63"/>',
-         '<path d="M0 640 L1200 600 V800 H0 Z" fill="#94bf74"/>']
+         '<path d="M0 470 Q200 380 420 430 T820 400 T1200 440 V560 H0 Z" fill="#a7b8ab" opacity=".55"/>',
+         '<path d="M0 520 Q300 470 600 500 T1200 490 V800 H0 Z" fill="#8ea37f"/>',
+         '<path d="M0 640 L1200 600 V800 H0 Z" fill="#9db08d"/>']
     for i in range(14):
         x = 80 + i * 80
-        g.append(f'<rect x="{x}" y="{560 + i * 1.5}" width="8" height="70" fill="#7a5c3e"/>')
-    g.append('<path d="M80 590 L1120 610 M80 615 L1120 635" stroke="#7a5c3e" stroke-width="3"/>')
+        g.append(f'<rect x="{x}" y="{560 + i * 1.5}" width="8" height="70" fill="#6b6458"/>')
+    g.append('<path d="M80 590 L1120 610 M80 615 L1120 635" stroke="#6b6458" stroke-width="3"/>')
     for x, s_ in ((150, 1.2), (980, 1.4)):
-        g.append(f'<circle cx="{x}" cy="{470 - 40 * s_}" r="{60 * s_}" fill="#3f6b3a"/>')
+        g.append(f'<circle cx="{x}" cy="{470 - 40 * s_}" r="{60 * s_}" fill="#4d6150"/>')
         g.append(f'<rect x="{x - 6}" y="{470 - 10 * s_}" width="12" height="{60 * s_}" fill="#6b4f33"/>')
     g.append('<rect x="520" y="660" width="160" height="70" rx="6" fill="#fff" opacity=".92"/>')
     g.append('<text x="600" y="705" font-family="sans-serif" font-size="30" font-weight="700" fill="#2f4a2f" text-anchor="middle">LOT</text>')

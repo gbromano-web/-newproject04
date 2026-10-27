@@ -1,15 +1,25 @@
 import Link from "next/link";
+import { RATES_AS_OF, RATES_SOURCE } from "@/lib/ph/currency";
+import { CurrencySelect } from "./ph/currency";
 import { Logo } from "./logo";
 
 const cols = [
   {
-    title: "Search",
+    title: "Popular searches",
     links: [
       ["Condos for rent in BGC", "/search?type=RENT&location=BGC"],
-      ["House and lot for sale in Cavite", "/search?type=SALE&propertyType=HOUSE_AND_LOT&location=Cavite"],
+      ["House and lot in Cavite", "/search?type=SALE&propertyType=HOUSE_AND_LOT&location=Cavite"],
       ["Pre-selling condos in Makati", "/search?type=PRE_SELLING&location=Makati"],
       ["Beach lots in Palawan", "/search?type=SALE&propertyType=LOT_ONLY&location=Palawan"],
-      ["Foreclosed properties", "/search?type=FORECLOSED"],
+      ["Condos in Cebu IT Park", "/search?location=Cebu IT Park"],
+    ],
+  },
+  {
+    title: "International buyers",
+    links: [
+      ["What foreigners can own", "/#buying-from-abroad"],
+      ["Condos open to foreign buyers", "/search?foreignEligible=1"],
+      ["For overseas Filipinos", "/#buying-from-abroad"],
     ],
   },
   { title: "For professionals", links: [["Agent dashboard", "/dashboard"], ["Advertise a project", "/dashboard"], ["Get verified (PRC / DHSUD)", "/dashboard"]] },
@@ -18,33 +28,34 @@ const cols = [
 
 export function SiteFooter() {
   return (
-    <footer className="relative mt-24 bg-sea-950 text-sea-100">
-      {/* Shoreline edge */}
-      <svg viewBox="0 0 1440 60" preserveAspectRatio="none" className="absolute -top-[59px] left-0 h-[60px] w-full" aria-hidden>
-        <path d="M0 40 C180 10 360 10 540 32 S900 58 1080 34 S1320 8 1440 24 V60 H0 Z" fill="var(--color-lagoon-500)" opacity=".35" />
-        <path d="M0 48 C200 26 380 24 560 42 S920 62 1100 44 S1330 26 1440 38 V60 H0 Z" fill="var(--color-sea-950)" />
-      </svg>
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
-        <div className="space-y-3">
+    <footer className="mt-28 bg-sea-950 text-white">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-[1.4fr_repeat(4,1fr)]">
+        <div className="space-y-4">
           <Logo inverted />
-          <p className="max-w-xs text-sm leading-relaxed text-sea-100/80">
-            Homes from the city to the coast. Every agent shows a PRC or DHSUD number you can check before you visit.
+          <p className="max-w-xs text-sm leading-relaxed text-white/65">
+            Property across the Philippines, from Metro Manila to the islands. Every agent shows a PRC or DHSUD number you can check.
           </p>
+          <CurrencySelect tone="dark" />
         </div>
         {cols.map((c) => (
           <div key={c.title}>
-            <h3 className="mb-3 font-sans text-sm font-bold text-mango-400">{c.title}</h3>
-            <ul className="space-y-2 text-sm">
+            <h3 className="mb-4 text-sm font-semibold text-white">{c.title}</h3>
+            <ul className="space-y-2.5 text-sm">
               {c.links.map(([label, href]) => (
                 <li key={label}>
-                  <Link href={href} className="text-sea-100/80 hover:text-white">{label}</Link>
+                  <Link href={href} className="text-white/60 transition-colors hover:text-white">{label}</Link>
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </div>
-      <div className="border-t border-white/10 py-5 text-center text-xs text-sea-100/60">© 2026 SA Realty. Demo data only.</div>
+      <div className="border-t border-white/10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-white/45 sm:flex-row sm:justify-between sm:px-6">
+          <p>© 2026 SA Realty. Sample listings for demonstration.</p>
+          <p>Converted prices are estimates using {RATES_SOURCE}, {RATES_AS_OF}. Transactions are in Philippine pesos.</p>
+        </div>
+      </div>
     </footer>
   );
 }

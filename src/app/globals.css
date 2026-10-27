@@ -1,57 +1,59 @@
 @import "tailwindcss";
 
-/* Brand palette drawn from Philippine scenery:
-   Deep sea (Tubbataha blues) for trust and primary actions, Lagoon (El Nido
-   turquoise) as the lively accent, Mango and Coral from Manila Bay sunsets for
-   prices, promotions and calls to action, Palay green from the rice terraces,
-   and Sand for warm section tints. */
+/* SA Realty design tokens.
+   A calm, premium palette for local and international buyers:
+   - Sea: deep Philippine-sea navy for text, surfaces and primary actions
+   - Lagoon: a restrained El Nido teal for links, verification and focus
+   - Gold: warm sunset gold reserved for the main search action and highlights
+   - Coral: only for foreclosure and urgent states
+   Photography carries the colour; the interface stays quiet around it. */
 @theme {
-  --color-sea-50: #eef7fb;
-  --color-sea-100: #d4ebf5;
-  --color-sea-600: #0f6a8f;
-  --color-sea-700: #0d5b7c;
-  --color-sea-800: #0b4a68;
-  --color-sea-900: #093a52;
-  --color-sea-950: #06283a;
-  --color-lagoon-50: #e8fbf9;
-  --color-lagoon-100: #c8f3ee;
-  --color-lagoon-300: #6fdccf;
-  --color-lagoon-400: #2fcbbb;
-  --color-lagoon-500: #12b2a3;
-  --color-lagoon-600: #0a9488;
-  --color-lagoon-700: #087a71;
-  --color-sand-50: #fffaf0;
-  --color-sand-100: #fcf0d9;
-  --color-sand-200: #f6e0b5;
-  --color-mango-300: #ffd76e;
-  --color-mango-400: #ffc53d;
-  --color-mango-500: #ffb000;
-  --color-mango-700: #a86a00;
-  --color-coral-400: #ff7a6b;
-  --color-coral-500: #f2554a;
-  --color-coral-600: #d93d33;
-  --color-palay-500: #3f9d4a;
-  --color-palay-600: #2f8a3b;
+  --color-sea-50: #f2f6f9;
+  --color-sea-100: #dce8ef;
+  --color-sea-600: #1a5f82;
+  --color-sea-700: #134b69;
+  --color-sea-800: #0f3a52;
+  --color-sea-900: #0b2a3d;
+  --color-sea-950: #071d2b;
+  --color-lagoon-50: #eaf7f6;
+  --color-lagoon-100: #cdedea;
+  --color-lagoon-300: #7fcfc8;
+  --color-lagoon-400: #3db6ad;
+  --color-lagoon-500: #1e9c94;
+  --color-lagoon-600: #14817b;
+  --color-lagoon-700: #0f6863;
+  --color-sand-50: #faf8f4;
+  --color-sand-100: #f2ede3;
+  --color-sand-200: #e6dccb;
+  --color-mango-300: #ebcb85;
+  --color-mango-400: #e2b65e;
+  --color-mango-500: #d4a03a;
+  --color-mango-700: #8c6519;
+  --color-coral-400: #e07a6a;
+  --color-coral-500: #cc5a4a;
+  --color-coral-600: #b4473a;
+  --color-palay-500: #4f8f52;
+  --color-palay-600: #3e7741;
   --color-viber: #7360f2;
-  --color-whatsapp: #128c4b;
+  --color-whatsapp: #1a9c55;
 
-  /* Legacy names used by the earlier pages, mapped onto the new palette */
-  --color-creek-50: #e8fbf9;
-  --color-creek-100: #c8f3ee;
-  --color-creek-200: #9fe3da;
-  --color-creek-500: #0a9488;
-  --color-creek-700: #0b4a68;
-  --color-creek-900: #06283a;
-  --color-date-400: #ffc53d;
-  --color-date-500: #ffb000;
-  --color-date-700: #a86a00;
-  --color-ink: #0f2a36;
-  --color-ink-soft: #4a6470;
-  --color-line: #dbe8ea;
-  --color-mist: #f1f8f8;
+  /* Legacy names used by the earlier pages, mapped onto this palette */
+  --color-creek-50: #eaf7f6;
+  --color-creek-100: #cdedea;
+  --color-creek-200: #a6dcd6;
+  --color-creek-500: #14817b;
+  --color-creek-700: #0f3a52;
+  --color-creek-900: #071d2b;
+  --color-date-400: #e2b65e;
+  --color-date-500: #d4a03a;
+  --color-date-700: #8c6519;
+  --color-ink: #0b1f2a;
+  --color-ink-soft: #51616b;
+  --color-line: #e3e8ec;
+  --color-mist: #f5f7f8;
 
-  --font-display: "Bricolage Grotesque Variable", "Manrope Variable", system-ui, sans-serif;
-  --font-sans: "Manrope Variable", system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans Variable", system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans Variable", system-ui, sans-serif;
 }
 
 html {
@@ -66,8 +68,24 @@ body {
 
 h1, h2, h3 {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   text-wrap: balance;
+}
+
+.price {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Fine film grain over photography, so photos and fallback art share one finish */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.12;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 :focus-visible {

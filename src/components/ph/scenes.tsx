@@ -26,23 +26,23 @@ function Palm({ x, ground, s = 1, lean = 20, flip = false }: { x: number; ground
   const fronds = [-170, -140, -110, -70, -40, -10, 20];
   return (
     <g>
-      <path d={`M${x} ${ground} Q${x + l * 0.2} ${ground - h * 0.6} ${tx} ${ty}`} stroke="#6b4a2b" strokeWidth={11 * s} fill="none" strokeLinecap="round" />
+      <path d={`M${x} ${ground} Q${x + l * 0.2} ${ground - h * 0.6} ${tx} ${ty}`} stroke="#1f2a22" strokeWidth={8 * s} fill="none" strokeLinecap="round" />
       {fronds.map((a) => {
         const r = (a * Math.PI) / 180;
         const ex = tx + Math.cos(r) * 120 * s;
         const ey = ty + Math.sin(r) * 50 * s + 55 * s;
         const cx = tx + Math.cos(r) * 70 * s;
         const cy = ty + Math.sin(r) * 60 * s - 25 * s;
-        return <path key={a} d={`M${tx} ${ty} Q${cx} ${cy} ${ex} ${ey}`} stroke="#2e6b35" strokeWidth={15 * s} fill="none" strokeLinecap="round" />;
+        return <path key={a} d={`M${tx} ${ty} Q${cx} ${cy} ${ex} ${ey}`} stroke="#1b3324" strokeWidth={10 * s} fill="none" strokeLinecap="round" />;
       })}
-      <circle cx={tx} cy={ty + 8 * s} r={9 * s} fill="#5a3d22" />
+      <circle cx={tx} cy={ty + 8 * s} r={7 * s} fill="#1f2a22" />
     </g>
   );
 }
 
 function Clouds({ y = 120, opacity = 0.9 }: { y?: number; opacity?: number }) {
   return (
-    <g fill="#fff" opacity={opacity}>
+    <g fill="#fff" opacity={opacity * 0.55} style={{ filter: "blur(18px)" }}>
       {[[180, y], [560, y + 50], [1050, y - 20], [1400, y + 40]].map(([cx, cy], i) => (
         <g key={i}>
           <ellipse cx={cx} cy={cy} rx="90" ry="26" />

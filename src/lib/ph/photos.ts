@@ -57,6 +57,32 @@ export const PHOTOS = {
     "photo-1546068996-8da61faeceaa", "tyMVaFXcksU", "Zed Benson", "zedbenson",
     "Rolling Chocolate Hills in Bohol",
   ),
+
+  // Sample listing photos (stand-ins until agents upload their own)
+  condoLiving: unsplash(
+    "photo-1758565811176-ccd94357a844", "12WFO8yWrsw", "Caroline Badran", "___atmos",
+    "Living room with floor-to-ceiling windows and a city view",
+  ),
+  condoLounge: unsplash(
+    "photo-1758448511322-8bfc73daf606", "yxO8YG082v8", "Aalo Lens", "aalolens",
+    "Modern lounge with a sofa and wide city views",
+  ),
+  condoTower: unsplash(
+    "photo-1564644597667-c82bd44452f5", "iDgXYorA_Ro", "cheng feng", "chengfengrecord",
+    "Residential high-rise against a clear blue sky",
+  ),
+  housePool: unsplash(
+    "photo-1711114378455-b1f479d94a19", "Tw1dYTSPSpI", "Zoshua Colah", "zoshuacolah",
+    "House with a tropical outdoor swimming pool",
+  ),
+  townhouses: unsplash(
+    "photo-1760473537243-72168ffd273c", "Ph06_YFjRu0", "Roger Starnes Sr", "rstar50",
+    "Row of new townhouses",
+  ),
+  taalView: unsplash(
+    "photo-1589182175047-646fdcdb5d14", "qDVOuo3kA3M", "Lance Lozano", "lartdelance",
+    "Green ridge overlooking Taal Lake",
+  ),
 } satisfies Record<string, Photo>;
 
 export type PhotoKey = keyof typeof PHOTOS;

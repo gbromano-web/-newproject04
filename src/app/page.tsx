@@ -1,31 +1,77 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, Calculator, ShieldCheck } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BadgeCheck, Building, Calculator, Globe2, Landmark, MessageCircle, ScrollText, UserRoundCheck } from "lucide-react";
 import { DeveloperSlider } from "@/components/ph/developer-slider";
 import { PhListingCard } from "@/components/ph/ph-listing-card";
 import { PhSearchBox } from "@/components/ph/ph-search-box";
 import { ScenePhoto } from "@/components/ph/scene-photo";
 import type { SceneKey } from "@/components/ph/scenes";
-import type { PhotoKey } from "@/lib/ph/photos";
 import { ScenicHero } from "@/components/ph/scenic-hero";
+import { CURRENCIES } from "@/lib/ph/currency";
 import { flattenLocations } from "@/lib/ph/locations";
+import type { PhotoKey } from "@/lib/ph/photos";
 import { PH_SAMPLE_LISTINGS } from "@/lib/ph/sample-listings";
 
 export const metadata: Metadata = {
-  title: "Condos, house and lot, beach lots and more for sale and rent in the Philippines",
+  title: "Condos, house and lot, and lots for sale and rent in the Philippines",
   description:
-    "Search condominiums, house and lot, beach lots, pre-selling and foreclosed properties from Metro Manila to Palawan, with PRC and DHSUD-verified agents.",
+    "Search condominiums, house and lot, lots, pre-selling and foreclosed properties from Metro Manila to Palawan, with PRC and DHSUD-verified agents and prices shown in your currency.",
 };
 
 const POPULAR = ["Bonifacio Global City", "Makati CBD", "Cebu IT Park", "El Nido", "Baguio", "Panglao"];
 
 const DESTINATIONS: { photo: PhotoKey; scene: SceneKey; name: string; line: string; location: string; span?: string }[] = [
   { photo: "elNidoLagoon", scene: "lagoon", name: "Palawan", line: "Beach lots, resort homes and island investments", location: "Palawan", span: "md:col-span-2 md:row-span-2" },
-  { photo: "bgc", scene: "city", name: "Metro Manila", line: "Condos near work in BGC, Makati and Ortigas", location: "Metro Manila" },
-  { photo: "batad", scene: "terraces", name: "Baguio and the Cordilleras", line: "Cool-climate houses and vacation homes", location: "Baguio" },
-  { photo: "chocolateHills", scene: "hills", name: "Bohol", line: "Retirement and beach homes around Panglao", location: "Bohol" },
-  { photo: "mayon", scene: "volcano", name: "Albay", line: "House and lot with Mayon views in Legazpi", location: "Albay" },
+  { photo: "bgc", scene: "city", name: "Metro Manila", line: "Condos in BGC, Makati and Ortigas", location: "Metro Manila" },
+  { photo: "batad", scene: "terraces", name: "The Cordilleras", line: "Cool-climate homes in Baguio and Benguet", location: "Baguio" },
+  { photo: "chocolateHills", scene: "hills", name: "Bohol", line: "Retirement and beach homes near Panglao", location: "Bohol" },
+  { photo: "mayon", scene: "volcano", name: "Albay", line: "House and lot with Mayon views", location: "Albay" },
 ];
+
+const TRUST = [
+  { icon: UserRoundCheck, title: "Licensed agents only", body: "Every agent shows a PRC licence or DHSUD accreditation number." },
+  { icon: Globe2, title: "Your currency, beside the peso", body: `Price estimates in ${CURRENCIES.length - 1} currencies, from US dollars to yen.` },
+  { icon: Landmark, title: "Clear on foreign ownership", body: "Condos open to foreign buyers are marked on every listing." },
+  { icon: MessageCircle, title: "Message from anywhere", body: "Reach agents on Viber or WhatsApp, in any time zone." },
+];
+
+// Verified against the sources linked in the section. General information, not legal advice.
+const OWNERSHIP_FACTS = [
+  {
+    icon: Building,
+    title: "Condominium units",
+    body: "Foreign nationals can own condo units outright, as long as foreign ownership in the project stays within 40% (Condominium Act, RA 4726).",
+  },
+  {
+    icon: Landmark,
+    title: "Land",
+    body: "Land can only be titled to Filipino citizens or Filipino-owned companies. Foreigners can own a house built on land they lease.",
+  },
+  {
+    icon: ScrollText,
+    title: "Long-term leases",
+    body: "Qualified foreign investors can lease private land for up to 99 years for a registered investment (RA 12252, 2025).",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Former Filipinos",
+    body: "Natural-born Filipinos who reacquire citizenship under RA 9225 buy property with the same rights as any Filipino.",
+  },
+];
+
+function SectionHeading({ title, body, action }: { title: string; body?: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h2 className="text-[28px] font-bold leading-tight text-sea-950 sm:text-4xl">{title}</h2>
+        {body && <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-ink-soft">{body}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+const textLink = "group inline-flex items-center gap-1.5 text-sm font-semibold text-sea-900 hover:text-lagoon-700";
 
 export default function HomePage() {
   const flat = flattenLocations();
@@ -37,86 +83,120 @@ export default function HomePage() {
   return (
     <>
       <ScenicHero>
-        <h1 className="mx-auto max-w-4xl text-center text-4xl font-extrabold leading-[1.02] text-white drop-shadow-[0_2px_18px_rgba(6,40,58,.55)] sm:text-6xl lg:text-7xl">
-          From city condos to island lots
+        <h1 className="mx-auto max-w-4xl text-center text-[42px] font-bold leading-[1.04] text-white [text-shadow:0_2px_24px_rgba(7,29,43,.45)] sm:text-6xl lg:text-[76px]">
+          Find your place in the Philippines
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-center text-lg font-medium text-white/90 drop-shadow">
-          Homes across all 7,641 islands, listed by PRC and DHSUD-verified agents.
+        <p className="mx-auto mt-5 max-w-2xl text-center text-[17px] leading-relaxed text-white/90 [text-shadow:0_1px_12px_rgba(7,29,43,.5)] sm:text-lg">
+          Condos, houses and lots from Metro Manila to the islands, listed by licensed agents. Prices in pesos, with your own currency alongside.
         </p>
-        <div className="mt-9">
+        <div className="mt-10">
           <PhSearchBox popular={popular} />
         </div>
       </ScenicHero>
 
+      {/* Trust strip */}
+      <section className="border-b border-line bg-white">
+        <ul className="mx-auto grid max-w-7xl gap-x-8 gap-y-6 px-4 py-9 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+          {TRUST.map(({ icon: Icon, title, body }) => (
+            <li key={title} className="flex gap-3.5">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-lagoon-50 text-lagoon-700"><Icon className="size-5" /></span>
+              <div>
+                <p className="text-[15px] font-semibold text-sea-950">{title}</p>
+                <p className="mt-0.5 text-sm leading-relaxed text-ink-soft">{body}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {/* Destinations */}
       <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-3xl font-extrabold text-sea-900 sm:text-4xl">Live where you&apos;d vacation</h2>
-            <p className="mt-2 max-w-xl text-ink-soft">Explore homes by destination, from beachfront lots in Palawan to pine-country houses in Baguio.</p>
-          </div>
-          <Link href="/search" className="rounded-full bg-lagoon-50 px-4 py-2 text-sm font-bold text-lagoon-700 hover:bg-lagoon-100">See every province</Link>
-        </div>
-        <div className="mt-8 grid auto-rows-[220px] gap-4 md:grid-cols-4">
-          {DESTINATIONS.map((d) => {
-            return (
-              <Link
-                key={d.name}
-                href={`/search?location=${encodeURIComponent(d.location)}`}
-                className={`group relative isolate overflow-hidden rounded-3xl ${d.span ?? ""}`}
-              >
-                <div className="absolute inset-0 -z-10 transition-transform duration-700 group-hover:scale-105">
-                  <ScenePhoto photo={d.photo} scene={d.scene} uid={`dest-${d.scene}`} sizes={d.span ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 768px) 25vw, 100vw"} />
-                </div>
-                <div className="absolute inset-0 -z-10 bg-gradient-to-t from-sea-950/80 via-sea-950/10 to-transparent" />
-                <div className="flex h-full flex-col justify-end p-5 text-white">
-                  <p className={`font-display font-extrabold leading-tight ${d.span ? "text-4xl" : "text-2xl"}`}>{d.name}</p>
-                  <p className="mt-1 max-w-sm text-sm text-white/90">{d.line}</p>
-                </div>
-                <span className="absolute right-4 top-4 grid size-9 place-items-center rounded-full bg-white/90 text-sea-900 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5">
-                  <ArrowUpRight className="size-4" />
-                </span>
-              </Link>
-            );
-          })}
+        <SectionHeading
+          title="Live where others vacation"
+          body="Explore by destination, from beachfront lots in Palawan to cool-climate homes in the Cordilleras."
+          action={<Link href="/search" className={textLink}>All provinces <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /></Link>}
+        />
+        <div className="mt-9 grid auto-rows-[230px] gap-4 md:grid-cols-4">
+          {DESTINATIONS.map((d) => (
+            <Link key={d.name} href={`/search?location=${encodeURIComponent(d.location)}`} className={`group relative isolate overflow-hidden rounded-2xl ${d.span ?? ""}`}>
+              <div className="absolute inset-0 -z-10 transition-transform duration-700 ease-out group-hover:scale-[1.04]">
+                <ScenePhoto photo={d.photo} scene={d.scene} uid={`dest-${d.scene}`} sizes={d.span ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 768px) 25vw, 100vw"} />
+              </div>
+              <div className="grain absolute inset-0 -z-10 bg-gradient-to-t from-sea-950/85 via-sea-950/15 to-transparent" />
+              <div className="flex h-full flex-col justify-end p-5 text-white sm:p-6">
+                <p className={`font-bold leading-tight tracking-[-0.03em] ${d.span ? "text-4xl" : "text-2xl"}`}>{d.name}</p>
+                <p className="mt-1 max-w-sm text-sm text-white/85">{d.line}</p>
+              </div>
+              <span className="absolute right-4 top-4 grid size-9 place-items-center rounded-full bg-white/15 text-white ring-1 ring-white/30 backdrop-blur-md transition-colors group-hover:bg-white group-hover:text-sea-950">
+                <ArrowUpRight className="size-4" />
+              </span>
+            </Link>
+          ))}
         </div>
       </section>
 
-      <div className="mt-20">
-        <DeveloperSlider slides={[]} />
-      </div>
-
       {/* Listings */}
-      <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6">
-        <div className="flex items-end justify-between">
-          <h2 className="text-3xl font-extrabold text-sea-900 sm:text-4xl">Latest listings</h2>
-          <Link href="/search" className="text-sm font-bold text-lagoon-700 hover:underline">View all listings</Link>
-        </div>
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mx-auto mt-24 max-w-7xl px-4 sm:px-6">
+        <SectionHeading
+          title="New on SA Realty"
+          body="Recently listed homes, with prices in pesos and your chosen currency."
+          action={<Link href="/search" className={textLink}>View all listings <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /></Link>}
+        />
+        <div className="mt-9 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
           {PH_SAMPLE_LISTINGS.map((l) => <PhListingCard key={l.id} l={l} />)}
         </div>
       </section>
 
-      {/* Financing */}
-      <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-coral-500 via-mango-500 to-mango-400 p-8 text-sea-950 sm:p-12">
-          <svg viewBox="0 0 400 200" className="absolute -right-10 -top-6 h-64 w-auto opacity-25" aria-hidden>
-            <circle cx="260" cy="120" r="90" fill="#fff" />
-            <path d="M0 150 C60 130 120 130 180 150 S300 170 400 150" stroke="#fff" strokeWidth="10" fill="none" />
-            <path d="M0 175 C60 155 120 155 180 175 S300 195 400 175" stroke="#fff" strokeWidth="10" fill="none" />
-          </svg>
-          <div className="relative grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
-            <div>
-              <h2 className="text-3xl font-extrabold sm:text-4xl">Pag-IBIG or bank financing?</h2>
-              <p className="mt-2 max-w-xl font-medium text-sea-950/85">
-                Compare monthly amortization for both, then request a sample computation from the listing agent with your numbers already filled in.
-              </p>
-              <p className="mt-4 flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="size-4" /> Rates come from published Pag-IBIG and bank figures.</p>
+      <div className="mt-24">
+        <DeveloperSlider slides={[]} />
+      </div>
+
+      {/* Buying from abroad */}
+      <section id="buying-from-abroad" className="mt-24 scroll-mt-20 bg-sea-950 text-white">
+        <div className="mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+          <div>
+            <h2 className="text-[28px] font-bold leading-tight sm:text-4xl">Buying from abroad</h2>
+            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-white/75">
+              Whether you are an overseas Filipino planning a home back home, or an international buyer looking at Manila, Cebu or the islands, here is what the law allows.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/search?foreignEligible=1" className="rounded-full bg-mango-500 px-5 py-3 text-sm font-bold text-sea-950 transition-colors hover:bg-mango-400">
+                Browse condos open to foreign buyers
+              </Link>
+              <Link href="/dashboard" className="rounded-full px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/30 transition-colors hover:bg-white/10">
+                Talk to a licensed agent
+              </Link>
             </div>
-            <Link href="/search" className="flex items-center justify-center gap-2 rounded-full bg-sea-950 px-6 py-3.5 font-bold text-white hover:bg-sea-900">
-              <Calculator className="size-5" /> Open the calculator
-            </Link>
+            <p className="mt-10 max-w-md text-xs leading-relaxed text-white/50">
+              General information, not legal advice. Confirm your situation with a Philippine lawyer before you buy. Sources:{" "}
+              <a className="underline underline-offset-2 hover:text-white/80" href="https://listd.ph/spotlight/foreigners-own-property-philippines" target="_blank" rel="noopener noreferrer">Listd</a>,{" "}
+              <a className="underline underline-offset-2 hover:text-white/80" href="https://ndvlaw.com/the-99-year-land-lease-law-for-foreign-corporations-in-the-philippines/" target="_blank" rel="noopener noreferrer">NDV Law</a>.
+            </p>
           </div>
+          <ul className="grid gap-px overflow-hidden rounded-2xl bg-white/10 sm:grid-cols-2">
+            {OWNERSHIP_FACTS.map(({ icon: Icon, title, body }) => (
+              <li key={title} className="bg-sea-950 p-6 sm:p-7">
+                <Icon className="size-6 text-mango-400" />
+                <h3 className="mt-4 text-lg font-semibold tracking-[-0.02em]">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-white/70">{body}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* Financing */}
+      <section className="mx-auto mt-24 max-w-7xl px-4 sm:px-6">
+        <div className="grid gap-8 rounded-3xl bg-sand-50 p-8 ring-1 ring-sand-200 sm:p-12 md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <h2 className="text-[28px] font-bold leading-tight text-sea-950 sm:text-4xl">Pag-IBIG or bank financing?</h2>
+            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-soft">
+              Compare monthly amortization for both, then request a sample computation from the agent with your figures already filled in. Rates come from published Pag-IBIG and bank sources.
+            </p>
+          </div>
+          <Link href="/search" className="flex items-center justify-center gap-2 rounded-full bg-sea-900 px-6 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-sea-800">
+            <Calculator className="size-5" /> Open the calculator
+          </Link>
         </div>
       </section>
     </>
