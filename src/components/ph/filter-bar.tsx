@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/ph/preview";
 import { useState } from "react";
 import { Globe2, Search, SlidersHorizontal, X } from "lucide-react";
 import clsx from "clsx";
@@ -32,7 +33,7 @@ export function FilterBar({ initial, resultCount }: { initial: SearchFilters; re
   const advancedCount = [initial.minPrice !== undefined, initial.foreignEligible].filter(Boolean).length;
 
   return (
-    <form action="/search" className="border-b border-line bg-white">
+    <form action={withBase("/search")} className="border-b border-line bg-white">
       <input type="hidden" name="type" value={type} />
       {initial.sort !== "featured" && <input type="hidden" name="sort" value={initial.sort} />}
       <div className="mx-auto max-w-[1440px] space-y-3 px-4 py-4 sm:px-6">
@@ -124,7 +125,7 @@ export function FilterBar({ initial, resultCount }: { initial: SearchFilters; re
             </fieldset>
           </div>
           <div className="flex items-center gap-3 border-t border-line px-6 py-4">
-            <a href="/search" className="text-sm font-semibold text-ink-soft underline-offset-2 hover:text-sea-900 hover:underline">Clear all</a>
+            <a href={withBase("/search")} className="text-sm font-semibold text-ink-soft underline-offset-2 hover:text-sea-900 hover:underline">Clear all</a>
             <button className="ml-auto rounded-full bg-sea-900 px-6 py-3 text-sm font-semibold text-white hover:bg-sea-800">
               Show results
             </button>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BadgeCheck, CheckCircle2, Clock, Languages, MessageCircle, Phone } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import type { PhAgent } from "@/lib/ph/listings";
+import { leadHref, STATIC_PREVIEW } from "@/lib/ph/preview";
 import { COMPUTATION_EVENT, type ComputationRequest } from "./amortization-calculator";
 
 const LICENSE_LABEL = { REAL_ESTATE_BROKER: "Licensed real estate broker", REAL_ESTATE_SALESPERSON: "Accredited real estate salesperson" } as const;
@@ -37,6 +38,8 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
     setStatus("sending");
     setError("");
     const data = Object.fromEntries(new FormData(e.currentTarget));
+    // Client preview has no server: confirm without sending
+    if (STATIC_PREVIEW) return setStatus("sent");
     const res = await fetch("/api/ph/leads", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -69,10 +72,10 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
       </dl>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <a href={`/api/ph/leads/viber?listing=${listingId}`} className="flex h-11 items-center justify-center gap-2 rounded-full bg-viber text-sm font-semibold text-white transition hover:brightness-110">
+        <a href={leadHref("viber", listingId)} className="flex h-11 items-center justify-center gap-2 rounded-full bg-viber text-sm font-semibold text-white transition hover:brightness-110">
           <MessageCircle className="size-4" /> Viber
         </a>
-        <a href={`/api/ph/leads/whatsapp?listing=${listingId}`} className="flex h-11 items-center justify-center gap-2 rounded-full bg-whatsapp text-sm font-semibold text-white transition hover:brightness-110">
+        <a href={leadHref("whatsapp", listingId)} className="flex h-11 items-center justify-center gap-2 rounded-full bg-whatsapp text-sm font-semibold text-white transition hover:brightness-110">
           <WhatsAppIcon className="size-4" /> WhatsApp
         </a>
       </div>

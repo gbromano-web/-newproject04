@@ -73,6 +73,10 @@ npm run db:postgis
 npx prisma db seed
 ```
 
+## Client preview on GitHub Pages
+
+`npm run build:preview` builds a static copy of the site with the sample data into `out/`, and `.github/workflows/pages.yml` publishes it on every push to `main`. Turn it on once in **Settings → Pages → Source: GitHub Actions**. The preview has no server: search filters run in the browser, Viber and WhatsApp open directly, and the inquiry form confirms without sending.
+
 ## Scripts
 
 | Command | What it does |
@@ -84,6 +88,7 @@ npx prisma db seed
 | `npm run typecheck` | Generate route types and type-check |
 | `npm run check:ph` | Test peso formatting, the location tree and the seed |
 | `npm run db:postgis` | Apply PostGIS triggers, indexes and CHECK rules |
+| `npm run build:preview` | Static client preview for GitHub Pages |
 | `npm run build:map` | Regenerate the Philippines map outline from Natural Earth data |
 
 Every push and pull request runs type-checking, linting, the data checks and a production build on GitHub Actions (`.github/workflows/ci.yml`).

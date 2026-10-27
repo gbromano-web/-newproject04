@@ -1,5 +1,6 @@
 "use client";
 
+import { withBase } from "@/lib/ph/preview";
 import { useState } from "react";
 import { MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { LocationInput } from "./location-input";
@@ -47,7 +48,7 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
           <span className="grid size-10 place-items-center rounded-full bg-mango-500 text-sea-950"><SlidersHorizontal className="size-4" /></span>
         </button>
       )}
-      <form action="/search" className={clsx(expanded ? "block" : "hidden", "md:block", "rounded-[22px] bg-white/95 p-2 shadow-[0_40px_90px_-30px_rgba(7,29,43,.75)] ring-1 ring-white/60 backdrop-blur-xl")}>
+      <form action={withBase("/search")} className={clsx(expanded ? "block" : "hidden", "md:block", "rounded-[22px] bg-white/95 p-2 shadow-[0_40px_90px_-30px_rgba(7,29,43,.75)] ring-1 ring-white/60 backdrop-blur-xl")}>
         <div role="tablist" aria-label="Transaction type" className="no-scrollbar flex gap-0.5 overflow-x-auto border-b border-line px-1 pb-0 sm:gap-1 sm:px-2">
           {TABS.map((t) => (
             <button
@@ -112,7 +113,7 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm">
         <span className="font-medium text-white/80">Popular:</span>
         {popular.map((p) => (
-          <a key={p.key} href={`/search?location=${encodeURIComponent(p.label)}`} className="rounded-full bg-white/15 px-3.5 py-1.5 font-medium text-white ring-1 ring-white/25 backdrop-blur-md transition-colors hover:bg-white/25">
+          <a key={p.key} href={withBase(`/search?location=${encodeURIComponent(p.label)}`)} className="rounded-full bg-white/15 px-3.5 py-1.5 font-medium text-white ring-1 ring-white/25 backdrop-blur-md transition-colors hover:bg-white/25">
             {p.label}
           </a>
         ))}

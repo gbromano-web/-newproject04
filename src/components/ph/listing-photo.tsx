@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PHOTOS, photoSrcSet, photoUrl, type PhotoKey } from "@/lib/ph/photos";
+import { withBase } from "@/lib/ph/preview";
 
 /**
  * Listing photo with a local placeholder underneath. The placeholder shows
@@ -12,7 +13,7 @@ export function ListingPhoto({ photo, sizes, priority = false, fit = "cover" }: 
   const [state, setState] = useState<"loading" | "loaded" | "failed">("loading");
   const img = useRef<HTMLImageElement>(null);
   const p = PHOTOS[photo];
-  const fallbackSrc = p.fallback ?? "/images/listings/interior-1.svg";
+  const fallbackSrc = withBase(p.fallback ?? "/images/listings/interior-1.svg");
 
   useEffect(() => {
     const el = img.current;

@@ -1,9 +1,14 @@
 import type { NextConfig } from "next";
 
+// Static client preview for GitHub Pages (npm run build:preview); the real site runs on a server.
+const preview = process.env.NEXT_PUBLIC_STATIC_PREVIEW === "1";
+
 const nextConfig: NextConfig = {
-  cacheComponents: true,
-  partialPrefetching: true,
+  ...(preview && { output: "export", basePath: process.env.NEXT_PUBLIC_BASE_PATH || undefined }),
+  cacheComponents: !preview,
+  partialPrefetching: !preview,
   images: {
+    unoptimized: preview,
     // Listing photos are served from S3 / Supabase Storage in production.
     // Add your bucket or CDN hostname here.
     remotePatterns: [
