@@ -17,11 +17,15 @@ export interface Photo {
   pageUrl: string;
   /** CSS object-position, to keep the subject in frame when cropped */
   position?: string;
+  /** Local placeholder shown while loading or if the CDN is unreachable */
+  fallback?: string;
 }
 
 const UTM = "utm_source=sa_realty&utm_medium=referral";
 
-function unsplash(id: string, photoPage: string, photographer: string, username: string, alt: string, position?: string): Photo {
+const ph = (name: string) => `/images/listings/${name}.svg`;
+
+function unsplash(id: string, photoPage: string, photographer: string, username: string, alt: string, fallback?: string, position?: string): Photo {
   return {
     src: `https://images.unsplash.com/${id}`,
     alt,
@@ -29,21 +33,22 @@ function unsplash(id: string, photoPage: string, photographer: string, username:
     profileUrl: `https://unsplash.com/@${username}?${UTM}`,
     pageUrl: `https://unsplash.com/photos/${photoPage}?${UTM}`,
     position,
+    fallback,
   };
 }
 
 export const PHOTOS = {
   elNido: unsplash(
     "photo-1771533680002-5210c217a16f", "Tm0XygW6gN8", "Jared Rice", "jareddrice",
-    "Limestone cliffs around a turquoise cove in El Nido, Palawan",
+    "Limestone cliffs around a turquoise cove in El Nido, Palawan", ph("lot-1"),
   ),
   elNidoLagoon: unsplash(
     "photo-1746260948442-4c5ba23d9a7b", "Vb2eRgWU7rc", "Roman Lezhnin", "i_am_5_percent",
-    "Turquoise water framed by lush cliffs in El Nido, Palawan",
+    "Turquoise water framed by lush cliffs in El Nido, Palawan", ph("lot-1"),
   ),
   bgc: unsplash(
     "photo-1596564309076-01c1868b07a4", "iacKpANQHNA", "OJ Serrano", "senyor_oj",
-    "Aerial view of high-rise buildings in Bonifacio Global City, Taguig",
+    "Aerial view of high-rise buildings in Bonifacio Global City, Taguig", ph("tower-1"),
   ),
   batad: unsplash(
     "photo-1714746093223-083b10d1d9d5", "pozDysoeJ9Y", "Omri D. Cohen", "omridcohen",
@@ -61,27 +66,43 @@ export const PHOTOS = {
   // Sample listing photos (stand-ins until agents upload their own)
   condoLiving: unsplash(
     "photo-1758565811176-ccd94357a844", "12WFO8yWrsw", "Caroline Badran", "___atmos",
-    "Living room with floor-to-ceiling windows and a city view",
+    "Living room with floor-to-ceiling windows and a city view", ph("interior-1"),
   ),
   condoLounge: unsplash(
     "photo-1758448511322-8bfc73daf606", "yxO8YG082v8", "Aalo Lens", "aalolens",
-    "Modern lounge with a sofa and wide city views",
+    "Modern lounge with a sofa and wide city views", ph("interior-2"),
   ),
   condoTower: unsplash(
     "photo-1564644597667-c82bd44452f5", "iDgXYorA_Ro", "cheng feng", "chengfengrecord",
-    "Residential high-rise against a clear blue sky",
+    "Residential high-rise against a clear blue sky", ph("tower-3"),
   ),
   housePool: unsplash(
     "photo-1711114378455-b1f479d94a19", "Tw1dYTSPSpI", "Zoshua Colah", "zoshuacolah",
-    "House with a tropical outdoor swimming pool",
+    "House with a tropical outdoor swimming pool", ph("villa-2"),
   ),
   townhouses: unsplash(
     "photo-1760473537243-72168ffd273c", "Ph06_YFjRu0", "Roger Starnes Sr", "rstar50",
-    "Row of new townhouses",
+    "Row of new townhouses", ph("townhouse-2"),
   ),
   taalView: unsplash(
     "photo-1589182175047-646fdcdb5d14", "qDVOuo3kA3M", "Lance Lozano", "lartdelance",
-    "Green ridge overlooking Taal Lake",
+    "Green ridge overlooking Taal Lake", ph("lot-1"),
+  ),
+  houseGarden: unsplash(
+    "photo-1758448756207-54505680d130", "eWOgoFHlE8g", "Aalo Lens", "aalolens",
+    "Modern stone-and-concrete house with tall windows and a lush garden", ph("villa-1"),
+  ),
+  bedroomWhite: unsplash(
+    "photo-1741559935512-3b018321e35f", "HajDIO6PKFk", "Brunxs", "brunxs",
+    "Bright, minimalist white bedroom in morning sunlight", ph("interior-3"),
+  ),
+  bedroomDesk: unsplash(
+    "photo-1758060215425-303300b1c7e2", "bhoMFZB_6Bg", "Clay Banks", "claybanks",
+    "Sunlit bedroom with a large bed, desk and plants", ph("interior-3"),
+  ),
+  kitchenLiving: unsplash(
+    "photo-1737898415581-7dea57a1905b", "kE6Luqa4bBQ", "Prydumano Design", "prydumanodesign",
+    "Open kitchen and living area with wooden furniture", ph("interior-4"),
   ),
 } satisfies Record<string, Photo>;
 

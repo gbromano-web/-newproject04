@@ -2,191 +2,225 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  BadgeCheck, Bath, BedDouble, Building2, Bus, Car, Check, ChevronRight, GraduationCap, Hospital,
-  Maximize2, Phone, ShoppingBag, Sofa, Train, Waves,
+  Bath, BedDouble, Building2, Car, Check, ChevronRight, CircleDollarSign, FileText, Globe2, GraduationCap, Hospital,
+  LandPlot, Landmark, MapPin, Mountain, Plane, Ruler, ShoppingBag, Sofa, TrainFront, Trees, Waves,
 } from "lucide-react";
-import { Gallery } from "@/components/gallery";
-import { LeadWidget } from "@/components/lead-widget";
-import { ListingCard } from "@/components/listing-card";
-import { MortgageCalculator } from "@/components/mortgage-calculator";
-import { WhatsAppIcon } from "@/components/icons";
-import { getAgency, getAgent, getProperty, properties } from "@/lib/mock-data";
-import { bedsLabel, formatAED, priceSuffix, typeLabel } from "@/lib/search";
-import type { Property } from "@/lib/types";
+import { AmortizationCalculator } from "@/components/ph/amortization-calculator";
+import { ContactCard } from "@/components/ph/contact-card";
+import { ConvertedPrice } from "@/components/ph/currency";
+import { PhListingCard } from "@/components/ph/ph-listing-card";
+import { PhMap } from "@/components/ph/ph-map";
+import { PropertyGallery } from "@/components/ph/property-gallery";
+import { formatBedrooms, formatListingPrice, formatPeso, formatPricePerSqm, formatSqm, formatTurnover } from "@/lib/ph/format";
+import { LISTINGS, LISTING_TYPE_LABEL, PROPERTY_TYPE_LABEL, TITLE_TYPE_LABEL, getAgent, getListing, type NearbyPlace, type PhListing } from "@/lib/ph/listings";
+import { PHOTOS, photoUrl } from "@/lib/ph/photos";
 
 export function generateStaticParams() {
-  return properties.map((p) => ({ slug: p.slug }));
+  return LISTINGS.map((l) => ({ slug: l.slug }));
+}
+
+function summary(l: PhListing) {
+  const size = l.floorAreaSqm ? formatSqm(l.floorAreaSqm) : l.lotAreaSqm ? `${formatSqm(l.lotAreaSqm)} lot` : "";
+  const beds = l.bedrooms !== undefined ? `${formatBedrooms(l.bedrooms)} ` : "";
+  return `${beds}${PROPERTY_TYPE_LABEL[l.propertyType].toLowerCase()}, ${LISTING_TYPE_LABEL[l.listingType].toLowerCase()} in ${l.locationLabel}. ${formatListingPrice(l)}${size ? `, ${size}` : ""}.`;
 }
 
 export async function generateMetadata(props: PageProps<"/property/[slug]">): Promise<Metadata> {
-  const { slug } = await props.params;
-  const p = getProperty(slug);
-  if (!p) return {};
-  const title = `${p.title}, ${p.location.community}`;
-  const description = `${bedsLabel(p.bedrooms)} ${typeLabel[p.type].toLowerCase()} for ${p.purpose === "rent" ? "rent" : "sale"} in ${p.location.community}, ${p.location.city}. AED ${formatAED(p.price)}${priceSuffix(p)}. ${formatAED(p.areaSqft)} sqft.`;
+  const l = getListing((await props.params).slug);
+  if (!l) return {};
+  const title = `${l.title}, ${l.locationLabel}`;
+  const description = summary(l).replace(/^./, (c) => c.toUpperCase());
   return {
     title,
     description,
-    alternates: { canonical: `/property/${p.slug}` },
-    openGraph: { title, description, type: "website", url: `/property/${p.slug}` },
+    alternates: { canonical: `/property/${l.slug}` },
+    openGraph: { title, description, url: `/property/${l.slug}`, images: [{ url: photoUrl(PHOTOS[l.photos[0]], 1200), width: 1200, alt: PHOTOS[l.photos[0]].alt }] },
     twitter: { card: "summary_large_image", title, description },
   };
 }
 
-const nearbyIcon = { school: GraduationCap, hospital: Hospital, metro: Train, mall: ShoppingBag, beach: Waves };
+const NEARBY_ICON: Record<NearbyPlace["kind"], React.ComponentType<{ className?: string }>> = {
+  school: GraduationCap, hospital: Hospital, mall: ShoppingBag, transit: TrainFront, airport: Plane, beach: Waves, park: Trees, church: Landmark,
+};
 
-function jsonLd(p: Property) {
-  const residenceType = p.type === "villa" || p.type === "townhouse" ? "SingleFamilyResidence" : "Apartment";
+function jsonLd(l: PhListing) {
+  const residence = l.propertyType === "CONDOMINIUM" ? "Apartment" : l.propertyType === "LOT_ONLY" ? "Place" : "SingleFamilyResidence";
   return {
     "@context": "https://schema.org",
     "@type": "RealEstateListing",
-    name: p.title,
-    description: p.description,
-    url: `/property/${p.slug}`,
-    datePosted: p.listedAt,
-    image: p.images,
+    name: l.title,
+    description: l.description,
+    url: `/property/${l.slug}`,
+    datePosted: l.listedAt,
+    image: l.photos.map((p) => photoUrl(PHOTOS[p], 1200)),
     offers: {
       "@type": "Offer",
-      price: p.price,
-      priceCurrency: "AED",
-      businessFunction: p.purpose === "rent" ? "http://purl.org/goodrelations/v1#LeaseOut" : "http://purl.org/goodrelations/v1#Sell",
+      price: l.price,
+      priceCurrency: "PHP",
+      businessFunction: l.listingType === "RENT" ? "http://purl.org/goodrelations/v1#LeaseOut" : "http://purl.org/goodrelations/v1#Sell",
       availability: "https://schema.org/InStock",
     },
     about: {
-      "@type": residenceType,
-      numberOfRooms: p.bedrooms,
-      numberOfBathroomsTotal: p.bathrooms,
-      floorSize: { "@type": "QuantitativeValue", value: p.areaSqft, unitCode: "FTK" },
-      amenityFeature: p.amenities.map((a) => ({ "@type": "LocationFeatureSpecification", name: a, value: true })),
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: p.location.community,
-        addressRegion: p.location.city,
-        addressCountry: "AE",
-      },
-      geo: { "@type": "GeoCoordinates", latitude: p.location.lat, longitude: p.location.lng },
+      "@type": residence,
+      ...(l.bedrooms !== undefined && { numberOfRooms: l.bedrooms }),
+      ...(l.bathrooms !== undefined && { numberOfBathroomsTotal: l.bathrooms }),
+      ...(l.floorAreaSqm && { floorSize: { "@type": "QuantitativeValue", value: l.floorAreaSqm, unitCode: "MTK" } }),
+      amenityFeature: l.amenities.map((a) => ({ "@type": "LocationFeatureSpecification", name: a, value: true })),
+      address: { "@type": "PostalAddress", addressLocality: l.city, addressRegion: l.province, addressCountry: "PH" },
+      geo: { "@type": "GeoCoordinates", latitude: l.lat, longitude: l.lng },
     },
   };
 }
 
 export default async function PropertyPage(props: PageProps<"/property/[slug]">) {
-  const { slug } = await props.params;
-  const p = getProperty(slug);
-  if (!p) notFound();
-
-  const agent = getAgent(p.agentId);
-  const agency = getAgency(agent.agencyId);
-  const similar = properties.filter((x) => x.id !== p.id && x.purpose === p.purpose).slice(0, 3);
+  const l = getListing((await props.params).slug);
+  if (!l) notFound();
+  const agent = getAgent(l.agentId);
+  const area = l.propertyType === "LOT_ONLY" || l.propertyType === "AGRICULTURAL" ? l.lotAreaSqm : l.floorAreaSqm ?? l.lotAreaSqm;
+  const forSale = l.listingType !== "RENT";
+  const similar = LISTINGS.filter((x) => x.id !== l.id && (x.listingType === l.listingType || x.propertyType === l.propertyType)).slice(0, 3);
+  const typePath = l.listingType === "RENT" ? "RENT" : l.listingType;
 
   const facts = [
-    { icon: Building2, label: "Type", value: typeLabel[p.type] },
-    { icon: BedDouble, label: "Bedrooms", value: bedsLabel(p.bedrooms) },
-    { icon: Bath, label: "Bathrooms", value: String(p.bathrooms) },
-    { icon: Maximize2, label: "Size", value: `${formatAED(p.areaSqft)} sqft` },
-    { icon: Sofa, label: "Furnishing", value: p.furnished ? "Furnished" : "Unfurnished" },
-    { icon: Car, label: "Completion", value: p.completion === "ready" ? "Ready to move" : "Off-plan" },
-  ];
+    { icon: Building2, label: "Property type", value: PROPERTY_TYPE_LABEL[l.propertyType] },
+    l.bedrooms !== undefined && { icon: BedDouble, label: "Bedrooms", value: formatBedrooms(l.bedrooms) },
+    l.bathrooms !== undefined && { icon: Bath, label: "Bathrooms", value: String(l.bathrooms) },
+    l.floorAreaSqm && { icon: Ruler, label: "Floor area", value: formatSqm(l.floorAreaSqm) },
+    l.lotAreaSqm && { icon: LandPlot, label: "Lot area", value: formatSqm(l.lotAreaSqm) },
+    l.parking !== undefined && { icon: Car, label: "Parking", value: l.parking === 0 ? "None" : `${l.parking} slot${l.parking > 1 ? "s" : ""}` },
+    l.furnishing && { icon: Sofa, label: "Furnishing", value: l.furnishing },
+    forSale && area && { icon: CircleDollarSign, label: "Price per sqm", value: formatPricePerSqm(l.price / area) },
+  ].filter(Boolean) as { icon: React.ComponentType<{ className?: string }>; label: string; value: string }[];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(p)).replace(/</g, "\\u003c") }} />
+    <div className="bg-white">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(l)).replace(/</g, "\\u003c") }} />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 py-5 text-sm text-ink-soft">
+          <Link href="/" className="hover:text-sea-900">Home</Link>
+          <ChevronRight className="size-3.5" />
+          <Link href={`/search?type=${typePath}`} className="hover:text-sea-900">{LISTING_TYPE_LABEL[l.listingType]}</Link>
+          <ChevronRight className="size-3.5" />
+          <Link href={`/search?type=${typePath}&location=${encodeURIComponent(l.province)}`} className="hover:text-sea-900">{l.province}</Link>
+          <ChevronRight className="size-3.5" />
+          <Link href={`/search?type=${typePath}&location=${encodeURIComponent(l.city)}`} className="hover:text-sea-900">{l.city}</Link>
+        </nav>
 
-      <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 py-4 text-sm text-ink-soft">
-        <Link href="/" className="hover:text-creek-700">Home</Link>
-        <ChevronRight className="size-3.5" />
-        <Link href={`/search?purpose=${p.purpose}&location=${p.location.city}`} className="hover:text-creek-700">{p.purpose === "rent" ? "Rent" : "Buy"} in {p.location.city}</Link>
-        <ChevronRight className="size-3.5" />
-        <Link href={`/search?purpose=${p.purpose}&location=${encodeURIComponent(p.location.community)}`} className="hover:text-creek-700">{p.location.community}</Link>
-      </nav>
+        <PropertyGallery photos={l.photos} title={l.title} />
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 space-y-8">
-          <Gallery images={p.images} floorPlan={p.floorPlan} title={p.title} />
+        <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="min-w-0 space-y-12">
+            <header>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-mist px-3 py-1 text-xs font-semibold text-sea-900">{LISTING_TYPE_LABEL[l.listingType]}</span>
+                {l.listingType === "PRE_SELLING" && <span className="rounded-full bg-sea-900 px-3 py-1 text-xs font-semibold text-white">Turnover {formatTurnover(l.turnoverQuarter, l.turnoverYear)}</span>}
+                {l.listingType === "FORECLOSED" && <span className="rounded-full bg-coral-600 px-3 py-1 text-xs font-semibold text-white">Foreclosed by {l.foreclosingInstitution}</span>}
+                {l.foreignBuyerEligible && forSale && <span className="flex items-center gap-1 rounded-full bg-lagoon-50 px-3 py-1 text-xs font-semibold text-lagoon-700"><Globe2 className="size-3.5" /> Open to foreign buyers</span>}
+              </div>
+              <h1 className="mt-4 text-3xl font-bold leading-tight text-sea-950 sm:text-[40px]">{l.title}</h1>
+              <p className="mt-2 flex items-center gap-1.5 text-ink-soft"><MapPin className="size-4" />{l.locationLabel}, {l.province}</p>
+              <div className="mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <p className="price text-4xl font-bold text-sea-950">{formatListingPrice(l)}</p>
+                <ConvertedPrice php={l.price} className="price text-lg font-medium text-ink-soft" />
+              </div>
+            </header>
 
-          <header>
-            <div className="flex flex-wrap items-center gap-2">
-              {p.verified && <span className="flex items-center gap-1 rounded-md bg-creek-50 px-2 py-0.5 text-xs font-bold text-creek-700"><BadgeCheck className="size-3.5" /> Verified listing</span>}
-              {p.featured && <span className="rounded-md bg-date-500 px-2 py-0.5 text-xs font-bold text-creek-900">Featured</span>}
-            </div>
-            <p className="mt-3 font-display text-4xl font-bold">
-              AED {formatAED(p.price)}<span className="ml-1 font-sans text-lg font-medium text-ink-soft">{priceSuffix(p)}</span>
-            </p>
-            <h1 className="mt-2 text-2xl font-bold">{p.title}</h1>
-            <p className="mt-1 text-ink-soft">{[p.location.subCommunity, p.location.community, p.location.city].filter(Boolean).join(", ")}</p>
-          </header>
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {facts.map(({ icon: Icon, label, value }) => (
+                <div key={label} className="rounded-2xl bg-mist p-5">
+                  <Icon className="size-5 text-lagoon-700" />
+                  <dt className="mt-3 text-xs text-ink-soft">{label}</dt>
+                  <dd className="price mt-0.5 font-semibold text-ink">{value}</dd>
+                </div>
+              ))}
+            </dl>
 
-          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3">
-            {facts.map(({ icon: Icon, label, value }) => (
-              <div key={label} className="flex items-center gap-3 bg-white p-4">
-                <Icon className="size-5 text-creek-500" />
-                <div>
-                  <dt className="text-xs text-ink-soft">{label}</dt>
-                  <dd className="font-semibold">{value}</dd>
+            <section>
+              <h2 className="text-2xl font-bold text-sea-950">About this property</h2>
+              <p className="mt-4 max-w-[68ch] text-[16px] leading-[1.75] text-ink-soft">{l.description}</p>
+            </section>
+
+            {l.listingType === "PRE_SELLING" && (
+              <section className="rounded-3xl bg-sand-50 p-6 ring-1 ring-sand-200 sm:p-8">
+                <h2 className="text-2xl font-bold text-sea-950">Payment terms</h2>
+                <dl className="mt-5 grid gap-5 sm:grid-cols-3">
+                  <div><dt className="text-sm text-ink-soft">Reservation fee</dt><dd className="price mt-1 text-lg font-semibold">{formatPeso(l.reservationFee ?? 0, { compact: false })}</dd></div>
+                  <div><dt className="text-sm text-ink-soft">Downpayment</dt><dd className="price mt-1 text-lg font-semibold">{l.downpaymentPercent}% over {l.downpaymentMonths} months</dd><dd className="price text-sm text-ink-soft">about {formatPeso(Math.round((l.price * (l.downpaymentPercent ?? 0)) / 100 / (l.downpaymentMonths ?? 1)), { compact: false })} a month</dd></div>
+                  <div><dt className="text-sm text-ink-soft">Balance on turnover</dt><dd className="price mt-1 text-lg font-semibold">{100 - (l.downpaymentPercent ?? 0)}%, {formatTurnover(l.turnoverQuarter, l.turnoverYear)}</dd></div>
+                </dl>
+                <p className="mt-5 text-xs text-ink-soft">Ask the agent for the project&apos;s DHSUD License to Sell number before paying a reservation fee.</p>
+              </section>
+            )}
+
+            {l.listingType === "FORECLOSED" && (
+              <section className="rounded-3xl bg-coral-400/10 p-6 ring-1 ring-coral-400/30 sm:p-8">
+                <h2 className="text-2xl font-bold text-sea-950">Foreclosure details</h2>
+                <dl className="mt-5 grid gap-5 sm:grid-cols-3">
+                  <div><dt className="text-sm text-ink-soft">Sold by</dt><dd className="mt-1 font-semibold">{l.foreclosingInstitution}</dd></div>
+                  <div><dt className="text-sm text-ink-soft">Minimum bid</dt><dd className="price mt-1 font-semibold">{formatPeso(l.minimumBid ?? l.price, { compact: false })}</dd></div>
+                  <div><dt className="text-sm text-ink-soft">Occupancy</dt><dd className="mt-1 font-semibold">{l.occupancy}</dd></div>
+                </dl>
+                <p className="mt-5 text-xs text-ink-soft">Sold as-is-where-is. Inspect the property and check the title before you bid.</p>
+              </section>
+            )}
+
+            <section>
+              <h2 className="text-2xl font-bold text-sea-950">Features and amenities</h2>
+              <ul className="mt-5 grid gap-x-6 gap-y-3 sm:grid-cols-2 md:grid-cols-3">
+                {l.amenities.map((a) => (
+                  <li key={a} className="flex items-center gap-2.5 text-[15px] text-ink"><Check className="size-4 shrink-0 text-lagoon-600" />{a}</li>
+                ))}
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-sea-950">Location</h2>
+              <div className="mt-5 grid gap-6 md:grid-cols-[1fr_1fr]">
+                <ul className="divide-y divide-line self-start rounded-3xl ring-1 ring-line">
+                  {l.nearby.map((n) => {
+                    const Icon = NEARBY_ICON[n.kind] ?? Mountain;
+                    return (
+                      <li key={n.name} className="flex items-center gap-3 px-5 py-3.5 text-sm">
+                        <Icon className="size-4 shrink-0 text-lagoon-700" />
+                        <span className="font-medium text-ink">{n.name}</span>
+                        <span className="price ml-auto shrink-0 text-ink-soft">{n.km} km</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="h-80 md:h-auto md:min-h-80">
+                  <PhMap listings={[l]} focus />
                 </div>
               </div>
-            ))}
-          </dl>
+              <p className="mt-3 text-xs text-ink-soft">Distances are approximate, in a straight line.</p>
+            </section>
 
-          <section>
-            <h2 className="text-xl font-bold">About this home</h2>
-            <p className="mt-3 max-w-[70ch] leading-relaxed text-ink-soft">{p.description}</p>
-          </section>
+            {forSale && <AmortizationCalculator price={l.price} />}
 
-          <section>
-            <h2 className="text-xl font-bold">Amenities</h2>
-            <ul className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-              {p.amenities.map((a) => (
-                <li key={a} className="flex items-center gap-2 text-sm"><Check className="size-4 text-creek-500" />{a}</li>
-              ))}
-            </ul>
-          </section>
+            <section className="rounded-3xl bg-mist p-6 sm:p-8">
+              <h2 className="flex items-center gap-2 text-lg font-bold text-sea-950"><FileText className="size-5" /> Listing details</h2>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+                <div><dt className="text-ink-soft">Reference</dt><dd className="mt-0.5 font-semibold">SA-{l.id.toUpperCase()}</dd></div>
+                <div><dt className="text-ink-soft">Listed on</dt><dd className="mt-0.5 font-semibold">{new Date(l.listedAt).toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" })}</dd></div>
+                {l.titleType && <div><dt className="text-ink-soft">Title</dt><dd className="mt-0.5 font-semibold">{TITLE_TYPE_LABEL[l.titleType]}</dd></div>}
+              </dl>
+            </section>
+          </div>
 
-          <section>
-            <h2 className="text-xl font-bold">What&apos;s nearby</h2>
-            <ul className="mt-3 divide-y divide-line rounded-xl border border-line">
-              {p.nearby.map((n) => {
-                const Icon = nearbyIcon[n.kind] ?? Bus;
-                return (
-                  <li key={n.name} className="flex items-center gap-3 px-4 py-3 text-sm">
-                    <Icon className="size-4 text-creek-500" />
-                    <span className="font-medium">{n.name}</span>
-                    <span className="ml-auto text-ink-soft">{n.km} km</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
-          {p.purpose === "buy" && <MortgageCalculator price={p.price} />}
-
-          <section className="rounded-xl bg-mist p-5 text-sm">
-            <h2 className="font-sans text-base font-bold">Regulatory information</h2>
-            <dl className="mt-3 grid gap-3 sm:grid-cols-3">
-              <div><dt className="text-ink-soft">DLD permit number</dt><dd className="font-semibold">{p.permitNumber}</dd></div>
-              <div><dt className="text-ink-soft">Agency licence</dt><dd className="font-semibold">{agency.reraOrn}</dd></div>
-              <div><dt className="text-ink-soft">Listed on</dt><dd className="font-semibold">{new Date(p.listedAt).toLocaleDateString("en-AE", { day: "numeric", month: "long", year: "numeric" })}</dd></div>
-            </dl>
-          </section>
+          <aside className="lg:sticky lg:top-[88px] lg:self-start">
+            <ContactCard agent={agent} listingId={l.id} listingTitle={l.title} />
+          </aside>
         </div>
 
-        <aside className="lg:sticky lg:top-20 lg:self-start">
-          <LeadWidget listingId={p.id} listingTitle={p.title} agent={agent} agency={agency} />
-        </aside>
+        {similar.length > 0 && (
+          <section className="mt-24">
+            <h2 className="text-[28px] font-bold text-sea-950 sm:text-4xl">Similar homes</h2>
+            <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+              {similar.map((s) => <PhListingCard key={s.id} l={s} />)}
+            </div>
+          </section>
+        )}
       </div>
-
-      {/* Sticky contact bar on phones, where most portal leads come from */}
-      <div className="fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t border-line bg-white p-3 lg:hidden">
-        <a href={`tel:${agent.phone.replace(/\s/g, "")}`} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-creek-700 text-sm font-semibold text-white"><Phone className="size-4" /> Call</a>
-        <a href={`/api/leads/whatsapp?listing=${p.id}`} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-whatsapp text-sm font-semibold text-white"><WhatsAppIcon className="size-5" /> WhatsApp</a>
-        <a href="#enquire" className="flex h-11 flex-1 items-center justify-center rounded-lg border-2 border-creek-700 text-sm font-semibold text-creek-700">Enquire</a>
-      </div>
-
-      <section className="mt-16">
-        <h2 className="text-2xl font-bold">Similar homes</h2>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {similar.map((s) => <ListingCard key={s.id} p={s} />)}
-        </div>
-      </section>
     </div>
   );
 }

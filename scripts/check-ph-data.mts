@@ -5,6 +5,10 @@ import { formatBedrooms, formatPeso, formatPricePerSqm, formatRent, formatSqm, f
 import { flattenLocations, slugify } from "../src/lib/ph/locations";
 import { seed, type SeedClient } from "../prisma/seed";
 import { convertPeso } from "../src/lib/ph/currency";
+import { estimate, monthlyAmortization } from "../src/lib/ph/financing";
+import { LISTINGS, AGENTS, getAgent } from "../src/lib/ph/listings";
+import { PHOTOS } from "../src/lib/ph/photos";
+import { PH_MAP_VIEWS, project } from "../src/lib/ph/map-geometry";
 
 // Peso formatting
 assert.equal(formatRent(35_000, "MONTHLY"), "₱35,000/mo");
@@ -29,6 +33,30 @@ assert.equal(convertPeso(18_600_000, "JPY"), "≈ ¥46M");
 assert.equal(convertPeso(18_600_000, "KRW"), "≈ ₩388M");
 assert.equal(convertPeso(4_800_000, "SGD"), "≈ S$96.7K");
 assert.equal(convertPeso(4_800_000, "PHP"), null);
+
+// Amortization: ₱1M over 20 years at 6% is a textbook ₱7,164.31/month
+assert.equal(monthlyAmortization(1_000_000, 6, 20).toFixed(2), "7164.31");
+const pag = estimate(18_600_000, 20, "PAGIBIG", 3, 30);
+assert.equal(pag.cappedLoan, 6_000_000, "Pag-IBIG caps the loan at ₱6M");
+assert.equal(pag.overCap, 18_600_000 * 0.8 - 6_000_000);
+const bank = estimate(12_500_000, 20, "BANK", 5, 30);
+assert.equal(bank.rate, 7.375);
+assert.equal(bank.monthly.toFixed(0), monthlyAmortization(10_000_000, 7.375, 20).toFixed(0), "bank term capped at 20 years");
+
+// Listings data integrity
+assert.equal(new Set(LISTINGS.map((l) => l.slug)).size, LISTINGS.length, "unique slugs");
+for (const l of LISTINGS) {
+  assert.ok(getAgent(l.agentId), `${l.id} has an agent`);
+  assert.ok(l.photos.length > 0 && l.photos.every((p) => PHOTOS[p]?.fallback), `${l.id} photos have fallbacks`);
+  if (l.listingType === "RENT") assert.ok(l.rentPeriod, `${l.id} rent period`);
+  if (l.listingType === "PRE_SELLING") assert.ok(l.turnoverYear && l.turnoverQuarter, `${l.id} turnover`);
+  if (l.listingType === "FORECLOSED") assert.ok(l.foreclosingInstitution, `${l.id} institution`);
+  if (l.propertyType === "LOT_ONLY") assert.ok(l.lotAreaSqm, `${l.id} lot area`);
+  if (l.foreignBuyerEligible) assert.equal(l.propertyType, "CONDOMINIUM", "only condos can be foreign-owned");
+  const { x, y } = project(PH_MAP_VIEWS.philippines, l.lat, l.lng);
+  assert.ok(x > 0 && x < 640 && y > 0 && y < 900, `${l.id} pin inside the map`);
+}
+assert.ok(AGENTS.every((a) => a.mobile.startsWith("+63")), "PH mobile numbers");
 
 // Location tree
 assert.equal(slugify("Parañaque"), "paranaque");

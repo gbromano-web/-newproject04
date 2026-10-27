@@ -10,7 +10,7 @@ import { ScenicHero } from "@/components/ph/scenic-hero";
 import { CURRENCIES } from "@/lib/ph/currency";
 import { flattenLocations } from "@/lib/ph/locations";
 import type { PhotoKey } from "@/lib/ph/photos";
-import { PH_SAMPLE_LISTINGS } from "@/lib/ph/sample-listings";
+import { latestListings } from "@/lib/ph/listings";
 
 export const metadata: Metadata = {
   title: "Condos, house and lot, and lots for sale and rent in the Philippines",
@@ -143,7 +143,7 @@ export default function HomePage() {
           action={<Link href="/search" className={textLink}>View all listings <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /></Link>}
         />
         <div className="mt-9 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-          {PH_SAMPLE_LISTINGS.map((l) => <PhListingCard key={l.id} l={l} />)}
+          {latestListings(6).map((l) => <PhListingCard key={l.id} l={l} />)}
         </div>
       </section>
 
@@ -194,7 +194,7 @@ export default function HomePage() {
               Compare monthly amortization for both, then request a sample computation from the agent with your figures already filled in. Rates come from published Pag-IBIG and bank sources.
             </p>
           </div>
-          <Link href="/search" className="flex items-center justify-center gap-2 rounded-full bg-sea-900 px-6 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-sea-800">
+          <Link href="/calculator" className="flex items-center justify-center gap-2 rounded-full bg-sea-900 px-6 py-3.5 text-[15px] font-semibold text-white transition-colors hover:bg-sea-800">
             <Calculator className="size-5" /> Open the calculator
           </Link>
         </div>

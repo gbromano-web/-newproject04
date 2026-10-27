@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Search } from "lucide-react";
+import { MapPin, Search, SlidersHorizontal } from "lucide-react";
+import { LocationInput } from "./location-input";
 import clsx from "clsx";
 
 const TABS = [
@@ -25,12 +26,28 @@ function Field({ label, children, className }: { label: string; children: React.
 
 export function PhSearchBox({ popular }: { popular: { label: string; key: string }[] }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("SALE");
+  const [expanded, setExpanded] = useState(false);
   const prices = tab === "RENT" ? RENT_PRICES : SALE_PRICES;
   const control = "w-full appearance-none bg-transparent text-[15px] font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft/70 focus:outline-none";
 
   return (
     <div className="mx-auto w-full max-w-4xl">
-      <form action="/search" className="rounded-[22px] bg-white/95 p-2 shadow-[0_40px_90px_-30px_rgba(7,29,43,.75)] ring-1 ring-white/60 backdrop-blur-xl">
+      {/* Phones: a compact search pill that expands into the full panel */}
+      {!expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="flex w-full items-center gap-3 rounded-full bg-white/95 py-2 pl-5 pr-2 text-left shadow-[0_30px_70px_-25px_rgba(7,29,43,.8)] backdrop-blur-xl md:hidden"
+        >
+          <Search className="size-5 text-sea-900" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-ink">Where do you want to live?</span>
+            <span className="block truncate text-xs text-ink-soft">Buy, rent, pre-selling or foreclosed</span>
+          </span>
+          <span className="grid size-10 place-items-center rounded-full bg-mango-500 text-sea-950"><SlidersHorizontal className="size-4" /></span>
+        </button>
+      )}
+      <form action="/search" className={clsx(expanded ? "block" : "hidden", "md:block", "rounded-[22px] bg-white/95 p-2 shadow-[0_40px_90px_-30px_rgba(7,29,43,.75)] ring-1 ring-white/60 backdrop-blur-xl")}>
         <div role="tablist" aria-label="Transaction type" className="no-scrollbar flex gap-0.5 overflow-x-auto border-b border-line px-1 pb-0 sm:gap-1 sm:px-2">
           {TABS.map((t) => (
             <button
@@ -55,7 +72,7 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
           <Field label="Location" className="col-span-2 md:col-span-1">
             <span className="flex items-center gap-2">
               <MapPin className="size-4 shrink-0 text-lagoon-600" />
-              <input name="location" placeholder="City, barangay or project" className={control} aria-label="Location" />
+              <LocationInput className="min-w-0 flex-1" inputClassName={control} />
             </span>
           </Field>
           <Field label="Property type">

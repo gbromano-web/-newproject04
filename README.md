@@ -9,25 +9,38 @@ A property marketplace for buying, renting, pre-selling and foreclosed homes acr
 ## Features
 
 **Homepage**
-- Premium, internationally minded design: Plus Jakarta Sans (a typeface from Jakarta), a calm sea-navy, lagoon and gold palette, and photography-led layouts
-- Currency switcher: every peso price also shows an estimate in one of 12 currencies (USD, SGD, HKD, JPY, KRW, CNY, AUD, CAD, EUR, GBP, AED, SAR), using Bangko Sentral ng Pilipinas reference rates with their date
-- "Buying from abroad" section for overseas Filipinos and foreign buyers (condo 40% rule, land, 99-year investor leases, RA 9225), with sources and a not-legal-advice note
-- Condos open to foreign buyers are marked on listing cards
-- Rotating hero of professional photographs (El Nido, BGC, Batad rice terraces, Mayon Volcano, Chocolate Hills) with crossfade, slow zoom, pause control and reduced-motion support
-- Glass search box with Buy / Rent / Pre-selling / Foreclosed tabs, Philippine property types, peso price ranges and popular-location shortcuts
-- Destination cards (Palawan, Metro Manila, Baguio, Bohol, Albay)
-- Featured developer slider (empty slots until partnerships are signed)
-- Listing cards with smart peso formatting (₱35,000/mo, ₱4.8M, ₱120M), ₱/sqm, floor and lot area in sqm, turnover dates, foreclosure badges, agent PRC/DHSUD numbers and Viber / WhatsApp / Inquire buttons
+- Rotating hero of professional photographs (El Nido, BGC, Batad rice terraces, Mayon Volcano, Chocolate Hills)
+- Search panel with Buy / Rent / Pre-selling / Foreclosed, location suggestions from the location tree (understands aliases such as "BGC"), and a compact version on phones
+- Destination cards, featured developer slots (empty until partnerships are signed), latest listings, "Buying from abroad" and a financing section
 
-**Data model** (`prisma/schema.prisma`, 20 models) — see [docs/data-model.md](docs/data-model.md)
-- Locations: Region → Province → City/Municipality → Barangay, plus districts such as BGC, Makati CBD and Ortigas Center
-- Properties in PHP and sqm: sale, rent, pre-selling (turnover quarter/year, reservation fee, downpayment terms) and foreclosed (Pag-IBIG or bank, minimum bid, sale mode)
-- Developers and projects with DHSUD License to Sell numbers
-- Agents licensed under RESA (RA 9646): PRC licence for brokers, DHSUD accreditation and a supervising broker for salespersons
-- Hero banners with photo credits, scheduling and location targeting
-- Leads by channel (Viber, WhatsApp, inquiry, sample computation) with Data Privacy Act consent
-- Financing programs (Pag-IBIG and bank) stored with their source, never hard-coded
-- Database rules enforced with CHECK constraints and triggers (`prisma/sql/postgis.sql`)
+**Search** (`/search`)
+- Shareable URL filters: transaction type, location (a province or city includes everything inside it), property type, price, bedrooms, condos open to foreign buyers, sort
+- "More filters" drawer, empty state, loading skeleton
+- Interactive Philippines map (Natural Earth outline) with clustered peso pins, zoom-on-cluster and a preview card; full-screen map on phones
+
+**Property page** (`/property/[slug]`)
+- Photo mosaic and full-screen viewer, key facts in sqm and ₱/sqm, pre-selling payment terms or foreclosure details, amenities, nearby places and a map
+- Pag-IBIG and bank amortization calculator with published rates by fixing period, the ₱6M Pag-IBIG cap, and sources and dates
+- Sticky agent card with PRC/DHSUD licence, Viber, WhatsApp, call, and an inquiry form with Data Privacy Act consent; "Request sample computation" fills the form from the calculator
+- Schema.org `RealEstateListing` data and social preview images
+
+**Agent dashboard** (`/dashboard`): leads by channel (Viber, WhatsApp, inquiry, sample computation), latest leads including overseas buyers, listings with quality score and promotion
+
+**Calculator** (`/calculator`): standalone Pag-IBIG vs bank comparison
+
+**International buyers**: prices in pesos with an estimate in 12 currencies (Bangko Sentral ng Pilipinas reference rates, dated), foreign-buyer badges and a sourced explainer of ownership rules
+
+**Lead routes**: `GET /api/ph/leads/viber` and `/whatsapp` log the lead and open the chat (WhatsApp with a pre-filled message); `POST /api/ph/leads` validates and records inquiries and sample-computation requests
+
+**Data model** (`prisma/schema.prisma`, 20 models), see [docs/data-model.md](docs/data-model.md): locations from Region to Barangay, properties in PHP and sqm for sale, rent, pre-selling and foreclosure, developers and projects with DHSUD License to Sell, RESA-licensed agents, hero banners, leads, saved searches and financing programs, with database CHECK rules and PostGIS triggers
+
+## Screens
+
+| Search with map | Property page |
+| --- | --- |
+| ![Search](docs/screenshots/ph/search.png) | ![Property](docs/screenshots/ph/property.png) |
+| **Agent dashboard** | **Mobile** |
+| ![Dashboard](docs/screenshots/ph/dashboard.png) | ![Mobile](docs/screenshots/ph/mobile.png) |
 
 ## Tech stack
 
@@ -71,37 +84,39 @@ npx prisma db seed
 | `npm run typecheck` | Generate route types and type-check |
 | `npm run check:ph` | Test peso formatting, the location tree and the seed |
 | `npm run db:postgis` | Apply PostGIS triggers, indexes and CHECK rules |
+| `npm run build:map` | Regenerate the Philippines map outline from Natural Earth data |
 
 Every push and pull request runs type-checking, linting, the data checks and a production build on GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Project structure
 
 ```
-prisma/
-  schema.prisma          Philippine data model
-  sql/postgis.sql        PostGIS triggers, indexes and listing rules
-  seed.ts                Locations, amenities and hero banners (no developers)
-src/
-  app/page.tsx           Homepage
-  components/ph/         Hero, search box, scene photos, listing card, developer slider
-  lib/ph/                Peso/sqm formatting, location tree, photos, sample listings
-docs/data-model.md       Data model diagram and explanation
-scripts/                 Data checks and placeholder image generator
+prisma/                  Schema, PostGIS SQL and seed
+src/app/
+  page.tsx               Homepage
+  search/                Search results, filters and map
+  property/[slug]/       Property page
+  calculator/            Pag-IBIG and bank calculator
+  dashboard/             Agent dashboard
+  api/ph/leads/          Viber, WhatsApp and inquiry lead routes
+src/components/ph/       Hero, search box, location suggestions, filters, map, cards, gallery, calculator, contact card, currency
+src/lib/ph/              Listings, locations, search, financing, currency, photos, formatting, map geometry
+scripts/                 Data checks, map builder, placeholder art
+docs/data-model.md       Data model
 ```
 
 ## Project status
 
-| Phase | Status |
+| Area | Status |
 | --- | --- |
-| 1. Database schema and data model | Done |
-| 2. Homepage, hero banner and search UI | Homepage done |
-| 2. Search results, filter drawer, map view, property page | Next. These pages still show the original demo data |
-| 3. Search API and Typesense integration | Planned |
-| 4. Viber/WhatsApp lead tracking, Pag-IBIG and bank amortization calculator | Planned |
+| Data model and database rules | Done |
+| Homepage, search, property page, calculator, dashboard | Done, on sample data |
+| Lead capture (Viber, WhatsApp, inquiry, sample computation) | Working routes; logging to the server console until the database is connected |
+| Next | Connect Supabase (auth, storage, Lead table), Typesense search, MapLibre street-level maps, daily exchange-rate updates, saved searches and alerts |
 
 ## Photo credits
 
-Homepage and sample listing photos are free to use under the [Unsplash License](https://unsplash.com/license); the full list with links is in `src/lib/ph/photos.ts`. Hero photos:
+Photos are free to use under the [Unsplash License](https://unsplash.com/license); the full list with links is in `src/lib/ph/photos.ts`. Hero photos:
 [Jared Rice](https://unsplash.com/photos/Tm0XygW6gN8) (El Nido),
 [Roman Lezhnin](https://unsplash.com/photos/Vb2eRgWU7rc) (El Nido),
 [OJ Serrano](https://unsplash.com/photos/iacKpANQHNA) (BGC),

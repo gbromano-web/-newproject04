@@ -1,25 +1,20 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SlidersHorizontal } from "lucide-react";
-import { ListingCard } from "@/components/listing-card";
-import { MapView } from "@/components/map-view";
-import { SearchBar } from "@/components/search-bar";
-import { parseFilters, searchProperties, typeLabel, type SearchFilters } from "@/lib/search";
-
-function heading(f: SearchFilters) {
-  const type = f.type ? `${typeLabel[f.type]}s` : "Properties";
-  const beds = f.beds ? (f.beds === "0" ? "Studio " : `${f.beds}${f.beds === "5" ? "+" : ""}-bed `) : "";
-  return `${beds}${type} for ${f.purpose === "rent" ? "rent" : "sale"} in ${f.location ?? "the UAE"}`;
-}
+import { SearchX } from "lucide-react";
+import { FilterBar } from "@/components/ph/filter-bar";
+import { MobileMapToggle } from "@/components/ph/mobile-map-toggle";
+import { PhListingCard } from "@/components/ph/ph-listing-card";
+import { PhMap } from "@/components/ph/ph-map";
+import { parseFilters, searchHeading, searchListings, toQuery, type SortKey } from "@/lib/ph/search";
 
 export async function generateMetadata(props: PageProps<"/search">): Promise<Metadata> {
   const f = parseFilters(await props.searchParams);
-  const title = heading(f);
+  const title = searchHeading(f);
   return {
     title,
-    description: `Browse ${title.toLowerCase()} with verified permits, prices in AED and direct WhatsApp contact with licensed agents.`,
-    alternates: { canonical: `/search?purpose=${f.purpose}${f.location ? `&location=${encodeURIComponent(f.location)}` : ""}` },
+    description: `Browse ${title.toLowerCase()} on SA Realty: prices in pesos with your currency alongside, and agents with PRC or DHSUD numbers.`,
+    alternates: { canonical: `/search?${toQuery({ type: f.type, location: f.location, propertyType: f.propertyType })}` },
   };
 }
 
@@ -31,78 +26,80 @@ export default function SearchPage(props: PageProps<"/search">) {
   );
 }
 
-const sorts = [
-  ["featured", "Featured"],
+const SORTS: [SortKey, string][] = [
+  ["featured", "Recommended"],
   ["newest", "Newest"],
   ["price-asc", "Lowest price"],
   ["price-desc", "Highest price"],
-] as const;
+];
 
 async function Results({ searchParams }: { searchParams: PageProps<"/search">["searchParams"] }) {
-  const raw = await searchParams;
-  const f = parseFilters(raw);
-  const results = searchProperties(f);
-
-  const withSort = (s: string) => {
-    const params = new URLSearchParams(Object.entries(raw).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : [])));
-    params.set("sort", s);
-    return `/search?${params}`;
-  };
+  const f = parseFilters(await searchParams);
+  const results = searchListings(f);
 
   return (
-    <div>
-      <div className="border-b border-line bg-mist">
-        <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-6">
-          <SearchBar key={JSON.stringify(f)} initial={f} variant="compact" />
-        </div>
-      </div>
+    <div className="bg-white">
+      <FilterBar key={toQuery(f)} initial={f} resultCount={results.length} />
 
-      <div className="mx-auto grid max-w-[1440px] gap-6 px-4 pt-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
-        <section>
-          <h1 className="text-2xl font-bold sm:text-3xl">{heading(f)}</h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <p className="mr-2 text-sm text-ink-soft">{results.length} {results.length === 1 ? "result" : "results"}</p>
-            {sorts.map(([key, label]) => (
-              <Link
-                key={key}
-                href={withSort(key)}
-                className={`rounded-full border px-3 py-1 text-sm font-medium ${f.sort === key ? "border-creek-700 bg-creek-700 text-white" : "border-line text-ink-soft hover:border-creek-500"}`}
-              >
-                {label}
-              </Link>
-            ))}
-            <button className="ml-auto flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-sm font-medium text-ink-soft">
-              <SlidersHorizontal className="size-4" /> More filters
-            </button>
+      <div className="mx-auto grid max-w-[1440px] gap-8 px-4 pb-24 pt-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)]">
+        <section aria-labelledby="results-heading">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 id="results-heading" className="text-2xl font-bold text-sea-950 sm:text-[32px]">{searchHeading(f)}</h1>
+              <p className="mt-1 text-sm text-ink-soft">{results.length} {results.length === 1 ? "home" : "homes"} found</p>
+            </div>
+            <nav aria-label="Sort results" className="no-scrollbar flex max-w-full gap-1 overflow-x-auto rounded-full bg-mist p-1 text-sm">
+              {SORTS.map(([key, label]) => (
+                <Link
+                  key={key}
+                  href={`/search?${toQuery({ ...f, sort: key })}`}
+                  aria-current={f.sort === key ? "true" : undefined}
+                  className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 font-semibold transition-colors ${f.sort === key ? "bg-white text-sea-950 shadow-sm" : "text-ink-soft hover:text-sea-900"}`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
           </div>
 
-          <div className="mt-5 space-y-4">
-            {results.map((p, i) => <ListingCard key={p.id} p={p} layout="row" priority={i < 2} />)}
-            {results.length === 0 && (
-              <div className="rounded-xl border border-dashed border-line p-10 text-center">
-                <p className="font-semibold">No homes match all of these filters.</p>
-                <p className="mt-1 text-sm text-ink-soft">Widen the price range or remove the bedroom filter to see more results.</p>
-                <Link href={`/search?purpose=${f.purpose}`} className="mt-4 inline-block text-sm font-semibold text-creek-700 hover:underline">Clear filters</Link>
-              </div>
-            )}
-          </div>
+          {results.length > 0 ? (
+            <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2">
+              {results.map((l, i) => <PhListingCard key={l.id} l={l} priority={i < 2} />)}
+            </div>
+          ) : (
+            <div className="mt-10 flex flex-col items-center rounded-3xl bg-mist px-6 py-16 text-center">
+              <SearchX className="size-8 text-sea-700" />
+              <p className="mt-4 text-lg font-semibold text-sea-950">No homes match all of these filters</p>
+              <p className="mt-1 max-w-sm text-sm text-ink-soft">Try a wider price range, another property type, or the province instead of the city.</p>
+              <Link href="/search" className="mt-6 rounded-full bg-sea-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sea-800">Clear filters</Link>
+            </div>
+          )}
         </section>
 
-        <aside className="hidden lg:block">
-          <div className="sticky top-20 h-[calc(100vh-6rem)]">
-            <MapView items={results} />
+        <aside className="hidden lg:block" aria-label="Map">
+          <div className="sticky top-[84px] h-[calc(100vh-108px)]">
+            <PhMap listings={results} />
           </div>
         </aside>
       </div>
+      <MobileMapToggle listings={results} />
     </div>
   );
 }
 
 function ResultsSkeleton() {
   return (
-    <div className="mx-auto max-w-[1440px] space-y-4 px-4 py-6 sm:px-6">
-      <div className="h-24 animate-pulse rounded-xl bg-mist" />
-      {Array.from({ length: 3 }, (_, i) => <div key={i} className="h-56 animate-pulse rounded-xl bg-mist" />)}
+    <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6">
+      <div className="h-24 animate-pulse rounded-2xl bg-mist" />
+      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:w-[55%]">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="space-y-3">
+            <div className="aspect-[4/3] animate-pulse rounded-2xl bg-mist" />
+            <div className="h-5 w-1/2 animate-pulse rounded bg-mist" />
+            <div className="h-4 w-3/4 animate-pulse rounded bg-mist" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
