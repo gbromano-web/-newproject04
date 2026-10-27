@@ -30,7 +30,9 @@ A property marketplace for buying, renting, pre-selling and foreclosed homes acr
 
 **International buyers**: prices in pesos with an estimate in 12 currencies (Bangko Sentral ng Pilipinas reference rates, dated), foreign-buyer badges and a sourced explainer of ownership rules
 
-**Lead routes**: `GET /api/ph/leads/viber` and `/whatsapp` log the lead and open the chat (WhatsApp with a pre-filled message); `POST /api/ph/leads` validates and records inquiries and sample-computation requests
+**Lead routes**: `GET /api/ph/leads/viber` and `/whatsapp` record the lead (ignoring crawlers and repeat taps) and open the chat (WhatsApp with a pre-filled message); `POST /api/ph/leads` accepts JSON only, validates every field, rate-limits by hashed IP, drops bot submissions and logs events without personal data. `GET /api/health` is the uptime check.
+
+**Security**: Content-Security-Policy, HSTS and other security headers on every page; set `LEAD_IP_SALT` in production
 
 **Data model** (`prisma/schema.prisma`, 20 models), see [docs/data-model.md](docs/data-model.md): locations from Region to Barangay, properties in PHP and sqm for sale, rent, pre-selling and foreclosure, developers and projects with DHSUD License to Sell, RESA-licensed agents, hero banners, leads, saved searches and financing programs, with database CHECK rules and PostGIS triggers
 

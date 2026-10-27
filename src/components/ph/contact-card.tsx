@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { BadgeCheck, CheckCircle2, Clock, Languages, MessageCircle, Phone } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import type { PhAgent } from "@/lib/ph/listings";
-import { leadHref, STATIC_PREVIEW } from "@/lib/ph/preview";
+import { leadHref, offClass, offProps, PREVIEW_CONTACT_NOTE, STATIC_PREVIEW } from "@/lib/ph/preview";
 import { COMPUTATION_EVENT, type ComputationRequest } from "./amortization-calculator";
 
 const LICENSE_LABEL = { REAL_ESTATE_BROKER: "Licensed real estate broker", REAL_ESTATE_SALESPERSON: "Accredited real estate salesperson" } as const;
@@ -72,16 +72,18 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
       </dl>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <a href={leadHref("viber", listingId)} className="flex h-11 items-center justify-center gap-2 rounded-full bg-viber text-sm font-semibold text-white transition hover:brightness-110">
+        <a href={leadHref("viber", listingId)} rel="nofollow" className={`flex h-11 items-center justify-center gap-2 rounded-full bg-viber text-sm font-semibold text-white transition hover:brightness-110${offClass}`} {...offProps}>
           <MessageCircle className="size-4" /> Viber
         </a>
-        <a href={leadHref("whatsapp", listingId)} className="flex h-11 items-center justify-center gap-2 rounded-full bg-whatsapp text-sm font-semibold text-white transition hover:brightness-110">
+        <a href={leadHref("whatsapp", listingId)} rel="nofollow" className={`flex h-11 items-center justify-center gap-2 rounded-full bg-whatsapp text-sm font-semibold text-white transition hover:brightness-110${offClass}`} {...offProps}>
           <WhatsAppIcon className="size-4" /> WhatsApp
         </a>
       </div>
-      <a href={`tel:${agent.mobile}`} className="mt-2 flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold text-sea-900 ring-1 ring-line transition hover:bg-mist">
+      <a href={STATIC_PREVIEW ? undefined : `tel:${agent.mobile}`} className={`mt-2 flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold text-sea-900 ring-1 ring-line transition hover:bg-mist${offClass}`} {...offProps}>
         <Phone className="size-4" /> Call {agent.mobile.replace(/^\+63(\d{3})(\d{3})(\d{4})$/, "+63 $1 $2 $3")}
       </a>
+
+      {STATIC_PREVIEW && <p className="mt-2 text-center text-xs text-ink-soft">{PREVIEW_CONTACT_NOTE}.</p>}
 
       <div className="my-5 flex items-center gap-3 text-xs text-ink-soft"><span className="h-px flex-1 bg-line" />{computation ? "Request a sample computation" : "or send an inquiry"}<span className="h-px flex-1 bg-line" /></div>
 
@@ -89,11 +91,21 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
         <div className="flex gap-3 rounded-2xl bg-lagoon-50 p-4 text-sm text-ink">
           <CheckCircle2 className="size-5 shrink-0 text-lagoon-600" />
           <p>
-            <span className="font-semibold">{computation ? "Computation requested." : "Inquiry sent."}</span> {agent.name.split(" ")[0]} will reply by email or mobile. {agent.replyTime}.
+            {STATIC_PREVIEW ? (
+              <>
+                <span className="font-semibold">Preview only.</span> On the live site this {computation ? "computation request" : "inquiry"} goes to {agent.name.split(" ")[0]}; here nothing was sent.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">{computation ? "Computation requested." : "Inquiry sent."}</span> {agent.name.split(" ")[0]} will reply by email or mobile. {agent.replyTime}.
+              </>
+            )}
           </p>
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-2.5">
+          {/* Honeypot: hidden from people, filled in by bots; the server drops those submissions */}
+          <input name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] size-px opacity-0" />
           <input name="name" required placeholder="Full name" aria-label="Full name" autoComplete="name" className={input} />
           <input name="email" type="email" required placeholder="Email" aria-label="Email" autoComplete="email" className={input} />
           <input name="mobile" type="tel" placeholder="Mobile, e.g. +63 917 …" aria-label="Mobile number" autoComplete="tel" className={input} />

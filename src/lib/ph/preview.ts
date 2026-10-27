@@ -1,10 +1,7 @@
-import { getAgent, LISTINGS } from "./listings";
-import { openingMessage } from "./leads";
-
 /**
  * Static client preview (GitHub Pages). Built with `npm run build:preview`:
- * no server, so lead routes are replaced by direct Viber/WhatsApp links and
- * the inquiry form confirms without sending. The real site is unaffected.
+ * no server, so chat and call buttons are switched off, the inquiry form says
+ * it was not sent, and a banner marks the data as samples. The real site is unaffected.
  */
 export const STATIC_PREVIEW = process.env.NEXT_PUBLIC_STATIC_PREVIEW === "1";
 
@@ -14,13 +11,20 @@ export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 /** Prefix for plain <a>, <form> and <img> paths (next/link adds it on its own). */
 export const withBase = (path: string) => `${BASE_PATH}${path}`;
 
-/** Viber / WhatsApp button target: the logging route on the real site, the app directly in the preview. */
-export function leadHref(channel: "viber" | "whatsapp", listingId: string) {
-  if (!STATIC_PREVIEW) return `/api/ph/leads/${channel}?listing=${listingId}`;
-  const listing = LISTINGS.find((l) => l.id === listingId);
-  if (!listing) return withBase("/search");
-  const agent = getAgent(listing.agentId);
-  if (channel === "viber") return `viber://chat?number=${encodeURIComponent(agent.viber)}`;
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-  return `https://wa.me/${agent.whatsapp}?text=${encodeURIComponent(openingMessage(listing, origin))}`;
+/** Shown on chat and call buttons in the preview, where they are switched off. */
+export const PREVIEW_CONTACT_NOTE = "Sample agent: contact is switched off in this preview";
+
+/**
+ * Viber / WhatsApp button target: the logging route on the real site.
+ * In the public preview there is no target: the sample agents' numbers are
+ * made up but dialable, so chat and call stay off to avoid messaging strangers.
+ */
+export function leadHref(channel: "viber" | "whatsapp", listingId: string): string | undefined {
+  if (STATIC_PREVIEW) return undefined;
+  return `/api/ph/leads/${channel}?listing=${encodeURIComponent(listingId)}`;
 }
+
+/** Spread onto a chat or call link (after its own props) to switch it off in the preview. */
+export const offProps = STATIC_PREVIEW ? ({ "aria-disabled": true, title: PREVIEW_CONTACT_NOTE } as const) : {};
+/** Append to that link's className. */
+export const offClass = STATIC_PREVIEW ? " pointer-events-none opacity-50" : "";

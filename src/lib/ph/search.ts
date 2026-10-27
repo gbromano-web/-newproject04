@@ -20,7 +20,12 @@ export interface SearchFilters {
 
 type Raw = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || undefined;
-const num = (v?: string) => (v !== undefined && v !== "" && !Number.isNaN(Number(v)) ? Number(v) : undefined);
+// Finite, non-negative and within a sane ceiling; anything else is ignored
+const num = (v?: string) => {
+  if (v === undefined || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= 1e11 ? n : undefined;
+};
 
 const TYPES: ListingType[] = ["SALE", "RENT", "PRE_SELLING", "FORECLOSED"];
 const SORTS: SortKey[] = ["featured", "newest", "price-asc", "price-desc"];
@@ -31,7 +36,7 @@ export function parseFilters(raw: Raw): SearchFilters {
   const sort = one(raw.sort) as SortKey | undefined;
   return {
     type: type && TYPES.includes(type) ? type : undefined,
-    location: one(raw.location)?.trim() || undefined,
+    location: one(raw.location)?.trim().slice(0, 100) || undefined,
     propertyType: propertyType && propertyType in PROPERTY_TYPE_LABEL ? propertyType : undefined,
     minPrice: num(one(raw.minPrice)),
     maxPrice: num(one(raw.maxPrice)),

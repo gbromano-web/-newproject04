@@ -46,7 +46,10 @@ erDiagram
 - Pre-selling listings must have a turnover year and a quarter from 1 to 4.
 - Foreclosed listings must name the foreclosing institution.
 - Area required by type: lot area for lots and agricultural land, both areas for house and lot, floor area otherwise.
-- Brokers must have a PRC licence number; salespersons must have DHSUD accreditation and a supervising broker.
+- Brokers must have a PRC licence number; salespersons must have DHSUD accreditation and a supervising broker. Any other licence type is rejected.
+- `AuditLog` is append-only: a trigger blocks updates and deletes. Write to it in the same transaction as the action it records (licence verification, role changes, takedowns, lead exports, data-subject requests).
+- Deleting a developer is blocked while it has projects (archive instead).
+- `prisma/sql/postgis.sql` runs in one transaction with a 5-second lock timeout, and is safe to re-run.
 
 These are tested with `scripts/check-ph-data.mts` (formatting and seed) and against Postgres for the CHECK constraints.
 

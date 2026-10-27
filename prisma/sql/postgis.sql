@@ -2,6 +2,12 @@
 -- Adds PostGIS columns' triggers and indexes, plus CHECK constraints that
 -- enforce Philippine listing rules at the database level.
 
+-- Safe to re-run. Runs as one transaction: if any statement fails, nothing is applied.
+-- On a large live table, add new CHECK constraints with NOT VALID first, then
+-- VALIDATE CONSTRAINT separately, to avoid a long write lock.
+BEGIN;
+SET LOCAL lock_timeout = '5s';
+
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- ─── Geo sync: keep geo columns in step with lat/lng ─────────────────────────
@@ -83,7 +89,22 @@ ALTER TABLE "Agent" ADD CONSTRAINT agent_license_fields
     WHEN 'REAL_ESTATE_BROKER'      THEN "prcLicenseNumber" IS NOT NULL
     WHEN 'REAL_ESTATE_SALESPERSON' THEN "dhsudAccreditationNumber" IS NOT NULL
                                         AND "supervisingBrokerId" IS NOT NULL
+    ELSE FALSE -- a new licence type must be added here explicitly (NULL would pass the CHECK)
   END);
+
+-- Audit log is append-only: block updates and deletes at the database level
+CREATE OR REPLACE FUNCTION audit_log_append_only() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'AuditLog is append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_audit_log_append_only ON "AuditLog";
+CREATE TRIGGER trg_audit_log_append_only
+  BEFORE UPDATE OR DELETE ON "AuditLog"
+  FOR EACH ROW EXECUTE FUNCTION audit_log_append_only();
+
+COMMIT;
 
 -- ─── Example queries ─────────────────────────────────────────────────────────
 -- Active condos for sale within 1.5 km of a point in BGC:

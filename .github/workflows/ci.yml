@@ -5,9 +5,18 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege for the workflow token
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,6 +24,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Fails on critical advisories in runtime dependencies; review "high" ones in the log
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=critical
       - name: Validate Prisma schema
         run: npx prisma validate
         env:

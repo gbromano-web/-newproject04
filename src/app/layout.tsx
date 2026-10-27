@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@fontsource-variable/plus-jakarta-sans";
 import "./globals.css";
+import { PreviewBanner } from "@/components/preview-banner";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CurrencyProvider } from "@/components/ph/currency";
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className="h-full">
       <body className="flex min-h-full flex-col">
         <CurrencyProvider>
+          <PreviewBanner />
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <SiteFooter />

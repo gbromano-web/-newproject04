@@ -3,7 +3,7 @@ import { WhatsAppIcon } from "@/components/icons";
 import { formatBedrooms, formatListingPrice, formatPricePerSqm, formatSqm, formatTurnover } from "@/lib/ph/format";
 import Link from "next/link";
 import { LISTING_TYPE_LABEL, PROPERTY_TYPE_LABEL, getAgent, type PhListing } from "@/lib/ph/listings";
-import { leadHref } from "@/lib/ph/preview";
+import { leadHref, offClass, offProps } from "@/lib/ph/preview";
 import { ConvertedPrice } from "./currency";
 import { ListingPhoto } from "./listing-photo";
 
@@ -64,10 +64,10 @@ export function PhListingCard({ l, priority = false }: { l: PhListing; priority?
             </p>
             <p className="truncate text-ink-soft">{agent.license}</p>
           </div>
-          <a href={leadHref("viber", l.id)} className="grid size-9 place-items-center rounded-full border border-line text-viber transition-colors hover:border-viber/40 hover:bg-viber/5" aria-label="Chat on Viber" title="Chat on Viber">
+          <a href={leadHref("viber", l.id)} rel="nofollow" className={`grid size-9 place-items-center rounded-full border border-line text-viber transition-colors hover:border-viber/40 hover:bg-viber/5${offClass}`} aria-label="Chat on Viber" title="Chat on Viber" {...offProps}>
             <MessageCircle className="size-4" />
           </a>
-          <a href={leadHref("whatsapp", l.id)} className="grid size-9 place-items-center rounded-full border border-line text-whatsapp transition-colors hover:border-whatsapp/40 hover:bg-whatsapp/5" aria-label="Chat on WhatsApp" title="Chat on WhatsApp">
+          <a href={leadHref("whatsapp", l.id)} rel="nofollow" className={`grid size-9 place-items-center rounded-full border border-line text-whatsapp transition-colors hover:border-whatsapp/40 hover:bg-whatsapp/5${offClass}`} aria-label="Chat on WhatsApp" title="Chat on WhatsApp" {...offProps}>
             <WhatsAppIcon className="size-4" />
           </a>
           <Link href={`${href}#inquire`} className="rounded-full bg-sea-900 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-sea-800">

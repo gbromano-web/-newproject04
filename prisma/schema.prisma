@@ -283,7 +283,8 @@ model DeveloperMember {
 model Project {
   id          String                                 @id @default(cuid())
   developerId String
-  developer   Developer                              @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  // Restrict: deleting a developer must not silently delete its projects; archive instead
+  developer   Developer                              @relation(fields: [developerId], references: [id], onDelete: Restrict)
   name        String
   slug        String                                 @unique
   description String?
@@ -654,6 +655,29 @@ model LeadEvent {
   createdAt DateTime @default(now())
 
   @@index([leadId, createdAt])
+}
+
+// ═══ Audit log ════════════════════════════════════════════════════════════════
+
+/// Append-only record of sensitive actions: agent licence verification, role
+/// changes, listing takedowns, lead exports and data-subject requests (Data
+/// Privacy Act). Write it in the same transaction as the change it records.
+model AuditLog {
+  id          String   @id @default(cuid())
+  // Plain ID, no foreign key: the log must outlive the user and is never updated
+  actorUserId String?
+  action      String // "agent.verified" | "user.role_changed" | "property.taken_down" | "lead.exported" | "user.erased"
+  entityType  String // "Agent" | "User" | "Property" | "Lead"
+  entityId    String
+  before      Json?
+  after       Json?
+  ipHash      String?
+  requestId   String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
 }
 
 // ═══ Saved searches & favorites ══════════════════════════════════════════════
