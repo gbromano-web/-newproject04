@@ -10,9 +10,9 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: "SA Realty: Property for sale and rent in the Philippines", template: "%s | SA Realty" },
+  title: { default: "Go Search Property: Property for sale and rent in the Philippines", template: "%s | Go Search Property" },
   description: "Condominiums, house and lot, lots, pre-selling and foreclosed properties across the Philippines, listed by PRC and DHSUD-verified agents. Prices in pesos with conversion for international buyers.",
-  openGraph: { siteName: "SA Realty", type: "website", locale: "en_PH" },
+  openGraph: { siteName: "Go Search Property", type: "website", locale: "en_PH" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

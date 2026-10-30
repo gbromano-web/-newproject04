@@ -11,7 +11,7 @@ export async function generateMetadata(props: PageProps<"/search">): Promise<Met
   const title = searchHeading(f);
   return {
     title,
-    description: `Browse ${title.toLowerCase()} on SA Realty: prices in pesos with your currency alongside, and agents with PRC or DHSUD numbers.`,
+    description: `Browse ${title.toLowerCase()} on Go Search Property: prices in pesos with your currency alongside, and agents with PRC or DHSUD numbers.`,
     alternates: { canonical: `/search?${toQuery({ type: f.type, location: f.location, propertyType: f.propertyType })}` },
   };
 }

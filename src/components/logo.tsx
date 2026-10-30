@@ -10,7 +10,7 @@ export function Logo({ inverted = false }: { inverted?: boolean }) {
         <path d="M8 25h14" stroke="var(--color-lagoon-500)" strokeWidth="2.4" strokeLinecap="round" />
       </svg>
       <span className="text-[19px] font-bold tracking-[-0.03em]" style={{ color: fg }}>
-        SA Realty
+        Go Search Property
       </span>
     </span>
   );

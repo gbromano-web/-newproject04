@@ -52,7 +52,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-white/45 sm:flex-row sm:justify-between sm:px-6">
-          <p>© 2026 SA Realty. Sample listings for demonstration.</p>
+          <p>© 2026 Go Search Property. Sample listings for demonstration.</p>
           <p>Converted prices are estimates using {RATES_SOURCE}, {RATES_AS_OF}. Transactions are in Philippine pesos.</p>
         </div>
       </div>

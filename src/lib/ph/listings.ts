@@ -292,7 +292,7 @@ export const LISTINGS = L;
 export const getListing = (slug: string) => L.find((l) => l.slug === slug);
 export const getAgent = (id: string) => AGENTS.find((a) => a.id === id)!;
 
-/** Homepage "New on SA Realty": newest six */
+/** Homepage "New on Go Search Property": newest six */
 export const latestListings = (n = 6) => [...L].sort((a, b) => b.listedAt.localeCompare(a.listedAt)).slice(0, n);
 
 export const PROPERTY_TYPE_LABEL: Record<PropertyType, string> = {

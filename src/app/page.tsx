@@ -138,7 +138,7 @@ export default function HomePage() {
       {/* Listings */}
       <section className="mx-auto mt-24 max-w-7xl px-4 sm:px-6">
         <SectionHeading
-          title="New on SA Realty"
+          title="New on Go Search Property"
           body="Recently listed homes, with prices in pesos and your chosen currency."
           action={<Link href="/search" className={textLink}>View all listings <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /></Link>}
         />

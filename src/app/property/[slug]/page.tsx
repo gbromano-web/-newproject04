@@ -200,7 +200,7 @@ export default async function PropertyPage(props: PageProps<"/property/[slug]">)
             <section className="rounded-3xl bg-mist p-6 sm:p-8">
               <h2 className="flex items-center gap-2 text-lg font-bold text-sea-950"><FileText className="size-5" /> Listing details</h2>
               <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
-                <div><dt className="text-ink-soft">Reference</dt><dd className="mt-0.5 font-semibold">SA-{l.id.toUpperCase()}</dd></div>
+                <div><dt className="text-ink-soft">Reference</dt><dd className="mt-0.5 font-semibold">GSP-{l.id.toUpperCase()}</dd></div>
                 <div><dt className="text-ink-soft">Listed on</dt><dd className="mt-0.5 font-semibold">{new Date(l.listedAt).toLocaleDateString("en-PH", { day: "numeric", month: "long", year: "numeric" })}</dd></div>
                 {l.titleType && <div><dt className="text-ink-soft">Title</dt><dd className="mt-0.5 font-semibold">{TITLE_TYPE_LABEL[l.titleType]}</dd></div>}
               </dl>

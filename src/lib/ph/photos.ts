@@ -21,7 +21,7 @@ export interface Photo {
   fallback?: string;
 }
 
-const UTM = "utm_source=sa_realty&utm_medium=referral";
+const UTM = "utm_source=go_search_property&utm_medium=referral";
 
 const ph = (name: string) => `/images/listings/${name}.svg`;
 

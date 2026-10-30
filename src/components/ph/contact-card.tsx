@@ -68,7 +68,7 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
         <div className="flex justify-between gap-3"><dt>{LICENSE_LABEL[agent.licenseType]}</dt><dd className="font-semibold text-ink">{agent.license}</dd></div>
         <div className="flex items-center gap-1.5"><Languages className="size-3.5" /><dd>{agent.languages.join(", ")}</dd></div>
         <div className="flex items-center gap-1.5"><Clock className="size-3.5" /><dd>{agent.replyTime}</dd></div>
-        {!agent.verified && <p className="pt-1 font-medium text-coral-600">Licence not yet verified by SA Realty.</p>}
+        {!agent.verified && <p className="pt-1 font-medium text-coral-600">Licence not yet verified by Go Search Property.</p>}
       </dl>
 
       <div className="mt-4 grid grid-cols-2 gap-2">

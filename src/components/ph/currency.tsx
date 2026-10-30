@@ -4,7 +4,7 @@ import { createContext, useContext, useSyncExternalStore } from "react";
 import { ChevronDown, Globe2 } from "lucide-react";
 import { CURRENCIES, RATES_AS_OF, RATES_SOURCE, convertPeso } from "@/lib/ph/currency";
 
-const STORAGE_KEY = "sa-realty:currency";
+const STORAGE_KEY = "gsp:currency";
 
 const DEFAULT_CODE = "USD";
 const isValid = (c: string | null): c is string => !!c && CURRENCIES.some((x) => x.code === c);

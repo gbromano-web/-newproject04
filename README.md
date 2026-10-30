@@ -1,4 +1,4 @@
-# SA Realty — Philippine Real Estate Portal
+# Go Search Property — Philippine Real Estate Portal
 
 A property marketplace for buying, renting, pre-selling and foreclosed homes across the Philippines, in the spirit of Lamudi, Dot Property and Property Finder. Built with Next.js, Tailwind CSS and PostgreSQL/PostGIS.
 

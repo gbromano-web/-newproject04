@@ -7,7 +7,7 @@ import { formatPeso } from "@/lib/ph/format";
 import { PROGRAMS, estimate, type FinancingKind } from "@/lib/ph/financing";
 import { ConvertedPrice } from "./currency";
 
-export const COMPUTATION_EVENT = "sa-realty:sample-computation";
+export const COMPUTATION_EVENT = "gsp:sample-computation";
 
 export interface ComputationRequest {
   financingType: FinancingKind;
