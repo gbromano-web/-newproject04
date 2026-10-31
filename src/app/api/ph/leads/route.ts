@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { findListing } from "@/lib/ph/leads";
+import { getListingById } from "@/lib/server/listings-repo";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { saveLead } from "@/lib/server/leads";
 import { ipHash, log, rateLimit, requestId } from "@/lib/server/request";
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, requestId: rid }, { status: 201 });
     }
 
-    const listing = findListing(typeof body.listingId === "string" ? body.listingId : null);
+    const listing = typeof body.listingId === "string" ? await getListingById(body.listingId) : undefined;
     if (!listing) return error(rid, 404, "Listing not found.");
 
     const name = str(body.name, 120);

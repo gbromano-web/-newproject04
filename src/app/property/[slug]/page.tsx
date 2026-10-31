@@ -12,11 +12,16 @@ import { PhListingCard } from "@/components/ph/ph-listing-card";
 import { PhMap } from "@/components/ph/ph-map";
 import { PropertyGallery } from "@/components/ph/property-gallery";
 import { formatBedrooms, formatListingPrice, formatPeso, formatPricePerSqm, formatSqm, formatTurnover } from "@/lib/ph/format";
-import { LISTINGS, LISTING_TYPE_LABEL, PROPERTY_TYPE_LABEL, TITLE_TYPE_LABEL, getAgent, getListing, type NearbyPlace, type PhListing } from "@/lib/ph/listings";
-import { PHOTOS, photoUrl } from "@/lib/ph/photos";
+import { LISTINGS, LISTING_TYPE_LABEL, PROPERTY_TYPE_LABEL, TITLE_TYPE_LABEL, agentOf, type NearbyPlace, type PhListing } from "@/lib/ph/listings";
+import { SAMPLE_DATA } from "@/lib/ph/preview";
+import { getListing, similarListings } from "@/lib/server/listings-repo";
+import { photoUrl, resolvePhoto } from "@/lib/ph/photos";
 
 export function generateStaticParams() {
-  return LISTINGS.map((l) => ({ slug: l.slug }));
+  // Samples are prerendered. Live listings render per request; Cache Components
+  // needs one param to validate the route, so a placeholder stands in (404s).
+  if (SAMPLE_DATA) return LISTINGS.map((l) => ({ slug: l.slug }));
+  return [{ slug: "__placeholder__" }];
 }
 
 function summary(l: PhListing) {
@@ -26,15 +31,16 @@ function summary(l: PhListing) {
 }
 
 export async function generateMetadata(props: PageProps<"/property/[slug]">): Promise<Metadata> {
-  const l = getListing((await props.params).slug);
+  const l = await getListing((await props.params).slug);
   if (!l) return {};
+  const cover = resolvePhoto(l.photos[0]);
   const title = `${l.title}, ${l.locationLabel}`;
   const description = summary(l).replace(/^./, (c) => c.toUpperCase());
   return {
     title,
     description,
     alternates: { canonical: `/property/${l.slug}` },
-    openGraph: { title, description, url: `/property/${l.slug}`, images: [{ url: photoUrl(PHOTOS[l.photos[0]], 1200), width: 1200, alt: PHOTOS[l.photos[0]].alt }] },
+    openGraph: { title, description, url: `/property/${l.slug}`, images: [{ url: photoUrl(cover, 1200), width: 1200, alt: cover.alt }] },
     twitter: { card: "summary_large_image", title, description },
   };
 }
@@ -52,7 +58,7 @@ function jsonLd(l: PhListing) {
     description: l.description,
     url: `/property/${l.slug}`,
     datePosted: l.listedAt,
-    image: l.photos.map((p) => photoUrl(PHOTOS[p], 1200)),
+    image: l.photos.map((p) => photoUrl(resolvePhoto(p), 1200)),
     offers: {
       "@type": "Offer",
       price: l.price,
@@ -73,12 +79,12 @@ function jsonLd(l: PhListing) {
 }
 
 export default async function PropertyPage(props: PageProps<"/property/[slug]">) {
-  const l = getListing((await props.params).slug);
+  const l = await getListing((await props.params).slug);
   if (!l) notFound();
-  const agent = getAgent(l.agentId);
+  const agent = agentOf(l);
   const area = l.propertyType === "LOT_ONLY" || l.propertyType === "AGRICULTURAL" ? l.lotAreaSqm : l.floorAreaSqm ?? l.lotAreaSqm;
   const forSale = l.listingType !== "RENT";
-  const similar = LISTINGS.filter((x) => x.id !== l.id && (x.listingType === l.listingType || x.propertyType === l.propertyType)).slice(0, 3);
+  const similar = await similarListings(l);
   const typePath = l.listingType === "RENT" ? "RENT" : l.listingType;
 
   const facts = [

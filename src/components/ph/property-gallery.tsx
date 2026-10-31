@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Grid2x2, X } from "lucide-react";
 import clsx from "clsx";
-import { PHOTOS, type PhotoKey } from "@/lib/ph/photos";
+import { resolvePhoto, type ListingImage } from "@/lib/ph/photos";
 import { ListingPhoto } from "./listing-photo";
 
 /** Mosaic on desktop, swipeable single photo on phones, full-screen viewer for both. */
-export function PropertyGallery({ photos, title }: { photos: PhotoKey[]; title: string }) {
+export function PropertyGallery({ photos, title }: { photos: ListingImage[]; title: string }) {
   const [viewer, setViewer] = useState<number | null>(null);
   const [mobileIndex, setMobileIndex] = useState(0);
   const go = (d: number) => setViewer((i) => (i === null ? i : (i + d + photos.length) % photos.length));
@@ -35,7 +35,7 @@ export function PropertyGallery({ photos, title }: { photos: PhotoKey[]; title: 
         {rest.length > 0 && (
           <div className={clsx("grid gap-2", rest.length > 1 ? "grid-rows-2" : "grid-rows-1")}>
             {rest.slice(0, 2).map((p, i) => (
-              <button key={p + i} onClick={() => setViewer(i + 1)} className="group relative overflow-hidden bg-mist" aria-label={`Open photo ${i + 2} of ${photos.length}`}>
+              <button key={i} onClick={() => setViewer(i + 1)} className="group relative overflow-hidden bg-mist" aria-label={`Open photo ${i + 2} of ${photos.length}`}>
                 <ListingPhoto photo={p} sizes="430px" />
               </button>
             ))}
@@ -65,7 +65,7 @@ export function PropertyGallery({ photos, title }: { photos: PhotoKey[]; title: 
         <div role="dialog" aria-modal="true" aria-label={`${title} photos`} className="fixed inset-0 z-[60] flex flex-col bg-sea-950">
           <div className="flex items-center justify-between px-4 py-3 text-white sm:px-6">
             <p className="text-sm font-semibold">{viewer + 1} / {photos.length}</p>
-            <p className="hidden max-w-md truncate text-sm text-white/70 sm:block">{PHOTOS[photos[viewer]].alt}</p>
+            <p className="hidden max-w-md truncate text-sm text-white/70 sm:block">{resolvePhoto(photos[viewer]).alt}</p>
             <button onClick={() => setViewer(null)} className="rounded-full p-2 hover:bg-white/10" aria-label="Close photos"><X className="size-5" /></button>
           </div>
           <div className="relative flex-1">
@@ -77,9 +77,15 @@ export function PropertyGallery({ photos, title }: { photos: PhotoKey[]; title: 
               </>
             )}
           </div>
-          <p className="px-6 py-3 text-center text-xs text-white/50">
-            Photo: <a href={PHOTOS[photos[viewer]].profileUrl} target="_blank" rel="noopener noreferrer" className="underline">{PHOTOS[photos[viewer]].photographer}</a> on Unsplash
-          </p>
+          {/* Credit only for stock photos; agents' own uploads need none */}
+          {(() => {
+            const p = resolvePhoto(photos[viewer]);
+            return p.upload ? null : (
+              <p className="px-6 py-3 text-center text-xs text-white/50">
+                Photo: <a href={p.profileUrl} target="_blank" rel="noopener noreferrer" className="underline">{p.photographer}</a> on Unsplash
+              </p>
+            );
+          })()}
         </div>
       )}
     </>

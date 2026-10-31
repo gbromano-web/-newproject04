@@ -47,7 +47,7 @@ assert.equal(bank.monthly.toFixed(0), monthlyAmortization(10_000_000, 7.375, 20)
 assert.equal(new Set(LISTINGS.map((l) => l.slug)).size, LISTINGS.length, "unique slugs");
 for (const l of LISTINGS) {
   assert.ok(getAgent(l.agentId), `${l.id} has an agent`);
-  assert.ok(l.photos.length > 0 && l.photos.every((p) => PHOTOS[p]?.fallback), `${l.id} photos have fallbacks`);
+  assert.ok(l.photos.length > 0 && l.photos.every((p) => typeof p === "string" && PHOTOS[p]?.fallback), `${l.id} photos have fallbacks`);
   if (l.listingType === "RENT") assert.ok(l.rentPeriod, `${l.id} rent period`);
   if (l.listingType === "PRE_SELLING") assert.ok(l.turnoverYear && l.turnoverQuarter, `${l.id} turnover`);
   if (l.listingType === "FORECLOSED") assert.ok(l.foreclosingInstitution, `${l.id} institution`);

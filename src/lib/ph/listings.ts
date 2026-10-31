@@ -3,7 +3,7 @@
 // once Supabase is connected. All people, numbers and agencies are fictional;
 // phone numbers use an obviously-demo 0000 block.
 
-import type { PhotoKey } from "./photos";
+import type { ListingImage } from "./photos";
 
 export type ListingType = "SALE" | "RENT" | "PRE_SELLING" | "FORECLOSED";
 export type PropertyType = "CONDOMINIUM" | "TOWNHOUSE" | "HOUSE_AND_LOT" | "LOT_ONLY" | "COMMERCIAL" | "AGRICULTURAL" | "WAREHOUSE";
@@ -38,7 +38,7 @@ export interface PhListing {
   listingType: ListingType;
   propertyType: PropertyType;
   price: number;
-  rentPeriod?: "MONTHLY" | "YEARLY";
+  rentPeriod?: "MONTHLY" | "YEARLY" | "DAILY";
   floorAreaSqm?: number;
   lotAreaSqm?: number;
   bedrooms?: number;
@@ -51,7 +51,7 @@ export interface PhListing {
   province: string;
   lat: number;
   lng: number;
-  photos: PhotoKey[];
+  photos: ListingImage[];
   amenities: string[];
   nearby: NearbyPlace[];
   foreignBuyerEligible?: boolean; // condos within the 40% foreign-ownership cap (agent-declared)
@@ -66,6 +66,8 @@ export interface PhListing {
   minimumBid?: number;
   occupancy?: "Vacant" | "Occupied" | "Unknown";
   agentId: string;
+  /** Filled in by the data layer so pages never look agents up separately */
+  agent?: PhAgent;
   featured?: boolean;
   listedAt: string;
 }
@@ -291,6 +293,8 @@ export const LISTINGS = L;
 
 export const getListing = (slug: string) => L.find((l) => l.slug === slug);
 export const getAgent = (id: string) => AGENTS.find((a) => a.id === id)!;
+/** The listing's agent: embedded by the data layer, or looked up among the samples. */
+export const agentOf = (l: PhListing): PhAgent => l.agent ?? getAgent(l.agentId);
 
 /** Homepage "New on Go Search Property": newest six */
 export const latestListings = (n = 6) => [...L].sort((a, b) => b.listedAt.localeCompare(a.listedAt)).slice(0, n);

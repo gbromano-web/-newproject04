@@ -2,7 +2,7 @@ import { BadgeCheck, Bath, BedDouble, Globe2, Heart, LandPlot, MapPin, MessageCi
 import { WhatsAppIcon } from "@/components/icons";
 import { formatBedrooms, formatListingPrice, formatPricePerSqm, formatSqm, formatTurnover } from "@/lib/ph/format";
 import Link from "next/link";
-import { LISTING_TYPE_LABEL, PROPERTY_TYPE_LABEL, getAgent, type PhListing } from "@/lib/ph/listings";
+import { LISTING_TYPE_LABEL, PROPERTY_TYPE_LABEL, agentOf, type PhListing } from "@/lib/ph/listings";
 import { leadHref, offClass, offProps } from "@/lib/ph/preview";
 import { ConvertedPrice } from "./currency";
 import { ListingPhoto } from "./listing-photo";
@@ -16,7 +16,7 @@ function StatusTag({ l }: { l: PhListing }) {
 }
 
 export function PhListingCard({ l, priority = false }: { l: PhListing; priority?: boolean }) {
-  const agent = getAgent(l.agentId);
+  const agent = agentOf(l);
   const href = `/property/${l.slug}`;
   const area = l.propertyType === "LOT_ONLY" || l.propertyType === "AGRICULTURAL" ? l.lotAreaSqm : l.floorAreaSqm ?? l.lotAreaSqm;
   const showPerSqm = l.listingType !== "RENT" && area;

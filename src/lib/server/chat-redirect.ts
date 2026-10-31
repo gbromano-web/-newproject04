@@ -1,8 +1,8 @@
 import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
-import { getAgent, type PhAgent, type PhListing } from "@/lib/ph/listings";
-import { findListing } from "@/lib/ph/leads";
+import { agentOf, type PhAgent, type PhListing } from "@/lib/ph/listings";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
+import { getListingById } from "./listings-repo";
 import { saveLead } from "./leads";
 import { ipHash, isBot, log, rateLimit, requestId } from "./request";
 
@@ -18,9 +18,10 @@ export async function chatRedirect(req: NextRequest, channel: "VIBER" | "WHATSAP
   // Sample agents' numbers are made up but dialable: never send anyone there
   if (SAMPLE_DATA) return NextResponse.redirect(new URL("/search", req.url), { status: 302, headers: NO_STORE });
   try {
-    const listing = findListing(req.nextUrl.searchParams.get("listing"));
+    const id = req.nextUrl.searchParams.get("listing");
+    const listing = id ? await getListingById(id) : undefined;
     if (!listing) return NextResponse.redirect(new URL("/search", req.url), { status: 302, headers: NO_STORE });
-    const agent = getAgent(listing.agentId);
+    const agent = agentOf(listing);
     const ip = ipHash(req);
     // One lead per visitor, listing and channel every 30 minutes, so double taps are not counted twice
     const first = (await rateLimit(`chat:${channel}:${listing.id}:${ip}`, 1, 30 * 60_000)).ok;

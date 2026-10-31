@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { SearchClient } from "@/components/ph/search-client";
 import { SearchResultsView } from "@/components/ph/search-results";
 import { STATIC_PREVIEW } from "@/lib/ph/preview";
-import { parseFilters, searchHeading, searchListings, toQuery } from "@/lib/ph/search";
+import { parseFilters, searchHeading, toQuery } from "@/lib/ph/search";
+import { searchListings } from "@/lib/server/listings-repo";
 
 export async function generateMetadata(props: PageProps<"/search">): Promise<Metadata> {
   if (STATIC_PREVIEW) return { title: "Search homes" };
@@ -32,7 +33,7 @@ export default function SearchPage(props: PageProps<"/search">) {
 
 async function Results({ searchParams }: { searchParams: PageProps<"/search">["searchParams"] }) {
   const f = parseFilters(await searchParams);
-  return <SearchResultsView f={f} results={searchListings(f)} />;
+  return <SearchResultsView f={f} results={await searchListings(f)} />;
 }
 
 function ResultsSkeleton() {

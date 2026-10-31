@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PHOTOS, photoSrcSet, photoUrl, type PhotoKey } from "@/lib/ph/photos";
+import { photoSrcSet, photoUrl, resolvePhoto, type ListingImage } from "@/lib/ph/photos";
 import { withBase } from "@/lib/ph/preview";
 
 /**
@@ -9,10 +9,10 @@ import { withBase } from "@/lib/ph/preview";
  * while the photo loads and stays if the photo cannot be reached.
  * Production listings use agent uploads from storage instead of Unsplash.
  */
-export function ListingPhoto({ photo, sizes, priority = false, fit = "cover" }: { photo: PhotoKey; sizes: string; priority?: boolean; fit?: "cover" | "contain" }) {
+export function ListingPhoto({ photo, sizes, priority = false, fit = "cover" }: { photo: ListingImage; sizes: string; priority?: boolean; fit?: "cover" | "contain" }) {
   const [state, setState] = useState<"loading" | "loaded" | "failed">("loading");
   const img = useRef<HTMLImageElement>(null);
-  const p = PHOTOS[photo];
+  const p = resolvePhoto(photo);
   const fallbackSrc = withBase(p.fallback ?? "/images/listings/interior-1.svg");
 
   useEffect(() => {

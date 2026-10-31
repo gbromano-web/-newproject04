@@ -10,7 +10,8 @@ import { ScenicHero } from "@/components/ph/scenic-hero";
 import { CURRENCIES } from "@/lib/ph/currency";
 import { flattenLocations } from "@/lib/ph/locations";
 import type { PhotoKey } from "@/lib/ph/photos";
-import { latestListings } from "@/lib/ph/listings";
+import { Suspense } from "react";
+import { latestListings } from "@/lib/server/listings-repo";
 
 export const metadata: Metadata = {
   title: "Condos, house and lot, and lots for sale and rent in the Philippines",
@@ -58,6 +59,31 @@ const OWNERSHIP_FACTS = [
     body: "Natural-born Filipinos who reacquire citizenship under RA 9225 buy property with the same rights as any Filipino.",
   },
 ];
+
+async function LatestListings() {
+  const listings = await latestListings(6);
+  if (!listings.length) {
+    return <p className="mt-9 rounded-2xl bg-mist px-6 py-10 text-center text-ink-soft">New listings appear here as agents publish them.</p>;
+  }
+  return (
+    <div className="mt-9 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+      {listings.map((l) => <PhListingCard key={l.id} l={l} />)}
+    </div>
+  );
+}
+
+function ListingsSkeleton() {
+  return (
+    <div className="mt-9 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 3 }, (_, i) => (
+        <div key={i} className="space-y-3">
+          <div className="aspect-[4/3] animate-pulse rounded-2xl bg-mist" />
+          <div className="h-5 w-1/2 animate-pulse rounded bg-mist" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function SectionHeading({ title, body, action }: { title: string; body?: string; action?: React.ReactNode }) {
   return (
@@ -142,9 +168,9 @@ export default function HomePage() {
           body="Recently listed homes, with prices in pesos and your chosen currency."
           action={<Link href="/search" className={textLink}>View all listings <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /></Link>}
         />
-        <div className="mt-9 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-          {latestListings(6).map((l) => <PhListingCard key={l.id} l={l} />)}
-        </div>
+        <Suspense fallback={<ListingsSkeleton />}>
+          <LatestListings />
+        </Suspense>
       </section>
 
       <div className="mt-24">

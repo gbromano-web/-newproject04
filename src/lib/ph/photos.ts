@@ -19,6 +19,8 @@ export interface Photo {
   position?: string;
   /** Local placeholder shown while loading or if the CDN is unreachable */
   fallback?: string;
+  /** Agent upload in Supabase Storage: served as is, no Unsplash resizing */
+  upload?: boolean;
 }
 
 const UTM = "utm_source=go_search_property&utm_medium=referral";
@@ -108,13 +110,19 @@ export const PHOTOS = {
 
 export type PhotoKey = keyof typeof PHOTOS;
 
+/** A listing photo: a built-in sample key, or an uploaded photo. */
+export type ListingImage = PhotoKey | Photo;
+export const resolvePhoto = (img: ListingImage): Photo => (typeof img === "string" ? PHOTOS[img] : img);
+
 const WIDTHS = [640, 960, 1280, 1600, 1920, 2400];
 
 /** Unsplash serves resized, format-negotiated images through URL params. */
 export function photoUrl(p: Photo, width: number, quality = 72) {
+  if (p.upload) return p.src;
   return `${p.src}?w=${width}&q=${quality}&auto=format&fit=crop`;
 }
 
 export function photoSrcSet(p: Photo, quality?: number) {
+  if (p.upload) return undefined;
   return WIDTHS.map((w) => `${photoUrl(p, w, quality)} ${w}w`).join(", ");
 }

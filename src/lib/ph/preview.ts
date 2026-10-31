@@ -7,12 +7,14 @@ export const STATIC_PREVIEW = process.env.NEXT_PUBLIC_STATIC_PREVIEW === "1";
 
 /**
  * True while listings and agents come from the built-in samples in
- * src/lib/ph/listings.ts. Set to false once listings load from the database.
- * While true, every build (the GitHub Pages preview and the Vercel server)
- * shows the sample banner, switches off chat and call to the made-up
- * numbers, does not send inquiries, and asks search engines not to index.
+ * src/lib/ph/listings.ts. Set NEXT_PUBLIC_LISTINGS_SOURCE=database on the
+ * server to read live listings from Supabase instead (the static preview
+ * always uses the samples).
+ * While true, every build shows the sample banner, switches off chat and call
+ * to the made-up numbers, does not send inquiries, and asks search engines
+ * not to index.
  */
-export const SAMPLE_DATA = true;
+export const SAMPLE_DATA = STATIC_PREVIEW || process.env.NEXT_PUBLIC_LISTINGS_SOURCE !== "database";
 
 /** Demo behaviour: the static preview, or any build still on sample data. */
 export const DEMO = STATIC_PREVIEW || SAMPLE_DATA;
