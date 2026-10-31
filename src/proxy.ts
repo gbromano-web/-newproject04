@@ -48,6 +48,8 @@ function sampleDashboard(req: NextRequest) {
       return res;
     }
   }
+  // Links to /dashboard use prefetch={false}: a background prefetch answered with this challenge
+  // makes the browser show its password box on whatever page the visitor is reading.
   return new NextResponse("Sign in to see the agent dashboard.", {
     status: 401,
     headers: { "www-authenticate": REALM, "cache-control": "no-store" },

@@ -34,11 +34,11 @@ export function SiteHeader() {
           <button className="hidden rounded-full p-2 text-ink-soft hover:bg-mist hover:text-sea-900 sm:block" aria-label="Saved properties">
             <Heart className="size-5" />
           </button>
-          <Link href={STATIC_PREVIEW ? "/dashboard" : "/agent/sign-in"} className="flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold text-sea-900 hover:bg-mist" title="Sign in for agents">
+          <Link href={STATIC_PREVIEW ? "/dashboard" : "/agent/sign-in"} prefetch={false} className="flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold text-sea-900 hover:bg-mist" title="Sign in for agents">
             <UserRound className="size-4" />
             Sign in
           </Link>
-          <Link href="/dashboard" className="hidden whitespace-nowrap rounded-full bg-sea-900 px-4 py-2 text-sm font-semibold text-white hover:bg-sea-800 sm:block">
+          <Link href="/dashboard" prefetch={false} className="hidden whitespace-nowrap rounded-full bg-sea-900 px-4 py-2 text-sm font-semibold text-white hover:bg-sea-800 sm:block">
             List a property
           </Link>
         </div>

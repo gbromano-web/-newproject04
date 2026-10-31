@@ -24,7 +24,7 @@ export default function SignInPage(props: { searchParams: Promise<Record<string,
       <h1 className="text-2xl font-bold text-sea-950">Agent sign in</h1>
       {SAMPLE_DATA ? (
         <p className="mt-3 text-sm text-ink-soft">
-          Agent accounts open when real listings go live. Until then, the <Link href="/dashboard" className="font-semibold text-sea-900 underline">sample dashboard</Link> shows what agents will see.
+          Agent accounts open when real listings go live. Until then, the <Link href="/dashboard" prefetch={false} className="font-semibold text-sea-900 underline">sample dashboard</Link> shows what agents will see.
         </p>
       ) : (
         <>

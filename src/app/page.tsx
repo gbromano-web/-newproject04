@@ -189,7 +189,7 @@ export default function HomePage() {
               <Link href="/search?foreignEligible=1" className="rounded-full bg-mango-500 px-5 py-3 text-sm font-bold text-sea-950 transition-colors hover:bg-mango-400">
                 Browse condos open to foreign buyers
               </Link>
-              <Link href="/dashboard" className="rounded-full px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/30 transition-colors hover:bg-white/10">
+              <Link href="/dashboard" prefetch={false} className="rounded-full px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/30 transition-colors hover:bg-white/10">
                 Talk to a licensed agent
               </Link>
             </div>

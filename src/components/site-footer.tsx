@@ -44,7 +44,7 @@ export function SiteFooter() {
             <ul className="space-y-2.5 text-sm">
               {c.links.map(([label, href]) => (
                 <li key={label}>
-                  <Link href={href} className="text-white/60 transition-colors hover:text-white">{label}</Link>
+                  <Link href={href} prefetch={href.startsWith("/dashboard") ? false : undefined} className="text-white/60 transition-colors hover:text-white">{label}</Link>
                 </li>
               ))}
             </ul>
