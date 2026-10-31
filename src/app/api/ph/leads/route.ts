@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { findListing } from "@/lib/ph/leads";
+import { saveLead } from "@/lib/server/leads";
 import { ipHash, log, rateLimit, requestId } from "@/lib/server/request";
 
 const EMAIL = /^[^\s@<>()]+@[^\s@<>()]+\.[^\s@<>()]{2,}$/;
@@ -32,8 +33,9 @@ const error = (rid: string, status: number, message: string, headers: Record<str
 
 /**
  * "Send inquiry" and "Request sample computation".
- * Production: insert into Lead (with consentAt, ipHash and the computation
- * snapshot) inside the same handler, then notify the agent from a queue.
+ * Stored in the Lead table (with consentAt, ipHash and the computation snapshot)
+ * before the buyer is told it was sent. Agent notifications belong in a queue
+ * after the insert, so a failed email never loses a lead.
  */
 export async function POST(req: Request) {
   const rid = requestId(req);
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
     if (raw.length > MAX_BODY_BYTES) return error(rid, 413, "Inquiry is too long.");
 
     const ip = ipHash(req);
-    const limit = rateLimit(`lead:${ip}`, 5, 10 * 60_000); // 5 inquiries per 10 minutes per visitor
+    const limit = await rateLimit(`lead:${ip}`, 5, 10 * 60_000); // 5 inquiries per 10 minutes per visitor
     if (!limit.ok) {
       log("warn", "lead.rate_limited", { requestId: rid, ipHash: ip });
       return error(rid, 429, "Too many inquiries. Please wait a few minutes and try again.", { "retry-after": String(limit.retryAfter) });
@@ -84,11 +86,21 @@ export async function POST(req: Request) {
     if (computation === undefined) return error(rid, 400, "The sample computation details are not valid.");
 
     const channel = computation ? "SAMPLE_COMPUTATION" : "INQUIRY";
-    const lead = { channel, listingId: listing.id, agentId: listing.agentId, name, email, mobile: mobile || null, message: message || null, computation, consentAt: new Date().toISOString(), ipHash: ip };
-    void lead; // Production: await db.lead.create({ data: lead })
+    let saved: { stored: boolean; id?: string };
+    try {
+      saved = await saveLead({
+        channel, propertyId: listing.id, agentId: listing.agentId, ipHash: ip, userAgent: req.headers.get("user-agent"),
+        name, email, mobile: mobile || null, message: message || null, consentAt: new Date(),
+        computation: computation as Parameters<typeof saveLead>[0]["computation"],
+      });
+    } catch (e) {
+      // Never say "sent" for an inquiry that was not stored
+      log("error", "lead.save_failed", { requestId: rid, channel, listingId: listing.id, error: e instanceof Error ? e.message : String(e) });
+      return error(rid, 503, "Inquiries are temporarily unavailable. Please try again in a few minutes, or use Viber or WhatsApp.");
+    }
 
     // Log the event, not the person: no name, email, phone or message in logs
-    log("info", "lead.created", { requestId: rid, channel, listingId: listing.id, agentId: listing.agentId, hasMobile: !!mobile, hasComputation: !!computation });
+    log("info", "lead.created", { requestId: rid, channel, listingId: listing.id, agentId: listing.agentId, leadId: saved.id, stored: saved.stored, hasMobile: !!mobile, hasComputation: !!computation });
     return NextResponse.json({ ok: true, channel, requestId: rid }, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (e) {
     log("error", "lead.failed", { requestId: rid, error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined });

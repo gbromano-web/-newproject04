@@ -22,9 +22,33 @@ export const metadata: Metadata = {
   ...(STATIC_PREVIEW && { robots: { index: false, follow: false, googleBot: { index: false, follow: false } } }),
 };
 
+// GitHub Pages cannot send security headers, so the static preview carries what
+// a page can declare itself: a content policy, a referrer policy and a guard
+// against being framed by another site (clickjacking).
+const PREVIEW_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https://images.unsplash.com",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "form-action 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+const FRAME_GUARD = "if (window.top !== window.self) { window.top.location.href = window.location.href; }";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full">
+      {STATIC_PREVIEW && (
+        <head>
+          <meta httpEquiv="Content-Security-Policy" content={PREVIEW_CSP} />
+          <meta name="referrer" content="strict-origin-when-cross-origin" />
+          <script dangerouslySetInnerHTML={{ __html: FRAME_GUARD }} />
+        </head>
+      )}
       <body className="flex min-h-full flex-col">
         <CurrencyProvider>
           <PreviewBanner />

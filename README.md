@@ -30,9 +30,9 @@ A property marketplace for buying, renting, pre-selling and foreclosed homes acr
 
 **International buyers**: prices in pesos with an estimate in 12 currencies (Bangko Sentral ng Pilipinas reference rates, dated), foreign-buyer badges and a sourced explainer of ownership rules
 
-**Lead routes**: `GET /api/ph/leads/viber` and `/whatsapp` record the lead (ignoring crawlers and repeat taps) and open the chat (WhatsApp with a pre-filled message); `POST /api/ph/leads` accepts JSON only, validates every field, rate-limits by hashed IP, drops bot submissions and logs events without personal data. `GET /api/health` is the uptime check.
+**Lead routes**: `GET /api/ph/leads/viber` and `/whatsapp` record the lead (ignoring crawlers and repeat taps) and open the chat (WhatsApp with a pre-filled message); `POST /api/ph/leads` accepts JSON only, validates every field, rate-limits by hashed IP, drops bot submissions and logs events without personal data. Inquiries are saved to the `Lead` table before the buyer sees "sent"; with no database a production server answers 503 rather than losing them. `GET /api/health` is the uptime check and pings the database.
 
-**Security**: Content-Security-Policy, HSTS and other security headers on every page; set `LEAD_IP_SALT` in production
+**Security and privacy**: Content-Security-Policy, HSTS and other security headers on every page; the agent dashboard is locked with `DASHBOARD_USER` / `DASHBOARD_PASSWORD`; rate limits are shared across servers through Postgres; `erase_user()` and `purge_old_leads()` handle Data Privacy Act erasure requests and the 24-month retention period; a draft privacy notice is at `/privacy` (fill in the highlighted details and have it reviewed). Set `LEAD_IP_SALT`, `DASHBOARD_USER`, `DASHBOARD_PASSWORD` and `NEXT_PUBLIC_SITE_URL` in production
 
 **Data model** (`prisma/schema.prisma`, 20 models), see [docs/data-model.md](docs/data-model.md): locations from Region to Barangay, properties in PHP and sqm for sale, rent, pre-selling and foreclosure, developers and projects with DHSUD License to Sell, RESA-licensed agents, hero banners, leads, saved searches and financing programs, with database CHECK rules and PostGIS triggers
 
@@ -73,6 +73,8 @@ npx prisma migrate dev --name init
 npm run db:postgis
 # 4. Load locations, amenities and hero banners
 npx prisma db seed
+# 5. Daily retention job (Supabase: enable pg_cron first)
+#    SELECT cron.schedule('lead-retention', '15 3 * * *', $$SELECT purge_old_leads(24)$$);
 ```
 
 ## Client preview on GitHub Pages

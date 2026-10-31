@@ -33,12 +33,9 @@ const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|viber|t
 /** Link-preview fetchers and crawlers follow chat links; they should not count as leads. */
 export const isBot = (req: Request) => BOT.test(req.headers.get("user-agent") ?? "");
 
-/**
- * Fixed-window limiter in memory. Good enough for one instance; with several
- * instances use a shared store (Upstash Redis or a Postgres table) instead.
- */
+/** Fixed-window limiter in this process's memory: the fallback when there is no database. */
 const windows = new Map<string, { count: number; resetAt: number }>();
-export function rateLimit(key: string, limit: number, windowMs: number) {
+export function memoryRateLimit(key: string, limit: number, windowMs: number) {
   const now = Date.now();
   if (windows.size > 10_000) for (const [k, w] of windows) if (w.resetAt <= now) windows.delete(k); // bound memory
   const w = windows.get(key);
@@ -48,4 +45,29 @@ export function rateLimit(key: string, limit: number, windowMs: number) {
   }
   w.count += 1;
   return { ok: w.count <= limit, retryAfter: Math.ceil((w.resetAt - now) / 1000) };
+}
+
+/**
+ * Fixed-window limiter shared by every server instance, in Postgres
+ * ("RateLimit" table, one atomic upsert per call). Falls back to memory if the
+ * database is not configured or does not answer, so a database outage never
+ * blocks buyers; the fallback is logged.
+ */
+export async function rateLimit(key: string, limit: number, windowMs: number): Promise<{ ok: boolean; retryAfter: number }> {
+  const pool = (await import("./db")).db();
+  if (!pool) return memoryRateLimit(key, limit, windowMs);
+  try {
+    const { rows } = await pool.query<{ count: number; retry: number }>(
+      `INSERT INTO "RateLimit" (key, "windowStart", count) VALUES ($1, now(), 1)
+       ON CONFLICT (key) DO UPDATE SET
+         count = CASE WHEN "RateLimit"."windowStart" <= now() - make_interval(secs => $2) THEN 1 ELSE "RateLimit".count + 1 END,
+         "windowStart" = CASE WHEN "RateLimit"."windowStart" <= now() - make_interval(secs => $2) THEN now() ELSE "RateLimit"."windowStart" END
+       RETURNING count, GREATEST(0, CEIL(EXTRACT(EPOCH FROM ("windowStart" + make_interval(secs => $2) - now()))))::int AS retry`,
+      [key, windowMs / 1000],
+    );
+    return { ok: rows[0].count <= limit, retryAfter: rows[0].retry };
+  } catch (e) {
+    log("warn", "ratelimit.db_fallback", { error: e instanceof Error ? e.message : String(e) });
+    return memoryRateLimit(key, limit, windowMs);
+  }
 }

@@ -680,6 +680,16 @@ model AuditLog {
   @@index([action, createdAt])
 }
 
+/// Shared fixed-window rate limiter (one row per key). Old rows are removed by
+/// purge_old_leads() in prisma/sql/postgis.sql.
+model RateLimit {
+  key         String   @id
+  windowStart DateTime
+  count       Int
+
+  @@index([windowStart])
+}
+
 // ═══ Saved searches & favorites ══════════════════════════════════════════════
 
 model SavedSearch {

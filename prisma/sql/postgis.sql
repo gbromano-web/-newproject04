@@ -104,6 +104,85 @@ CREATE TRIGGER trg_audit_log_append_only
   BEFORE UPDATE OR DELETE ON "AuditLog"
   FOR EACH ROW EXECUTE FUNCTION audit_log_append_only();
 
+-- ─── Data Privacy Act: erasure and retention ─────────────────────────────────
+-- Erase a buyer's account: anonymise their leads (kept for the agent's
+-- statistics), delete the user (favourites and saved searches cascade) and
+-- record it in the audit log. Agents are offboarded separately: their
+-- listings and received leads must be reassigned first.
+--   SELECT erase_user('<user id>', '<admin user id>', '<request id>');
+CREATE OR REPLACE FUNCTION erase_user(p_user_id text, p_actor text DEFAULT NULL, p_request_id text DEFAULT NULL)
+RETURNS integer AS $$
+DECLARE
+  v_email text;
+  v_agent text;
+  v_listings integer;
+  v_received integer;
+  v_leads integer;
+BEGIN
+  SELECT email INTO v_email FROM "User" WHERE id = p_user_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'erase_user: user % not found', p_user_id USING ERRCODE = 'no_data_found';
+  END IF;
+
+  SELECT id INTO v_agent FROM "Agent" WHERE "userId" = p_user_id;
+  IF v_agent IS NOT NULL THEN
+    SELECT count(*) INTO v_listings FROM "Property" WHERE "agentId" = v_agent;
+    SELECT count(*) INTO v_received FROM "Lead" WHERE "agentId" = v_agent;
+    IF v_listings > 0 OR v_received > 0 THEN
+      RAISE EXCEPTION 'erase_user: user % is an agent with % listings and % leads; reassign them first', p_user_id, v_listings, v_received
+        USING ERRCODE = 'foreign_key_violation';
+    END IF;
+  END IF;
+
+  UPDATE "Lead"
+     SET name = NULL, email = NULL, mobile = NULL, message = NULL, "userAgent" = NULL,
+         "ipHash" = NULL, computation = NULL, "userId" = NULL, "updatedAt" = now()
+   WHERE "userId" = p_user_id OR (v_email IS NOT NULL AND lower(email) = lower(v_email));
+  GET DIAGNOSTICS v_leads = ROW_COUNT;
+
+  DELETE FROM "User" WHERE id = p_user_id;
+
+  -- No personal data in the log entry itself
+  INSERT INTO "AuditLog" (id, "actorUserId", action, "entityType", "entityId", after, "requestId", "createdAt")
+  VALUES (gen_random_uuid()::text, p_actor, 'user.erased', 'User', p_user_id,
+          jsonb_build_object('leadsAnonymised', v_leads), p_request_id, now());
+  RETURN v_leads;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Retention: strip personal data from leads older than p_months (default 24)
+-- and drop expired rate-limit rows. Schedule daily, e.g. on Supabase:
+--   SELECT cron.schedule('lead-retention', '15 3 * * *', $c$SELECT purge_old_leads(24)$c$);
+CREATE OR REPLACE FUNCTION purge_old_leads(p_months integer DEFAULT 24)
+RETURNS integer AS $$
+DECLARE
+  v_leads integer;
+  v_limits integer;
+BEGIN
+  IF p_months IS NULL OR p_months < 1 THEN
+    RAISE EXCEPTION 'purge_old_leads: p_months must be at least 1';
+  END IF;
+
+  UPDATE "Lead"
+     SET name = NULL, email = NULL, mobile = NULL, message = NULL, "userAgent" = NULL,
+         "ipHash" = NULL, computation = NULL, "updatedAt" = now()
+   WHERE "createdAt" < now() - make_interval(months => p_months)
+     AND (name IS NOT NULL OR email IS NOT NULL OR mobile IS NOT NULL OR message IS NOT NULL
+          OR "userAgent" IS NOT NULL OR "ipHash" IS NOT NULL OR computation IS NOT NULL);
+  GET DIAGNOSTICS v_leads = ROW_COUNT;
+
+  DELETE FROM "RateLimit" WHERE "windowStart" < now() - interval '1 day';
+  GET DIAGNOSTICS v_limits = ROW_COUNT;
+
+  IF v_leads > 0 THEN
+    INSERT INTO "AuditLog" (id, action, "entityType", "entityId", after, "createdAt")
+    VALUES (gen_random_uuid()::text, 'lead.retention_purge', 'Lead', 'batch',
+            jsonb_build_object('leadsAnonymised', v_leads, 'months', p_months), now());
+  END IF;
+  RETURN v_leads;
+END;
+$$ LANGUAGE plpgsql;
+
 COMMIT;
 
 -- ─── Example queries ─────────────────────────────────────────────────────────

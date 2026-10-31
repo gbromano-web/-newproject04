@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { BadgeCheck, CheckCircle2, Clock, Languages, MessageCircle, Phone } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import type { PhAgent } from "@/lib/ph/listings";
@@ -112,7 +113,10 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
           <textarea name="message" rows={4} value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Message" className="w-full rounded-xl bg-mist p-3.5 text-sm text-ink focus:bg-white focus:outline-none focus:ring-2 focus:ring-lagoon-500" />
           <label className="flex items-start gap-2.5 py-1 text-xs leading-relaxed text-ink-soft">
             <input type="checkbox" name="consent" required className="mt-0.5 size-4 accent-[var(--color-sea-900)]" />
-            I agree to share these details with this agent so they can reply, under the Data Privacy Act of 2012.
+            <span>
+              I agree to share these details with this agent so they can reply, under the Data Privacy Act of 2012.{" "}
+              <Link href="/privacy" className="font-semibold text-sea-900 underline underline-offset-2">Privacy notice</Link>
+            </span>
           </label>
           {status === "error" && <p className="text-sm font-medium text-coral-600">{error}</p>}
           <button disabled={status === "sending"} className="h-12 w-full rounded-full bg-sea-900 text-sm font-semibold text-white transition hover:bg-sea-800 disabled:opacity-60">

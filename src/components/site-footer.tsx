@@ -23,7 +23,7 @@ const cols = [
     ],
   },
   { title: "For professionals", links: [["Agent dashboard", "/dashboard"], ["Advertise a project", "/dashboard"], ["Get verified (PRC / DHSUD)", "/dashboard"]] },
-  { title: "Company", links: [["About", "/"], ["Contact", "/"], ["Terms", "/"], ["Privacy notice", "/"]] },
+  { title: "Company", links: [["About", "/"], ["Contact", "/"], ["Terms", "/"], ["Privacy notice", "/privacy"]] },
 ];
 
 export function SiteFooter() {

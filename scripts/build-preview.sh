@@ -10,7 +10,8 @@ export NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL-https://gbromano-web.github.
 stash="$(mktemp -d)"
 mv src/app/api "$stash/api"
 mv src/app/robots.ts "$stash/robots.ts"
-trap 'mv "$stash/api" src/app/api; mv "$stash/robots.ts" src/app/robots.ts' EXIT
+mv src/proxy.ts "$stash/proxy.ts" # dashboard lock needs a server; the preview dashboard holds sample data only
+trap 'mv "$stash/api" src/app/api; mv "$stash/robots.ts" src/app/robots.ts; mv "$stash/proxy.ts" src/proxy.ts' EXIT
 rm -rf out
 npx next build
 touch out/.nojekyll

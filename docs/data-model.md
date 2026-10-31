@@ -49,6 +49,9 @@ erDiagram
 - Brokers must have a PRC licence number; salespersons must have DHSUD accreditation and a supervising broker. Any other licence type is rejected.
 - `AuditLog` is append-only: a trigger blocks updates and deletes. Write to it in the same transaction as the action it records (licence verification, role changes, takedowns, lead exports, data-subject requests).
 - Deleting a developer is blocked while it has projects (archive instead).
+- `erase_user(user, actor, request)` erases a buyer: their leads are anonymised, the account, favourites and saved searches are deleted, and the action is audited. Agents with listings or leads must be reassigned first.
+- `purge_old_leads(months)` strips names, contact details and messages from leads older than the retention period (24 months by default) and clears old rate-limit rows. Run it daily.
+- `RateLimit` holds the shared request counters used by the lead routes.
 - `prisma/sql/postgis.sql` runs in one transaction with a 5-second lock timeout, and is safe to re-run.
 
 These are tested with `scripts/check-ph-data.mts` (formatting and seed) and against Postgres for the CHECK constraints.
