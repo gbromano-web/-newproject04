@@ -22,7 +22,7 @@ datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
   directUrl  = env("DIRECT_URL")
-  extensions = [postgis]
+  extensions = [postgis(schema: "extensions")] // Supabase keeps extensions out of the public API schema
 }
 
 // ═══ Enums ═══════════════════════════════════════════════════════════════════
@@ -597,6 +597,8 @@ model HeroBanner {
 
   @@index([placement, isActive, sortOrder])
   @@index([developerId])
+  @@index([projectId])
+  @@index([locationId])
 }
 
 // ═══ Leads ═══════════════════════════════════════════════════════════════════
@@ -644,6 +646,7 @@ model Lead {
   @@index([agentId, status, createdAt])
   @@index([propertyId, createdAt])
   @@index([channel, createdAt])
+  @@index([userId]) // erase_user() looks leads up by user
 }
 
 model LeadEvent {

@@ -11,7 +11,8 @@
     "db:postgis": "psql \"$DIRECT_URL\" -f prisma/sql/postgis.sql",
     "typecheck": "next typegen && tsc --noEmit",
     "build:map": "node scripts/build-ph-map.mjs",
-    "build:preview": "bash scripts/build-preview.sh"
+    "build:preview": "bash scripts/build-preview.sh",
+    "seed:sql": "tsx scripts/seed-sql.mts"
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",

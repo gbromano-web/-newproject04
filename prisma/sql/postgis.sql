@@ -8,7 +8,8 @@
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 
-CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
 
 -- ─── Geo sync: keep geo columns in step with lat/lng ─────────────────────────
 CREATE OR REPLACE FUNCTION set_geo_from_lat_lng() RETURNS trigger AS $$
@@ -16,7 +17,7 @@ BEGIN
   NEW.geo := ST_SetSRID(ST_MakePoint(NEW.lng, NEW.lat), 4326)::geography;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, extensions;
 
 DROP TRIGGER IF EXISTS trg_property_geo ON "Property";
 CREATE TRIGGER trg_property_geo
@@ -43,7 +44,7 @@ BEGIN
                             THEN round(NEW.price / area, 2) END;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, extensions;
 
 DROP TRIGGER IF EXISTS trg_property_price_per_sqm ON "Property";
 CREATE TRIGGER trg_property_price_per_sqm
@@ -97,7 +98,7 @@ CREATE OR REPLACE FUNCTION audit_log_append_only() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'AuditLog is append-only';
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, extensions;
 
 DROP TRIGGER IF EXISTS trg_audit_log_append_only ON "AuditLog";
 CREATE TRIGGER trg_audit_log_append_only
@@ -148,7 +149,7 @@ BEGIN
           jsonb_build_object('leadsAnonymised', v_leads), p_request_id, now());
   RETURN v_leads;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, extensions;
 
 -- Retention: strip personal data from leads older than p_months (default 24)
 -- and drop expired rate-limit rows. Schedule daily, e.g. on Supabase:
@@ -181,7 +182,7 @@ BEGIN
   END IF;
   RETURN v_leads;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, extensions;
 
 COMMIT;
 

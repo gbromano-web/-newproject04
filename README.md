@@ -63,19 +63,36 @@ npm run dev
 
 Open http://localhost:3000. The homepage runs on sample data, so no database is needed to try it.
 
-### Setting up the database
+### Database (Supabase)
+
+The production database is the Supabase project `uyfiidwrmytdugzcjjzo` (organization "Go Search Property"). It already has the full schema, the listing rules, the audit log, the privacy functions, the daily retention job and the reference data (82 locations, 21 amenities, 5 hero backgrounds). Browser keys have no access: every table has row-level security and no grants, and the website talks to Postgres only from its server.
+
+To recreate it on a new project, run these in order (Supabase SQL editor or `psql`):
 
 ```bash
-# 1. Put your Postgres / Supabase connection strings in .env.local
-# 2. Create the tables
-npx prisma migrate dev --name init
-# 3. Add PostGIS triggers, indexes and listing rules
-npm run db:postgis
-# 4. Load locations, amenities and hero banners
-npx prisma db seed
-# 5. Daily retention job (Supabase: enable pg_cron first)
-#    SELECT cron.schedule('lead-retention', '15 3 * * *', $$SELECT purge_old_leads(24)$$);
+prisma/migrations/0_init/migration.sql           # tables, enums, indexes (PostGIS in the extensions schema)
+prisma/migrations/1_foreign_key_indexes/migration.sql
+prisma/sql/supabase-security.sql                 # row-level security, revoke browser-key access
+prisma/sql/postgis.sql                           # geo triggers, listing rules, audit log, erase_user(), purge_old_leads()
+prisma/sql/retention-job.sql                     # daily retention job (pg_cron)
+npm run seed:sql > seed.sql                      # reference data as SQL, then run seed.sql
 ```
+
+Then mark the migrations as applied so Prisma Migrate takes over from here:
+`npx prisma migrate resolve --applied 0_init` and `npx prisma migrate resolve --applied 1_foreign_key_indexes`.
+
+**Server settings** (Vercel → Settings → Environment Variables):
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | Supabase → Connect → **Transaction pooler** (port 6543) string, with your database password |
+| `DIRECT_URL` | Supabase → Connect → **Session pooler** (port 5432) string, for migrations |
+| `DATABASE_SSL_CA` | Supabase → Project settings → Database → SSL → download the certificate and paste its contents (verifies the database's identity) |
+| `NEXT_PUBLIC_SITE_URL` | `https://gosearchproperty.com` |
+| `LEAD_IP_SALT` | a long random string (`openssl rand -hex 32`) |
+| `DASHBOARD_USER`, `DASHBOARD_PASSWORD` | sign-in for the agent dashboard |
+
+Never commit these values. Run the Vercel functions in the same region as the database.
 
 ## Client preview on GitHub Pages
 
