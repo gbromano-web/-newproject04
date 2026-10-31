@@ -2,7 +2,7 @@ import Link from "next/link";
 import { RATES_AS_OF, RATES_SOURCE } from "@/lib/ph/currency";
 import { CurrencySelect } from "./ph/currency";
 import { Logo } from "./logo";
-import { SAMPLE_DATA } from "@/lib/ph/preview";
+import { SAMPLE_DATA, STATIC_PREVIEW } from "@/lib/ph/preview";
 
 const cols = [
   {
@@ -23,8 +23,8 @@ const cols = [
       ["For overseas Filipinos", "/#buying-from-abroad"],
     ],
   },
-  { title: "For professionals", links: [["Agent dashboard", "/dashboard"], ["Advertise a project", "/dashboard"], ["Get verified (PRC / DHSUD)", "/dashboard"]] },
-  { title: "Company", links: [["About", "/"], ["Contact", "/"], ["Terms", "/"], ["Privacy notice", "/privacy"]] },
+  { title: "For professionals", links: [["Agent sign in", STATIC_PREVIEW ? "/dashboard" : "/agent/sign-in"], ["Get verified (PRC / DHSUD)", "/contact#agents"], ["Advertise a project", "/contact#developers"]] },
+  { title: "Company", links: [["About", "/about"], ["Contact", "/contact"], ["Terms", "/terms"], ["Privacy notice", "/privacy"]] },
 ];
 
 export function SiteFooter() {

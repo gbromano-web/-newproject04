@@ -48,8 +48,9 @@ A property marketplace for buying, renting, pre-selling and foreclosed homes acr
 
 - **Next.js 16** (App Router, Server Components, Cache Components) and TypeScript
 - **Tailwind CSS 4**, lucide-react icons, Motion for animation, self-hosted fonts
-- **PostgreSQL + PostGIS** with **Prisma 6**
-- Planned: Supabase (auth and storage), Typesense (search), MapLibre (maps)
+- **PostgreSQL + PostGIS** on **Supabase**, schema in **Prisma 6**, queried with `pg`
+- **Supabase Auth** for agent sign-in, **Supabase Storage** for listing photos
+- Hosted on **Vercel** (region `dub1`); client preview on GitHub Pages
 
 ## Getting started
 
@@ -171,10 +172,12 @@ docs/data-model.md       Data model
 
 | Area | Status |
 | --- | --- |
-| Data model and database rules | Done |
-| Homepage, search, property page, calculator, dashboard | Done, on sample data |
-| Lead capture (Viber, WhatsApp, inquiry, sample computation) | Working routes; logging to the server console until the database is connected |
-| Next | Connect Supabase (auth, storage, Lead table), Typesense search, MapLibre street-level maps, daily exchange-rate updates, saved searches and alerts |
+| Data model and database rules | Done, applied to Supabase with row-level security on every table |
+| Homepage, search, property page, calculator, saved properties | Done; real listings from Supabase when `NEXT_PUBLIC_LISTINGS_SOURCE=database` |
+| Lead capture (Viber, WhatsApp, inquiry, sample computation) | Stored in the `Lead` table, rate limited |
+| Agent sign-in and dashboard | Supabase Auth, invitation only; each agent sees only their own listings and inquiries |
+| About, Contact, Terms, Privacy | Done; Terms and Privacy pending review by a Philippine lawyer (`SITE.legalReviewed` in `src/lib/site.ts`) |
+| Next | Agent listing form with photo upload, map search, daily exchange-rate updates, saved searches and alerts |
 
 ## Photo credits
 

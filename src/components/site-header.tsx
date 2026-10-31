@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { STATIC_PREVIEW } from "@/lib/ph/preview";
-import { Heart, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { CurrencySelect } from "./ph/currency";
 import { Logo } from "./logo";
+import { SavedLink } from "./ph/saved";
 
 const nav = [
   { href: "/search?type=SALE", label: "Buy" },
@@ -31,9 +32,7 @@ export function SiteHeader() {
           <div className="hidden md:block lg:hidden xl:block">
             <CurrencySelect />
           </div>
-          <button className="hidden rounded-full p-2 text-ink-soft hover:bg-mist hover:text-sea-900 sm:block" aria-label="Saved properties">
-            <Heart className="size-5" />
-          </button>
+          <SavedLink />
           <Link href={STATIC_PREVIEW ? "/dashboard" : "/agent/sign-in"} prefetch={false} className="flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold text-sea-900 hover:bg-mist" title="Sign in for agents">
             <UserRound className="size-4" />
             Sign in

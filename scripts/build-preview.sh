@@ -10,6 +10,7 @@ export NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL-https://gbromano-web.github.
 stash="$(mktemp -d)"
 mv src/app/api "$stash/api"
 mv src/app/robots.ts "$stash/robots.ts"
+mv src/app/sitemap.ts "$stash/sitemap.ts" # lists the live site; the preview is not indexed
 mv src/proxy.ts "$stash/proxy.ts" # dashboard lock needs a server; the preview dashboard holds sample data only
 # Agent sign-in needs a server too; the preview dashboard is the sample one
 mv src/app/agent "$stash/agent"
@@ -25,7 +26,7 @@ export default function DashboardPage() {
 TSX
 mv src/app/dashboard/live-dashboard.tsx "$stash/live-dashboard.tsx"
 restore() {
-  mv "$stash/api" src/app/api; mv "$stash/robots.ts" src/app/robots.ts; mv "$stash/proxy.ts" src/proxy.ts
+  mv "$stash/api" src/app/api; mv "$stash/robots.ts" src/app/robots.ts; mv "$stash/sitemap.ts" src/app/sitemap.ts; mv "$stash/proxy.ts" src/proxy.ts
   mv "$stash/agent" src/app/agent; mv "$stash/auth" src/app/auth
   mv "$stash/live-dashboard.tsx" src/app/dashboard/live-dashboard.tsx; mv "$stash/dashboard-page.tsx" src/app/dashboard/page.tsx
 }

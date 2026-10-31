@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ContactEmail, LegalPage, operatorLine } from "@/components/legal-page";
 
 export const metadata: Metadata = {
   title: "Privacy notice",
@@ -13,7 +14,7 @@ const sections: [string, React.ReactNode][] = [
   [
     "Who we are",
     <>
-      Go Search Property is operated by <Fill>registered company name and address</Fill>, the personal information controller for this website. Our Data Protection Officer can be reached at <Fill>privacy email address</Fill>.
+      Go Search Property is operated by {operatorLine()}, the personal information controller for this website. Our Data Protection Officer can be reached at <ContactEmail />.
     </>,
   ],
   [
@@ -46,31 +47,11 @@ const sections: [string, React.ReactNode][] = [
   [
     "Your rights",
     <>
-      Under the Data Privacy Act of 2012 (Republic Act No. 10173) you may ask what data we hold about you, get a copy, have it corrected, object to its use, withdraw your consent, or have it erased. Write to <Fill>privacy email address</Fill>; we will confirm your identity and respond as soon as possible. If you are not satisfied, you may complain to the National Privacy Commission at privacy.gov.ph.
+      Under the Data Privacy Act of 2012 (Republic Act No. 10173) you may ask what data we hold about you, get a copy, have it corrected, object to its use, withdraw your consent, or have it erased. Write to <ContactEmail />; we will confirm your identity and respond as soon as possible. If you are not satisfied, you may complain to the National Privacy Commission at privacy.gov.ph.
     </>,
   ],
 ];
 
-function Fill({ children }: { children: React.ReactNode }) {
-  return <mark className="rounded bg-mango-500/25 px-1 text-sea-950">[{children}]</mark>;
-}
-
 export default function PrivacyPage() {
-  return (
-    <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
-      <p className="rounded-2xl bg-mango-500/15 px-4 py-3 text-sm text-sea-950 ring-1 ring-mango-500/30">
-        Draft for legal review: fill in the highlighted details and have a Philippine data-privacy lawyer approve this notice before launch.
-      </p>
-      <h1 className="mt-8 text-3xl font-bold leading-tight text-sea-950 sm:text-[44px]">Privacy notice</h1>
-      <p className="mt-3 text-[16px] leading-relaxed text-ink-soft">How we handle your personal data when you use Go Search Property.</p>
-      <div className="mt-10 space-y-9">
-        {sections.map(([title, body]) => (
-          <section key={title}>
-            <h2 className="text-xl font-bold text-sea-950">{title}</h2>
-            <div className="mt-2.5 text-[15px] leading-relaxed text-ink">{body}</div>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
+  return <LegalPage title="Privacy notice" intro="How we handle your personal data when you use Go Search Property." updated="31 October 2026" sections={sections} />;
 }

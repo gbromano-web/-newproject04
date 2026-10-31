@@ -291,7 +291,6 @@ const L: PhListing[] = [
 
 export const LISTINGS = L;
 
-export const getListing = (slug: string) => L.find((l) => l.slug === slug);
 export const getAgent = (id: string) => AGENTS.find((a) => a.id === id)!;
 /** The listing's agent: embedded by the data layer, or looked up among the samples. */
 export const agentOf = (l: PhListing): PhAgent => l.agent ?? getAgent(l.agentId);

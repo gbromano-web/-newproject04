@@ -1,5 +1,5 @@
 import "server-only";
-import { Pool, type PoolClient } from "pg";
+import { Pool } from "pg";
 import { log } from "./request";
 
 /**
@@ -55,22 +55,4 @@ function withoutSslMode(url: string) {
   const u = new URL(url);
   u.searchParams.delete("sslmode");
   return u.toString();
-}
-
-/** Runs `fn` in a transaction; rolls back on any error and always releases the connection. */
-export async function tx<T>(fn: (c: PoolClient) => Promise<T>): Promise<T> {
-  const p = db();
-  if (!p) throw new Error("DATABASE_URL is not set");
-  const c = await p.connect();
-  try {
-    await c.query("BEGIN");
-    const out = await fn(c);
-    await c.query("COMMIT");
-    return out;
-  } catch (e) {
-    await c.query("ROLLBACK").catch(() => undefined);
-    throw e;
-  } finally {
-    c.release();
-  }
 }

@@ -15,7 +15,7 @@ export interface HeroSlide {
   note: string;
 }
 
-export const DEFAULT_SLIDES: HeroSlide[] = [
+const DEFAULT_SLIDES: HeroSlide[] = [
   { photo: "elNido", scene: "lagoon", place: "El Nido, Palawan", note: "Beach lots and resort homes" },
   { photo: "bgc", scene: "city", place: "Bonifacio Global City, Taguig", note: "Condos close to work" },
   { photo: "batad", scene: "terraces", place: "Batad, Banaue, Ifugao", note: "Cool-climate homes in the Cordilleras" },

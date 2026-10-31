@@ -25,7 +25,7 @@ export interface FinancingProgramInfo {
   notes: string[];
 }
 
-export const PAGIBIG: FinancingProgramInfo = {
+const PAGIBIG: FinancingProgramInfo = {
   kind: "PAGIBIG",
   name: "Pag-IBIG Fund housing loan",
   maxTermYears: 30,
@@ -49,7 +49,7 @@ export const PAGIBIG: FinancingProgramInfo = {
   ],
 };
 
-export const BANK: FinancingProgramInfo = {
+const BANK: FinancingProgramInfo = {
   kind: "BANK",
   name: "Bank housing loan",
   maxTermYears: 20,

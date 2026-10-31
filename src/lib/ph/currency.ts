@@ -37,7 +37,7 @@ export const CURRENCIES: CurrencyInfo[] = [
   { code: "SAR", symbol: "SAR ", name: "Saudi riyal", phpPerUnit: 16.9036, locale: "en-SA" },
 ];
 
-export const getCurrency = (code: string) => CURRENCIES.find((c) => c.code === code) ?? CURRENCIES[0];
+const getCurrency = (code: string) => CURRENCIES.find((c) => c.code === code) ?? CURRENCIES[0];
 
 /** Round to 3 significant figures so conversions read as estimates, not quotes. */
 function roughly(n: number) {

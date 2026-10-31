@@ -22,7 +22,7 @@ const district = (name: string, lat: number, lng: number, aliases: string[] = []
   name, level: "DISTRICT", lat, lng, aliases, popular,
 });
 
-export const PH_LOCATIONS: LocationNode[] = [
+const PH_LOCATIONS: LocationNode[] = [
   {
     name: "National Capital Region",
     level: "REGION",

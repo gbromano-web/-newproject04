@@ -35,7 +35,7 @@ export const isBot = (req: Request) => BOT.test(req.headers.get("user-agent") ??
 
 /** Fixed-window limiter in this process's memory: the fallback when there is no database. */
 const windows = new Map<string, { count: number; resetAt: number }>();
-export function memoryRateLimit(key: string, limit: number, windowMs: number) {
+function memoryRateLimit(key: string, limit: number, windowMs: number) {
   const now = Date.now();
   if (windows.size > 10_000) for (const [k, w] of windows) if (w.resetAt <= now) windows.delete(k); // bound memory
   const w = windows.get(key);

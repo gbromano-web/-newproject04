@@ -65,7 +65,7 @@ const FLAT = flattenLocations();
  * Resolve "BGC", "Metro Manila" or "Cebu" to the set of place names it covers:
  * the matched location plus everything beneath it in the tree.
  */
-export function resolveLocation(q: string): string[] {
+function resolveLocation(q: string): string[] {
   const needle = q.toLowerCase();
   const hit =
     FLAT.find((l) => l.name.toLowerCase() === needle || l.aliases.some((a) => a.toLowerCase() === needle)) ??

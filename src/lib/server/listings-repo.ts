@@ -242,3 +242,16 @@ export async function similarListings(l: PhListing, n = 3): Promise<PhListing[]>
 }
 
 const withAgents = (ls: PhListing[]) => ls.map((l) => ({ ...l, agent: agentOf(l) }));
+
+/** Slugs and last-update times of live listings, for the sitemap. */
+export async function liveListingSlugs(limit = 5000): Promise<{ slug: string; updatedAt: Date }[]> {
+  if (SAMPLE_DATA) return [];
+  await connection();
+  const pool = db();
+  if (!pool) return [];
+  const { rows } = await pool.query<{ slug: string; updatedAt: Date }>(
+    `SELECT p.slug, p."updatedAt" FROM "Property" p WHERE ${LIVE} ORDER BY p."updatedAt" DESC LIMIT $1`,
+    [limit],
+  );
+  return rows;
+}

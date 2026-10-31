@@ -1,4 +1,4 @@
-import { BadgeCheck, Bath, BedDouble, Globe2, Heart, LandPlot, MapPin, MessageCircle, Ruler } from "lucide-react";
+import { BadgeCheck, Bath, BedDouble, Globe2, LandPlot, MapPin, MessageCircle, Ruler } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import { formatBedrooms, formatListingPrice, formatPricePerSqm, formatSqm, formatTurnover } from "@/lib/ph/format";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import { LISTING_TYPE_LABEL, PROPERTY_TYPE_LABEL, agentOf, type PhListing } from
 import { leadHref, offClass, offProps } from "@/lib/ph/preview";
 import { ConvertedPrice } from "./currency";
 import { ListingPhoto } from "./listing-photo";
+import { SaveButton } from "./saved";
 
 function StatusTag({ l }: { l: PhListing }) {
   if (l.listingType === "PRE_SELLING")
@@ -28,9 +29,7 @@ export function PhListingCard({ l, priority = false }: { l: PhListing; priority?
         <Link href={href} aria-label={l.title} className="absolute inset-0"><ListingPhoto photo={l.photos[0]} priority={priority} sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw" /></Link>
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3 [&>button]:pointer-events-auto">
           <StatusTag l={l} />
-          <button className="grid size-9 place-items-center rounded-full bg-white/90 text-sea-900 backdrop-blur transition-colors hover:text-coral-500" aria-label={`Save ${l.title}`}>
-            <Heart className="size-4" />
-          </button>
+          <SaveButton item={{ id: l.id, slug: l.slug, title: l.title, price: formatListingPrice(l), location: l.locationLabel, photo: l.photos[0] }} />
         </div>
         {openToForeigners && (
           <span className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-lagoon-700 backdrop-blur">

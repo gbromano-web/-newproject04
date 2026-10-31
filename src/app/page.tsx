@@ -13,6 +13,8 @@ import type { PhotoKey } from "@/lib/ph/photos";
 import { Suspense } from "react";
 import { latestListings } from "@/lib/server/listings-repo";
 import { log } from "@/lib/server/request";
+import { connection } from "next/server";
+import { SAMPLE_DATA } from "@/lib/ph/preview";
 
 export const metadata: Metadata = {
   title: "Condos, house and lot, and lots for sale and rent in the Philippines",
@@ -62,6 +64,8 @@ const OWNERSHIP_FACTS = [
 ];
 
 async function LatestListings() {
+  // Outside the try: during the build Next.js stops here on purpose, and that must not count as a failure
+  if (!SAMPLE_DATA) await connection();
   let listings: Awaited<ReturnType<typeof latestListings>>;
   try {
     listings = await latestListings(6);

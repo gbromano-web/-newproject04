@@ -22,7 +22,7 @@ export interface NewLead {
 }
 
 /** True when leads may be logged without a database (demo servers only, set LEADS_LOG_ONLY=1). */
-export const logOnlyAllowed = () => process.env.LEADS_LOG_ONLY === "1" || process.env.NODE_ENV !== "production";
+const logOnlyAllowed = () => process.env.LEADS_LOG_ONLY === "1" || process.env.NODE_ENV !== "production";
 
 /**
  * Inserts one row into "Lead". Parameterised SQL only. Returns stored=false

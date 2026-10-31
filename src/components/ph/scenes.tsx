@@ -55,7 +55,7 @@ function Clouds({ y = 120, opacity = 0.9 }: { y?: number; opacity?: number }) {
 }
 
 /** El Nido, Palawan: limestone karsts, turquoise lagoon, bangka, white sand */
-export function LagoonScene({ uid, className }: SceneProps) {
+function LagoonScene({ uid, className }: SceneProps) {
   return (
     <Svg className={className} label="Illustration of a turquoise lagoon between limestone cliffs in El Nido, Palawan">
       <defs>
@@ -107,7 +107,7 @@ export function LagoonScene({ uid, className }: SceneProps) {
 }
 
 /** Banaue rice terraces, Ifugao */
-export function TerracesScene({ uid, className }: SceneProps) {
+function TerracesScene({ uid, className }: SceneProps) {
   const greens = ["#86c55a", "#5fa846", "#9bd469", "#4f9a3f", "#73b950"];
   const bands: { y: number; h: number; amp: number; phase: number }[] = [];
   let y = 330;
@@ -156,7 +156,7 @@ export function TerracesScene({ uid, className }: SceneProps) {
 }
 
 /** Mayon Volcano, Albay */
-export function VolcanoScene({ uid, className }: SceneProps) {
+function VolcanoScene({ uid, className }: SceneProps) {
   return (
     <Svg className={className} label="Illustration of Mayon Volcano above rice fields in Albay">
       <defs>
@@ -202,7 +202,7 @@ export function VolcanoScene({ uid, className }: SceneProps) {
 }
 
 /** Chocolate Hills, Bohol */
-export function HillsScene({ uid, className }: SceneProps) {
+function HillsScene({ uid, className }: SceneProps) {
   const rows = [
     { y: 470, n: 15, w: 70, h: 60, c: "#b8a46c" },
     { y: 545, n: 11, w: 100, h: 85, c: "#a68a4f" },
@@ -239,7 +239,7 @@ export function HillsScene({ uid, className }: SceneProps) {
 }
 
 /** Bonifacio Global City at golden hour */
-export function CityScene({ uid, className }: SceneProps) {
+function CityScene({ uid, className }: SceneProps) {
   const towers: [number, number, number, number][] = [
     [30, 80, 260, 0], [120, 60, 340, 1], [190, 90, 290, 0], [300, 70, 420, 2], [380, 85, 360, 0],
     [480, 60, 300, 1], [550, 100, 470, 3], [665, 75, 390, 0], [750, 60, 330, 2], [820, 95, 500, 1],

@@ -20,7 +20,7 @@ export const SAMPLE_DATA = STATIC_PREVIEW || process.env.NEXT_PUBLIC_LISTINGS_SO
 export const DEMO = STATIC_PREVIEW || SAMPLE_DATA;
 
 /** Sub-path the preview is served from, e.g. "/-newproject04". Empty on the real site. */
-export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 /** Prefix for plain <a>, <form> and <img> paths (next/link adds it on its own). */
 export const withBase = (path: string) => `${BASE_PATH}${path}`;

@@ -56,7 +56,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   return <CurrencyContext.Provider value={{ code, setCode: writeCode }}>{children}</CurrencyContext.Provider>;
 }
 
-export const useCurrency = () => useContext(CurrencyContext);
+const useCurrency = () => useContext(CurrencyContext);
 
 /** Header control: "Prices also in USD" */
 export function CurrencySelect({ tone = "light" }: { tone?: "light" | "dark" }) {

@@ -8,5 +8,9 @@ import { SAMPLE_DATA } from "@/lib/ph/preview";
 export default function robots(): MetadataRoute.Robots {
   // Sample listings must never be indexed under the brand's domain
   if (SAMPLE_DATA) return { rules: { userAgent: "*", disallow: "/" } };
-  return { rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/dashboard", "/agent/", "/auth/"] } };
+  const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://gosearchproperty.com").replace(/\/$/, "");
+  return {
+    rules: { userAgent: "*", allow: "/", disallow: ["/api/", "/dashboard", "/agent/", "/auth/", "/saved"] },
+    sitemap: `${site}/sitemap.xml`,
+  };
 }
