@@ -2,6 +2,7 @@ import Link from "next/link";
 import { RATES_AS_OF, RATES_SOURCE } from "@/lib/ph/currency";
 import { CurrencySelect } from "./ph/currency";
 import { Logo } from "./logo";
+import { SAMPLE_DATA } from "@/lib/ph/preview";
 
 const cols = [
   {
@@ -52,7 +53,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-white/45 sm:flex-row sm:justify-between sm:px-6">
-          <p>© 2026 Go Search Property. Sample listings for demonstration.</p>
+          <p>© 2026 Go Search Property.{SAMPLE_DATA && " Sample listings for demonstration."}</p>
           <p>Converted prices are estimates using {RATES_SOURCE}, {RATES_AS_OF}. Transactions are in Philippine pesos.</p>
         </div>
       </div>

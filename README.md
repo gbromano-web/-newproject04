@@ -94,6 +94,36 @@ Then mark the migrations as applied so Prisma Migrate takes over from here:
 
 Never commit these values. Run the Vercel functions in the same region as the database.
 
+## Agent accounts
+
+With live listings on (`NEXT_PUBLIC_LISTINGS_SOURCE=database`), agents sign in at `/agent/sign-in` with Supabase Auth and see only their own listings and inquiries at `/dashboard`. With sample listings, `/dashboard` is the sample dashboard behind `DASHBOARD_USER` / `DASHBOARD_PASSWORD`.
+
+**One-time Supabase setup** (Authentication settings):
+
+1. **Sign In / Providers → Email:** turn off *Allow new users to sign up*. Agents join by invitation only.
+2. **URL Configuration:** Site URL `https://gosearchproperty.com`; add `https://gosearchproperty.com/auth/confirm` to the redirect URLs.
+3. **Emails → Invite user** template: point the link at
+   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite`
+   (and the *Reset password* template at `...&type=recovery`). Invited agents then land on "Set your password".
+
+**Adding an agent:**
+
+1. Check their PRC licence (broker) or DHSUD accreditation and supervising broker (salesperson).
+2. Supabase → Authentication → Users → *Invite user* with their email. Copy the new user's ID.
+3. In the SQL editor, link the account to an agent profile:
+
+```sql
+INSERT INTO "User" (id, email, role, "updatedAt")
+VALUES ('<auth user id>', 'agent@example.com', 'AGENT', now());
+
+INSERT INTO "Agent" (id, "userId", "agencyId", "licenseType", "prcLicenseNumber",
+                     "displayName", mobile, "viberNumber", "whatsappNumber", verification, "verifiedAt", "updatedAt")
+VALUES (gen_random_uuid()::text, '<auth user id>', NULL, 'REAL_ESTATE_BROKER', '<PRC number>',
+        'Full Name', '+639171234567', '+639171234567', '639171234567', 'VERIFIED', now(), now());
+```
+
+A signed-in account without an `Agent` row sees no data. Lead status changes are recorded in `AuditLog`.
+
 ## Sample data switch
 
 `SAMPLE_DATA` in `src/lib/ph/preview.ts` is `true` while listings and agents come from the built-in samples. Every build then shows a sample banner, switches off Viber, WhatsApp and call, refuses inquiries, and blocks search engines. Set it to `false` only when listings and agents load from the database.

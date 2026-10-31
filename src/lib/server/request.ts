@@ -24,7 +24,7 @@ if (!process.env.LEAD_IP_SALT && process.env.NODE_ENV === "production") {
 }
 
 /** Data Privacy Act: keep a salted hash for abuse control, never the raw IP. */
-export function ipHash(req: Request) {
+export function ipHash(req: { headers: Headers }) {
   const ip = req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   return createHash("sha256").update(SALT + ip).digest("hex").slice(0, 32);
 }

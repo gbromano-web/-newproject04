@@ -47,7 +47,7 @@ function replyText(minutes: number | null) {
   return "Usually replies within a few days";
 }
 
-function photoFrom(key: string, caption: string | null, title: string): Photo {
+export function photoFrom(key: string, caption: string | null, title: string): Photo {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   return {
     src: `${base}/storage/v1/object/public/${BUCKET}/${key.split("/").map(encodeURIComponent).join("/")}`,
