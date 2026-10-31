@@ -5,6 +5,11 @@ updates:
     directory: /
     schedule: { interval: weekly, day: monday, time: "05:00", timezone: Asia/Manila }
     open-pull-requests-limit: 5
+    # Major upgrades (Prisma 7, ESLint 10, @types/node beyond the runtime) are planned by hand;
+    # security fixes still arrive for every version
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
