@@ -104,7 +104,9 @@ With live listings on (`NEXT_PUBLIC_LISTINGS_SOURCE=database`), agents sign in a
 2. **URL Configuration:** Site URL `https://gosearchproperty.com`; add `https://gosearchproperty.com/auth/confirm` to the redirect URLs.
 3. **Emails → Invite user** template: point the link at
    `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite`
-   (and the *Reset password* template at `...&type=recovery`). Invited agents then land on "Set your password".
+   (and the *Reset password* template at `...&type=recovery`). The link opens a "Continue" page and the one-time token is used only when that button is pressed, so mail scanners (Outlook Safe Links and similar) cannot use it up. Invited agents then land on "Set your password".
+4. **Emails → SMTP Settings:** set up custom SMTP (Resend, Postmark, AWS SES...). Supabase's built-in sender only delivers to your own Supabase team members and only a few emails per hour, so agent invites fail without it.
+5. **Sign In / Providers → Email:** minimum password length 10 (the site asks for 10; Supabase's own default is 6).
 
 **Adding an agent:**
 

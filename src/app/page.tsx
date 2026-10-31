@@ -12,6 +12,7 @@ import { flattenLocations } from "@/lib/ph/locations";
 import type { PhotoKey } from "@/lib/ph/photos";
 import { Suspense } from "react";
 import { latestListings } from "@/lib/server/listings-repo";
+import { log } from "@/lib/server/request";
 
 export const metadata: Metadata = {
   title: "Condos, house and lot, and lots for sale and rent in the Philippines",
@@ -61,7 +62,14 @@ const OWNERSHIP_FACTS = [
 ];
 
 async function LatestListings() {
-  const listings = await latestListings(6);
+  let listings: Awaited<ReturnType<typeof latestListings>>;
+  try {
+    listings = await latestListings(6);
+  } catch (e) {
+    // A database hiccup should cost this one section, not the whole homepage
+    log("error", "home.latest_failed", { error: e instanceof Error ? e.message : String(e) });
+    return <p className="mt-9 rounded-2xl bg-mist px-6 py-10 text-center text-ink-soft">Latest listings are taking a moment to load. <Link href="/search" className="font-semibold text-sea-900 underline">Search all homes</Link></p>;
+  }
   if (!listings.length) {
     return <p className="mt-9 rounded-2xl bg-mist px-6 py-10 text-center text-ink-soft">New listings appear here as agents publish them.</p>;
   }

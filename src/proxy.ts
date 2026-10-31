@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
-import { supabaseConfig } from "@/lib/server/supabase-config";
+import { authFetch, supabaseConfig } from "@/lib/server/supabase-config";
 
 /**
  * Guards the agent area.
@@ -57,11 +57,20 @@ function sampleDashboard(req: NextRequest) {
 }
 
 async function agentArea(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  const needsSession = path.startsWith("/dashboard") || path === "/agent/set-password";
+  if (!needsSession) {
+    // Sign-in and password-reset pages need no session check; skip the call to the Auth server
+    const open = NextResponse.next();
+    open.headers.set("cache-control", NO_STORE);
+    return open;
+  }
   const cfg = supabaseConfig();
   if (!cfg) return unavailable("Agent sign-in");
 
   let res = NextResponse.next({ request: req });
   const supabase = createServerClient(cfg.url, cfg.key, {
+    global: { fetch: authFetch },
     cookies: {
       getAll: () => req.cookies.getAll(),
       setAll: (list, headers) => {
@@ -73,12 +82,11 @@ async function agentArea(req: NextRequest) {
     },
   });
 
-  // getUser asks the Auth server, so a revoked or forged cookie does not pass
+  // getUser asks the Auth server, so a revoked or forged cookie does not pass.
+  // If the Auth server is down or slow (5 s timeout), this fails closed: back to sign-in.
   const { data } = await supabase.auth.getUser();
-  const path = req.nextUrl.pathname;
-  const needsSession = path.startsWith("/dashboard") || path === "/agent/set-password";
 
-  if (needsSession && !data.user) {
+  if (!data.user) {
     const to = req.nextUrl.clone();
     to.pathname = "/agent/sign-in";
     to.search = path.startsWith("/dashboard") ? `?next=${encodeURIComponent(path + req.nextUrl.search)}` : "";

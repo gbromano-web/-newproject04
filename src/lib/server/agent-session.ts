@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { db } from "./db";
-import { supabaseConfig } from "./supabase-config";
+import { authFetch, supabaseConfig } from "./supabase-config";
 
 /** A Supabase client bound to this request's cookies. New per request, never shared. */
 export async function supabaseServer() {
@@ -12,6 +12,7 @@ export async function supabaseServer() {
   if (!cfg) return null;
   const store = await cookies();
   return createServerClient(cfg.url, cfg.key, {
+    global: { fetch: authFetch },
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {

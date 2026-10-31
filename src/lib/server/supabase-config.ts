@@ -18,3 +18,11 @@ export function supabaseConfig(): { url: string; key: string } | null {
 export function safeNext(next: unknown): string {
   return typeof next === "string" && /^\/dashboard(?:[/?#]|$)/.test(next) && !next.includes("//") ? next : "/dashboard";
 }
+
+/** Calls to Supabase Auth give up after this long, so a slow Auth server cannot hang a page. */
+const AUTH_TIMEOUT_MS = 5_000;
+
+export const authFetch: typeof fetch = (input, init) => {
+  const timeout = AbortSignal.timeout(AUTH_TIMEOUT_MS);
+  return fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
+};
