@@ -5,16 +5,9 @@ import { useState } from "react";
 import { MapPin, Search, SlidersHorizontal } from "lucide-react";
 import { LocationInput } from "./location-input";
 import clsx from "clsx";
-
-const TABS = [
-  { key: "SALE", label: "Buy" },
-  { key: "RENT", label: "Rent" },
-  { key: "PRE_SELLING", label: "Pre-selling" },
-  { key: "FORECLOSED", label: "Foreclosed" },
-] as const;
-
-const SALE_PRICES = [["2000000", "₱2M"], ["5000000", "₱5M"], ["10000000", "₱10M"], ["20000000", "₱20M"], ["50000000", "₱50M"]];
-const RENT_PRICES = [["15000", "₱15,000/mo"], ["25000", "₱25,000/mo"], ["40000", "₱40,000/mo"], ["60000", "₱60,000/mo"], ["100000", "₱100,000/mo"]];
+import { marketOf, type CountryCode } from "@/lib/markets";
+import type { ListingType } from "@/lib/ph/listings";
+import { stepLabel } from "./filter-bar";
 
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
@@ -25,10 +18,14 @@ function Field({ label, children, className }: { label: string; children: React.
   );
 }
 
-export function PhSearchBox({ popular }: { popular: { label: string; key: string }[] }) {
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("SALE");
+export function PhSearchBox({ popular, country = "PH" }: { popular: { label: string; key: string }[]; country?: CountryCode }) {
+  const m = marketOf(country);
+  const TABS = m.listingTypes.map((t) => ({ key: t, label: m.tabLabel[t] }));
+  const [tab, setTab] = useState<ListingType>("SALE");
   const [expanded, setExpanded] = useState(false);
-  const prices = tab === "RENT" ? RENT_PRICES : SALE_PRICES;
+  const rent = tab === "RENT";
+  // A short pick of the market's steps for the compact hero box
+  const prices = (rent ? m.rentSteps : m.saleSteps).filter((_, i, a) => i % 2 === 1 || i === a.length - 1).map((v) => [String(v), stepLabel(m, v, rent)]);
   const control = "w-full appearance-none bg-transparent text-[15px] font-semibold text-ink placeholder:font-medium placeholder:text-ink-soft/70 focus:outline-none";
 
   return (
@@ -43,12 +40,12 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
           <Search className="size-5 text-sea-900" />
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold text-ink">Where do you want to live?</span>
-            <span className="block truncate text-xs text-ink-soft">Buy, rent, pre-selling or foreclosed</span>
+            <span className="block truncate text-xs text-ink-soft">{m.listingTypes.map((t) => m.tabLabel[t].toLowerCase()).join(", ").replace(/^./, (c) => c.toUpperCase())}</span>
           </span>
           <span className="grid size-10 place-items-center rounded-full bg-mango-500 text-sea-950"><SlidersHorizontal className="size-4" /></span>
         </button>
       )}
-      <form action={withBase("/search")} className={clsx(expanded ? "block" : "hidden", "md:block", "rounded-[22px] bg-white/95 p-2 shadow-[0_40px_90px_-30px_rgba(7,29,43,.75)] ring-1 ring-white/60 backdrop-blur-xl")}>
+      <form action={withBase(m.search)} className={clsx(expanded ? "block" : "hidden", "md:block", "rounded-[22px] bg-white/95 p-2 shadow-[0_40px_90px_-30px_rgba(7,29,43,.75)] ring-1 ring-white/60 backdrop-blur-xl")}>
         <div role="tablist" aria-label="Transaction type" className="no-scrollbar flex gap-0.5 overflow-x-auto border-b border-line px-1 pb-0 sm:gap-1 sm:px-2">
           {TABS.map((t) => (
             <button
@@ -73,19 +70,13 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
           <Field label="Location" className="col-span-2 md:col-span-1">
             <span className="flex items-center gap-2">
               <MapPin className="size-4 shrink-0 text-lagoon-600" />
-              <LocationInput className="min-w-0 flex-1" inputClassName={control} />
+              <LocationInput className="min-w-0 flex-1" inputClassName={control} placeholder={m.code === "AE" ? "Emirate, community or building" : undefined} country={m.code} />
             </span>
           </Field>
           <Field label="Property type">
             <select name="propertyType" className={control} defaultValue="">
               <option value="">All types</option>
-              <option value="CONDOMINIUM">Condominium</option>
-              <option value="TOWNHOUSE">Townhouse</option>
-              <option value="HOUSE_AND_LOT">House and Lot</option>
-              <option value="LOT_ONLY">Lot Only</option>
-              <option value="COMMERCIAL">Commercial</option>
-              <option value="AGRICULTURAL">Agricultural</option>
-              <option value="WAREHOUSE">Warehouse</option>
+              {m.propertyTypes.map((t) => <option key={t} value={t}>{m.propertyTypeLabel[t]}</option>)}
             </select>
           </Field>
           <Field label="Max price">
@@ -113,7 +104,7 @@ export function PhSearchBox({ popular }: { popular: { label: string; key: string
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm">
         <span className="font-medium text-white/80">Popular:</span>
         {popular.map((p) => (
-          <a key={p.key} href={withBase(`/search?location=${encodeURIComponent(p.label)}`)} className="rounded-full bg-white/15 px-3.5 py-1.5 font-medium text-white ring-1 ring-white/25 backdrop-blur-md transition-colors hover:bg-white/25">
+          <a key={p.key} href={withBase(`${m.search}?location=${encodeURIComponent(p.label)}`)} className="rounded-full bg-white/15 px-3.5 py-1.5 font-medium text-white ring-1 ring-white/25 backdrop-blur-md transition-colors hover:bg-white/25">
             {p.label}
           </a>
         ))}

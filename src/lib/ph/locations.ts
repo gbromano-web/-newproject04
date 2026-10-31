@@ -1,3 +1,6 @@
+import type { CountryCode } from "../markets";
+import { UAE_LOCATIONS } from "../uae/locations";
+
 // Starter location tree: Region > Province > City > District/CBD.
 // Coordinates are approximate centroids for map centring, not boundaries.
 // PSGC codes are left out on purpose: import them from the PSA's official
@@ -12,6 +15,8 @@ export interface LocationNode {
   popular?: boolean;
   lat?: number;
   lng?: number;
+  /** UAE: the advertising permit listings here must show (inherited by children) */
+  adPermit?: string;
   children?: LocationNode[];
 }
 
@@ -203,12 +208,19 @@ export interface FlatLocation {
   isPopular: boolean;
   lat: number | null;
   lng: number | null;
+  country: CountryCode;
+  /** Advertising permit required here, from this place or an ancestor */
+  adPermit: string | null;
 }
 
-/** Flattens the tree parent-first, so rows can be inserted in order. */
-export function flattenLocations(nodes = PH_LOCATIONS, parent: FlatLocation | null = null): FlatLocation[] {
+/**
+ * Flattens a tree parent-first, so rows can be inserted in order.
+ * UAE keys start with "uae/" so they can never collide with Philippine ones.
+ */
+export function flattenLocations(nodes = PH_LOCATIONS, parent: FlatLocation | null = null, country: CountryCode = "PH"): FlatLocation[] {
   return nodes.flatMap((n) => {
-    const key = parent ? `${parent.key}/${slugify(n.name)}` : slugify(n.name);
+    const own = slugify(n.name);
+    const key = parent ? `${parent.key}/${own}` : country === "AE" ? `uae/${own}` : own;
     // "Bonifacio Global City, Taguig" — show the nearest city for districts, the province for cities
     const displayName = parent && n.level !== "REGION" && parent.level !== "REGION" ? `${n.name}, ${parent.name}` : n.name;
     const row: FlatLocation = {
@@ -222,7 +234,18 @@ export function flattenLocations(nodes = PH_LOCATIONS, parent: FlatLocation | nu
       isPopular: n.popular ?? false,
       lat: n.lat ?? null,
       lng: n.lng ?? null,
+      country,
+      adPermit: n.adPermit ?? parent?.adPermit ?? null,
     };
-    return [row, ...flattenLocations(n.children ?? [], row)];
+    return [row, ...flattenLocations(n.children ?? [], row, country)];
   });
 }
+
+/** Every place in both markets, Philippines first. */
+export function allLocations(): FlatLocation[] {
+  return [...flattenLocations(PH_LOCATIONS, null, "PH"), ...flattenLocations(UAE_LOCATIONS, null, "AE")];
+}
+
+/** Places in one market. */
+export const locationsFor = (country: CountryCode) =>
+  country === "AE" ? flattenLocations(UAE_LOCATIONS, null, "AE") : flattenLocations(PH_LOCATIONS, null, "PH");

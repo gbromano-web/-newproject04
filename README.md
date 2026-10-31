@@ -125,6 +125,17 @@ VALUES (gen_random_uuid()::text, '<auth user id>', NULL, 'REAL_ESTATE_BROKER', '
         'Full Name', '+639171234567', '+639171234567', '639171234567', 'VERIFIED', now(), now());
 ```
 
+For a **UAE broker**, use the `UAE_BROKER` licence type with the emirate's regulator, the broker's registration number and the brokerage's office number (Dubai: BRN and ORN):
+
+```sql
+INSERT INTO "Agent" (id, "userId", "agencyId", "licenseType", "uaeRegulator", "uaeBrokerNumber", "uaeOfficeNumber",
+                     "displayName", mobile, "whatsappNumber", languages, verification, "verifiedAt", "updatedAt")
+VALUES (gen_random_uuid()::text, '<auth user id>', NULL, 'UAE_BROKER', 'RERA BRN', '<BRN>', '<ORN>',
+        'Full Name', '+971501234567', '971501234567', ARRAY['English', 'Arabic'], 'VERIFIED', now(), now());
+```
+
+Use `RERA BRN` for Dubai, `ADREC` for Abu Dhabi, `RAK RERA` for Ras Al Khaimah, and the emirate's regulator elsewhere. A broker can only list in their own country, and listings in Dubai, Abu Dhabi and Ras Al Khaimah cannot go live without the emirate's advertising permit number (`Property."adPermitNumber"`); the database enforces both.
+
 A signed-in account without an `Agent` row sees no data. Lead status changes are recorded in `AuditLog`.
 
 ## Sample data switch

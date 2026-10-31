@@ -16,7 +16,8 @@ export function ScenePhoto({
   sizes = "100vw",
   priority = false,
 }: {
-  photo: PhotoKey;
+  /** Optional: without a photo the illustration is the picture */
+  photo?: PhotoKey;
   scene: SceneKey;
   uid: string;
   sizes?: string;
@@ -30,8 +31,9 @@ export function ScenePhoto({
     const el = img.current;
     if (el?.complete) setState(el.naturalWidth > 0 ? "loaded" : "failed");
   }, []);
-  const p = PHOTOS[photo];
+  const p = photo ? PHOTOS[photo] : null;
   const Scene = SCENES[scene];
+  if (!p) return <div className="absolute inset-0"><Scene uid={uid} /></div>;
 
   return (
     <div className="absolute inset-0">

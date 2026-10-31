@@ -3,6 +3,7 @@ import { db } from "./db";
 import { photoFrom } from "./listings-repo";
 import type { ListingImage } from "@/lib/ph/photos";
 import type { RentPeriod } from "@/lib/ph/format";
+import type { CountryCode } from "@/lib/markets";
 
 /**
  * Everything here is scoped to one agent id, which callers take from the
@@ -18,6 +19,7 @@ export type AgentListingRow = {
   listingType: string;
   price: number;
   rentPeriod: RentPeriod | null;
+  country: CountryCode;
   location: string;
   photo: ListingImage;
   leads: number;
@@ -52,7 +54,7 @@ export async function agentDashboard(agentId: string): Promise<AgentDashboardDat
   const [listings, leads, week, fresh] = await Promise.all([
     pool.query(
       `SELECT p.id, p.slug, p.title, p.status::text AS status, p."listingType"::text AS "listingType", p.price,
-              p."rentPeriod"::text AS "rentPeriod", p."expiresAt", loc."displayName" AS location,
+              p."rentPeriod"::text AS "rentPeriod", p."expiresAt", loc."displayName" AS location, loc.country::text AS country,
               (p.status = 'ACTIVE' AND p."publishedAt" IS NOT NULL AND (p."expiresAt" IS NULL OR p."expiresAt" > now())) AS live,
               (SELECT m."storageKey" FROM "PropertyMedia" m WHERE m."propertyId" = p.id AND m.kind = 'PHOTO' ORDER BY m."sortOrder" LIMIT 1) AS photo,
               (SELECT count(*) FROM "Lead" ld WHERE ld."propertyId" = p.id)::int AS leads

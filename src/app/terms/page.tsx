@@ -21,7 +21,7 @@ const sections: [string, React.ReactNode][] = [
     "What the site is",
     <>
       <p>
-        Go Search Property is a listing portal. It shows properties for sale and for rent in the Philippines that licensed real estate brokers and accredited salespersons publish, and passes your inquiries to them.
+        Go Search Property is a listing portal. It shows properties for sale and for rent in the Philippines and the United Arab Emirates that licensed real estate brokers and accredited salespersons publish, and passes your inquiries to them.
       </p>
       <p>
         We are not a party to any sale, lease or reservation. We do not act as your broker or agent, hold deposits or reservation fees, or give legal, tax or financial advice. Deal directly with the listing agent, and never pay anyone through a link or account you cannot verify.
@@ -37,13 +37,16 @@ const sections: [string, React.ReactNode][] = [
       <p>
         Before paying anything, check the title with the Registry of Deeds, confirm the agent&apos;s licence on the PRC website, and, for pre-selling projects, confirm the developer&apos;s DHSUD licence to sell.
       </p>
+      <p>
+        In the UAE, agents must be registered with the regulator of the emirate where the property is, and listings in Dubai, Abu Dhabi and Ras Al Khaimah must show that emirate&apos;s advertising permit. Before paying anything, check the broker and the permit with the emirate&apos;s land department or regulator, confirm whether the property is freehold for your nationality, and, for off-plan projects, make sure payments go to the project&apos;s registered escrow account.
+      </p>
     </>,
   ],
   [
     "Prices, conversions and calculators",
     <>
       <p>
-        Prices are in Philippine pesos as set by the agent. Amounts shown in other currencies are estimates using Bangko Sentral ng Pilipinas reference rates and are for guidance only. Loan and amortization figures from our calculators are estimates; the bank, Pag-IBIG Fund or developer sets the final terms.
+        Prices are in Philippine pesos or UAE dirhams as set by the agent. Amounts shown in other currencies are estimates using Bangko Sentral ng Pilipinas reference rates and are for guidance only. Loan, mortgage and amortization figures from our calculators are estimates; the bank, Pag-IBIG Fund or developer sets the final terms.
       </p>
     </>,
   ],

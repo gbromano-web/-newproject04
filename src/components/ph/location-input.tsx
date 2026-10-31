@@ -3,20 +3,15 @@
 import { useId, useMemo, useState } from "react";
 import { Building2, MapPin, Mountain, Waves } from "lucide-react";
 import clsx from "clsx";
-import { flattenLocations, type LocationLevel } from "@/lib/ph/locations";
+import { locationsFor, type LocationLevel } from "@/lib/ph/locations";
+import type { CountryCode } from "@/lib/markets";
 
-const FLAT = flattenLocations();
+const FLAT = { PH: locationsFor("PH"), AE: locationsFor("AE") };
 
-const LEVEL_LABEL: Record<LocationLevel, string> = {
-  REGION: "Region",
-  PROVINCE: "Province",
-  CITY: "City",
-  MUNICIPALITY: "Town",
-  BARANGAY: "Barangay",
-  DISTRICT: "District",
+const LEVEL_LABEL: Record<CountryCode, Record<LocationLevel, string>> = {
+  PH: { REGION: "Region", PROVINCE: "Province", CITY: "City", MUNICIPALITY: "Town", BARANGAY: "Barangay", DISTRICT: "District" },
+  AE: { REGION: "Region", PROVINCE: "Emirate", CITY: "City", MUNICIPALITY: "Town", BARANGAY: "Area", DISTRICT: "Community" },
 };
-
-const parentName = (key: string | null) => (key ? FLAT.find((l) => l.key === key)?.name : undefined);
 
 /**
  * Location field with suggestions from the Region > Province > City > District
@@ -30,13 +25,17 @@ export function LocationInput({
   placeholder = "City, barangay or project",
   className,
   inputClassName,
+  country = "PH",
 }: {
   name?: string;
   defaultValue?: string;
   placeholder?: string;
   className?: string;
   inputClassName?: string;
+  country?: CountryCode;
 }) {
+  const flat = FLAT[country];
+  const parentName = (key: string | null) => (key ? flat.find((l) => l.key === key)?.name : undefined);
   const [value, setValue] = useState(defaultValue);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -45,13 +44,13 @@ export function LocationInput({
   const suggestions = useMemo(() => {
     const q = value.trim().toLowerCase();
     const pool = q
-      ? FLAT.filter((l) => l.name.toLowerCase().includes(q) || l.aliases.some((a) => a.toLowerCase().includes(q)))
-      : FLAT.filter((l) => l.isPopular);
+      ? flat.filter((l) => l.name.toLowerCase().includes(q) || l.aliases.some((a) => a.toLowerCase().includes(q)))
+      : flat.filter((l) => l.isPopular);
     // Prefer names that start with the query, then popular places
     return pool
       .sort((a, b) => Number(b.name.toLowerCase().startsWith(q)) - Number(a.name.toLowerCase().startsWith(q)) || Number(b.isPopular) - Number(a.isPopular))
       .slice(0, 7);
-  }, [value]);
+  }, [value, flat]);
 
   const pick = (label: string) => {
     setValue(label);
@@ -117,7 +116,7 @@ export function LocationInput({
                     {s.name}
                     {s.aliases[0] && s.aliases[0].length <= 4 && <span className="ml-1.5 font-medium text-ink-soft">{s.aliases[0]}</span>}
                   </span>
-                  <span className="block truncate text-xs text-ink-soft">{LEVEL_LABEL[s.level]}{parent ? ` in ${parent}` : ""}</span>
+                  <span className="block truncate text-xs text-ink-soft">{LEVEL_LABEL[country][s.level]}{parent ? ` in ${parent}` : ""}</span>
                 </span>
               </li>
             );

@@ -5,35 +5,31 @@ import { useState } from "react";
 import { Globe2, Search, SlidersHorizontal, X } from "lucide-react";
 import clsx from "clsx";
 import type { SearchFilters } from "@/lib/ph/search";
+import { marketOf, type Market } from "@/lib/markets";
+import { formatMoney } from "@/lib/ph/format";
 import { LocationInput } from "./location-input";
 
-const TYPES = [
-  { key: "", label: "All" },
-  { key: "SALE", label: "Buy" },
-  { key: "RENT", label: "Rent" },
-  { key: "PRE_SELLING", label: "Pre-selling" },
-  { key: "FORECLOSED", label: "Foreclosed" },
-] as const;
-
-const SALE_STEPS = [1_000_000, 2_000_000, 3_000_000, 5_000_000, 10_000_000, 20_000_000, 50_000_000, 100_000_000];
-const RENT_STEPS = [10_000, 15_000, 25_000, 40_000, 60_000, 100_000, 200_000];
-
-const fmt = (n: number, rent: boolean) => (n >= 1_000_000 ? `₱${n / 1_000_000}M` : `₱${n.toLocaleString("en-PH")}${rent ? "/mo" : ""}`);
+/** Price step label: ₱5M, ₱25,000/mo, AED 2M, AED 100,000/yr */
+export const stepLabel = (m: Market, n: number, rent: boolean) =>
+  formatMoney(n, m.currency) + (rent && n < 1_000_000 ? (m.defaultRentPeriod === "YEARLY" ? "/yr" : "/mo") : "");
 
 /**
  * One GET form drives every filter, so search works without JavaScript and
  * each result set has its own shareable URL.
  */
 export function FilterBar({ initial, resultCount }: { initial: SearchFilters; resultCount: number }) {
+  const m = marketOf(initial.country);
+  const TYPES = [{ key: "", label: "All" }, ...m.listingTypes.map((t) => ({ key: t, label: m.tabLabel[t] }))];
   const [type, setType] = useState<string>(initial.type ?? "");
   const [drawer, setDrawer] = useState(false);
   const rent = type === "RENT";
-  const steps = rent ? RENT_STEPS : SALE_STEPS;
+  const steps = rent ? m.rentSteps : m.saleSteps;
+  const fmt = (n: number, r: boolean) => stepLabel(m, n, r);
   const select = "h-11 w-full appearance-none rounded-xl bg-mist px-3.5 text-sm font-semibold text-ink ring-1 ring-transparent transition focus:bg-white focus:outline-none focus:ring-lagoon-500";
   const advancedCount = [initial.minPrice !== undefined, initial.foreignEligible].filter(Boolean).length;
 
   return (
-    <form action={withBase("/search")} className="border-b border-line bg-white">
+    <form action={withBase(m.search)} className="border-b border-line bg-white">
       <input type="hidden" name="type" value={type} />
       {initial.sort !== "featured" && <input type="hidden" name="sort" value={initial.sort} />}
       <div className="mx-auto max-w-[1440px] space-y-3 px-4 py-4 sm:px-6">
@@ -60,17 +56,12 @@ export function FilterBar({ initial, resultCount }: { initial: SearchFilters; re
             defaultValue={initial.location ?? ""}
             className="col-span-2 md:col-span-1"
             inputClassName={clsx(select, "font-medium placeholder:text-ink-soft/70")}
-            placeholder="City, barangay, district or project"
+            placeholder={m.locationPlaceholder}
+            country={m.code}
           />
           <select name="propertyType" defaultValue={initial.propertyType ?? ""} aria-label="Property type" className={select}>
             <option value="">All types</option>
-            <option value="CONDOMINIUM">Condominium</option>
-            <option value="TOWNHOUSE">Townhouse</option>
-            <option value="HOUSE_AND_LOT">House and Lot</option>
-            <option value="LOT_ONLY">Lot Only</option>
-            <option value="COMMERCIAL">Commercial</option>
-            <option value="AGRICULTURAL">Agricultural</option>
-            <option value="WAREHOUSE">Warehouse</option>
+            {m.propertyTypes.map((t) => <option key={t} value={t}>{m.propertyTypeLabel[t]}</option>)}
           </select>
           <select name="maxPrice" defaultValue={initial.maxPrice ?? ""} aria-label="Maximum price" className={select}>
             <option value="">Any price</option>
@@ -118,14 +109,14 @@ export function FilterBar({ initial, resultCount }: { initial: SearchFilters; re
               <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-2xl p-4 ring-1 ring-line has-[:checked]:bg-lagoon-50 has-[:checked]:ring-lagoon-500">
                 <input type="checkbox" name="foreignEligible" value="1" defaultChecked={initial.foreignEligible} className="mt-0.5 size-4 accent-[var(--color-lagoon-600)]" />
                 <span>
-                  <span className="flex items-center gap-1.5 text-sm font-semibold text-ink"><Globe2 className="size-4 text-lagoon-700" /> Only condos open to foreign buyers</span>
-                  <span className="mt-1 block text-sm text-ink-soft">Units the agent confirms are within the building&apos;s 40% foreign-ownership quota.</span>
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-ink"><Globe2 className="size-4 text-lagoon-700" /> {m.ownershipFilter.title}</span>
+                  <span className="mt-1 block text-sm text-ink-soft">{m.ownershipFilter.body}</span>
                 </span>
               </label>
             </fieldset>
           </div>
           <div className="flex items-center gap-3 border-t border-line px-6 py-4">
-            <a href={withBase("/search")} className="text-sm font-semibold text-ink-soft underline-offset-2 hover:text-sea-900 hover:underline">Clear all</a>
+            <a href={withBase(m.search)} className="text-sm font-semibold text-ink-soft underline-offset-2 hover:text-sea-900 hover:underline">Clear all</a>
             <button className="ml-auto rounded-full bg-sea-900 px-6 py-3 text-sm font-semibold text-white hover:bg-sea-800">
               Show results
             </button>

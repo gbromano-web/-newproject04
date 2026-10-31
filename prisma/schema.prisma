@@ -133,6 +133,13 @@ enum MediaKind {
 enum LicenseType {
   REAL_ESTATE_BROKER // PRC-licensed broker
   REAL_ESTATE_SALESPERSON // DHSUD-accredited, works under a supervising broker
+  UAE_BROKER // registered with the emirate's regulator (RERA/DLD, ADREC, SRERD, ARRA, RAK...)
+}
+
+/// Market a location (and so a listing) belongs to
+enum Country {
+  PH
+  AE
 }
 
 enum VerificationStatus {
@@ -229,6 +236,10 @@ model Location {
   ancestorIds  String[] // materialised path, root first, for "everything in Taguig" filters
   aliases      String[] // "BGC", "The Fort", "Fort Bonifacio" for autocomplete
   isPopular    Boolean                                      @default(false) // shown as quick picks under the search box
+  country      Country                                      @default(PH)
+  /// UAE emirates whose regulator requires a permit on every listing ad:
+  /// "DLD Trakheesi permit" (Dubai), "ADREC Madhmoun permit" (Abu Dhabi). Inherited by places inside.
+  adPermitSystem String?
   lat          Float?
   lng          Float?
   boundary     Unsupported("geometry(MultiPolygon, 4326)")?
@@ -239,6 +250,7 @@ model Location {
   banners    HeroBanner[]
 
   @@index([parentId])
+  @@index([country, level])
   @@index([level])
   @@index([ancestorIds], type: Gin)
 }
@@ -370,6 +382,11 @@ model Agent {
   dhsudAccreditationValidUntil DateTime?
   supervisingBrokerId          String? // salespersons must work under a licensed broker
   supervisingBroker            Agent?             @relation("BrokerSalespersons", fields: [supervisingBrokerId], references: [id], onDelete: SetNull)
+  // UAE: broker registration with the emirate's regulator, e.g. "RERA BRN" + "12345";
+  // uaeOfficeNumber is the brokerage's office registration (ORN in Dubai)
+  uaeRegulator                 String?
+  uaeBrokerNumber              String?
+  uaeOfficeNumber              String?
   salespersons                 Agent[]            @relation("BrokerSalespersons")
   licenseDocKey                String? // uploaded PRC ID / DHSUD certificate, private bucket
   verification                 VerificationStatus @default(PENDING)
@@ -397,6 +414,7 @@ model Agent {
 
   @@index([agencyId])
   @@index([verification])
+  @@unique([uaeRegulator, uaeBrokerNumber])
   @@index([supervisingBrokerId])
 }
 
@@ -414,9 +432,11 @@ model Property {
   commercialSubtype CommercialSubtype?
   status            ListingStatus      @default(DRAFT)
 
-  // Price in PHP
+  // Price in the market's currency: PHP in the Philippines, AED in the UAE
   price             Decimal     @db.Decimal(15, 2)
   rentPeriod        RentPeriod? // required when listingType = RENT
+  rentCheques       Int? // UAE: yearly rent payable in this many cheques (1-12)
+  adPermitNumber    String? // UAE advertising permit: required in Dubai (DLD Trakheesi), Abu Dhabi (ADREC Madhmoun) and Ras Al Khaimah (RAK RERA). Not unique: a RAK permit covers an ad campaign
   pricePerSqm       Decimal?    @db.Decimal(12, 2) // computed on save for sorting/filtering
   priceNegotiable   Boolean     @default(false)
   associationDues   Decimal?    @db.Decimal(10, 2) // monthly condo / HOA dues
@@ -502,6 +522,7 @@ model Property {
   @@index([agencyId, status])
   @@index([projectId])
   @@index([isFeatured, publishedAt])
+  @@index([adPermitNumber])
 }
 
 model PropertyMedia {

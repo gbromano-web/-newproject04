@@ -1,23 +1,26 @@
 import { BadgeCheck, Bath, BedDouble, Globe2, LandPlot, MapPin, MessageCircle, Ruler } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
-import { formatBedrooms, formatListingPrice, formatPricePerSqm, formatSqm, formatTurnover } from "@/lib/ph/format";
+import { currencyOf, formatArea, formatBedrooms, formatListingPrice, formatPricePerArea, formatTurnover } from "@/lib/ph/format";
+import { marketOf } from "@/lib/markets";
 import Link from "next/link";
-import { LISTING_TYPE_LABEL, PROPERTY_TYPE_LABEL, agentOf, type PhListing } from "@/lib/ph/listings";
+import { agentOf, type PhListing } from "@/lib/ph/listings";
 import { leadHref, offClass, offProps } from "@/lib/ph/preview";
 import { ConvertedPrice } from "./currency";
 import { ListingPhoto } from "./listing-photo";
 import { SaveButton } from "./saved";
 
 function StatusTag({ l }: { l: PhListing }) {
+  const m = marketOf(l.country);
   if (l.listingType === "PRE_SELLING")
-    return <span className="rounded-full bg-sea-900/85 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">Pre-selling, turnover {formatTurnover(l.turnoverQuarter, l.turnoverYear)}</span>;
+    return <span className="rounded-full bg-sea-900/85 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">{m.listingTypeLabel.PRE_SELLING}, {m.code === "AE" ? "handover" : "turnover"} {formatTurnover(l.turnoverQuarter, l.turnoverYear)}</span>;
   if (l.listingType === "FORECLOSED")
     return <span className="rounded-full bg-coral-600/90 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">Foreclosed by {l.foreclosingInstitution}</span>;
-  return <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-sea-900 backdrop-blur">{LISTING_TYPE_LABEL[l.listingType]}</span>;
+  return <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-sea-900 backdrop-blur">{m.listingTypeLabel[l.listingType]}</span>;
 }
 
 export function PhListingCard({ l, priority = false }: { l: PhListing; priority?: boolean }) {
   const agent = agentOf(l);
+  const m = marketOf(l.country);
   const href = `/property/${l.slug}`;
   const area = l.propertyType === "LOT_ONLY" || l.propertyType === "AGRICULTURAL" ? l.lotAreaSqm : l.floorAreaSqm ?? l.lotAreaSqm;
   const showPerSqm = l.listingType !== "RENT" && area;
@@ -33,7 +36,7 @@ export function PhListingCard({ l, priority = false }: { l: PhListing; priority?
         </div>
         {openToForeigners && (
           <span className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-lagoon-700 backdrop-blur">
-            <Globe2 className="size-3.5" /> Open to foreign buyers
+            <Globe2 className="size-3.5" /> {m.ownershipBadge}
           </span>
         )}
       </div>
@@ -41,18 +44,18 @@ export function PhListingCard({ l, priority = false }: { l: PhListing; priority?
       <div className="flex flex-1 flex-col px-1 pt-4">
         <div className="flex items-baseline justify-between gap-3">
           <p className="price text-[22px] font-bold text-sea-950">{formatListingPrice(l)}</p>
-          <ConvertedPrice php={l.price} className="price shrink-0 text-sm font-medium text-ink-soft" />
+          <ConvertedPrice amount={l.price} from={currencyOf(l)} className="price shrink-0 text-sm font-medium text-ink-soft" />
         </div>
         <h3 className="mt-1 line-clamp-1 text-[15px] font-semibold tracking-normal text-ink"><Link href={href} className="hover:text-lagoon-700">{l.title}</Link></h3>
         <p className="mt-1 flex items-center gap-1 text-sm text-ink-soft"><MapPin className="size-3.5 shrink-0" />{l.locationLabel}</p>
 
         <ul className="mb-4 mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[13px] text-ink-soft">
-          <li className="font-medium text-ink">{PROPERTY_TYPE_LABEL[l.propertyType]}</li>
+          <li className="font-medium text-ink">{m.propertyTypeLabel[l.propertyType]}</li>
           {l.bedrooms != null && <li className="flex items-center gap-1"><BedDouble className="size-3.5" />{formatBedrooms(l.bedrooms)}</li>}
           {l.bathrooms != null && <li className="flex items-center gap-1"><Bath className="size-3.5" />{l.bathrooms}</li>}
-          {l.floorAreaSqm && <li className="flex items-center gap-1"><Ruler className="size-3.5" />{formatSqm(l.floorAreaSqm)}</li>}
-          {l.lotAreaSqm && <li className="flex items-center gap-1"><LandPlot className="size-3.5" />{formatSqm(l.lotAreaSqm)} lot</li>}
-          {showPerSqm ? <li className="price">{formatPricePerSqm(l.price / area!)}</li> : null}
+          {l.floorAreaSqm && <li className="flex items-center gap-1"><Ruler className="size-3.5" />{formatArea(l.floorAreaSqm, l.country)}</li>}
+          {l.lotAreaSqm && <li className="flex items-center gap-1"><LandPlot className="size-3.5" />{formatArea(l.lotAreaSqm, l.country)} {m.code === "AE" ? "plot" : "lot"}</li>}
+          {showPerSqm ? <li className="price">{formatPricePerArea(l.price, area!, l.country)}</li> : null}
         </ul>
 
         <div className="mt-auto flex items-center gap-2 border-t border-line pt-3">
@@ -63,9 +66,11 @@ export function PhListingCard({ l, priority = false }: { l: PhListing; priority?
             </p>
             <p className="truncate text-ink-soft">{agent.license}</p>
           </div>
-          <a href={leadHref("viber", l.id)} rel="nofollow" className={`grid size-9 place-items-center rounded-full border border-line text-viber transition-colors hover:border-viber/40 hover:bg-viber/5${offClass}`} aria-label="Chat on Viber" title="Chat on Viber" {...offProps}>
-            <MessageCircle className="size-4" />
-          </a>
+          {m.hasViber && (
+            <a href={leadHref("viber", l.id)} rel="nofollow" className={`grid size-9 place-items-center rounded-full border border-line text-viber transition-colors hover:border-viber/40 hover:bg-viber/5${offClass}`} aria-label="Chat on Viber" title="Chat on Viber" {...offProps}>
+              <MessageCircle className="size-4" />
+            </a>
+          )}
           <a href={leadHref("whatsapp", l.id)} rel="nofollow" className={`grid size-9 place-items-center rounded-full border border-line text-whatsapp transition-colors hover:border-whatsapp/40 hover:bg-whatsapp/5${offClass}`} aria-label="Chat on WhatsApp" title="Chat on WhatsApp" {...offProps}>
             <WhatsAppIcon className="size-4" />
           </a>

@@ -4,6 +4,7 @@ import { LISTINGS, agentOf, latestListings as sampleLatest, type PhAgent, type P
 import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { searchListings as searchSamples, type SearchFilters } from "@/lib/ph/search";
 import type { Photo } from "@/lib/ph/photos";
+import type { CountryCode } from "@/lib/markets";
 import { db } from "./db";
 
 /**
@@ -21,10 +22,12 @@ const MAX_RESULTS = 200;
 
 interface AgentJson {
   id: string; displayName: string; licenseType: PhAgent["licenseType"]; prc: string | null; dhsud: string | null;
+  uaeBroker: string | null; uaeRegulator: string | null; uaeOffice: string | null;
   verification: string; agency: string | null; mobile: string; viber: string | null; whatsapp: string | null;
   languages: string[] | null; reply: number | null;
 }
 interface Row {
+  country: CountryCode; adPermitNumber: string | null; adPermitSystem: string | null; rentCheques: number | null;
   id: string; slug: string; title: string; description: string; listingType: PhListing["listingType"]; propertyType: PhListing["propertyType"];
   price: string; rentPeriod: PhListing["rentPeriod"] | null; floorAreaSqm: string | null; lotAreaSqm: string | null;
   bedrooms: number | null; bathrooms: number | null; parkingSlots: number | null; furnishing: string | null; titleType: string | null;
@@ -60,6 +63,12 @@ export function photoFrom(key: string, caption: string | null, title: string): P
   };
 }
 
+/** Dubai brokers are "RERA BRN 123" and their office "RERA ORN 456"; other regulators: "<regulator> office 456". */
+function officeLabel(regulator: string | null, office: string) {
+  const r = (regulator ?? "").trim();
+  return r.startsWith("RERA") ? `RERA ORN ${office}` : `${r} office ${office}`.trim();
+}
+
 function toAgent(a: AgentJson): PhAgent {
   const initials = a.displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
   const mobile = a.mobile;
@@ -68,13 +77,19 @@ function toAgent(a: AgentJson): PhAgent {
     name: a.displayName,
     initials,
     licenseType: a.licenseType,
-    license: a.licenseType === "REAL_ESTATE_BROKER" ? `PRC ${a.prc ?? ""}`.trim() : `DHSUD ${a.dhsud ?? ""}`.trim(),
+    license:
+      a.licenseType === "UAE_BROKER"
+        ? `${a.uaeRegulator ?? ""} ${a.uaeBroker ?? ""}`.trim()
+        : a.licenseType === "REAL_ESTATE_BROKER"
+          ? `PRC ${a.prc ?? ""}`.trim()
+          : `DHSUD ${a.dhsud ?? ""}`.trim(),
+    office: a.licenseType === "UAE_BROKER" && a.uaeOffice ? officeLabel(a.uaeRegulator, a.uaeOffice) : undefined,
     verified: a.verification === "VERIFIED",
     agency: a.agency ?? "Independent",
     mobile,
     viber: a.viber || mobile,
     whatsapp: (a.whatsapp || mobile).replace(/\D/g, ""),
-    languages: a.languages?.length ? a.languages : ["English", "Filipino"],
+    languages: a.languages?.length ? a.languages : a.licenseType === "UAE_BROKER" ? ["English", "Arabic"] : ["English", "Filipino"],
     replyTime: replyText(a.reply),
   };
 }
@@ -82,6 +97,10 @@ function toAgent(a: AgentJson): PhAgent {
 function toListing(r: Row): PhListing {
   return {
     id: r.id,
+    country: r.country,
+    adPermit: r.adPermitNumber ?? undefined,
+    adPermitLabel: r.adPermitSystem ?? undefined,
+    rentCheques: r.rentCheques ?? undefined,
     slug: r.slug,
     title: r.title,
     description: r.description,
@@ -125,17 +144,19 @@ function toListing(r: Row): PhListing {
 // ─── SQL ──────────────────────────────────────────────────────────────────────
 
 const SELECT = `
-SELECT p.id, p.slug, p.title, p.description, p."listingType", p."propertyType", p.price, p."rentPeriod",
+SELECT p.id, loc.country::text AS country, p."adPermitNumber", p."rentCheques",
+  (SELECT x."adPermitSystem" FROM "Location" x WHERE (x.id = loc.id OR x.id = ANY(loc."ancestorIds")) AND x."adPermitSystem" IS NOT NULL LIMIT 1) AS "adPermitSystem",
+  p.slug, p.title, p.description, p."listingType", p."propertyType", p.price, p."rentPeriod",
   p."floorAreaSqm", p."lotAreaSqm", p.bedrooms, p.bathrooms, p."parkingSlots", p.furnishing, p."titleType",
   p."foreignOwnershipEligible", p.lat, p.lng, p."turnoverQuarter", p."turnoverYear", p."reservationFee",
   p."downpaymentPercent", p."downpaymentTermMonths", p."foreclosingInstitution", p."minimumBidPrice", p.occupancy,
   p."agentId", p."publishedAt",
   (p."isFeatured" AND (p."featuredUntil" IS NULL OR p."featuredUntil" > now())) AS featured,
   loc."displayName" AS "locationLabel",
-  (SELECT x.name FROM "Location" x WHERE (x.id = loc.id OR x.id = ANY(loc."ancestorIds")) AND x.level IN ('CITY','MUNICIPALITY') LIMIT 1) AS city,
+  COALESCE((SELECT x.name FROM "Location" x WHERE (x.id = loc.id OR x.id = ANY(loc."ancestorIds")) AND x.level IN ('CITY','MUNICIPALITY') LIMIT 1), loc.name) AS city,
   (SELECT x.name FROM "Location" x WHERE (x.id = loc.id OR x.id = ANY(loc."ancestorIds")) AND x.level = 'PROVINCE' LIMIT 1) AS province,
   json_build_object('id', a.id, 'displayName', a."displayName", 'licenseType', a."licenseType", 'prc', a."prcLicenseNumber",
-    'dhsud', a."dhsudAccreditationNumber", 'verification', a.verification, 'agency', ag.name, 'mobile', a.mobile,
+    'dhsud', a."dhsudAccreditationNumber", 'uaeBroker', a."uaeBrokerNumber", 'uaeRegulator', a."uaeRegulator", 'uaeOffice', a."uaeOfficeNumber", 'verification', a.verification, 'agency', ag.name, 'mobile', a.mobile,
     'viber', a."viberNumber", 'whatsapp', a."whatsappNumber", 'languages', a.languages, 'reply', a."medianReplyMinutes") AS agent,
   COALESCE((SELECT json_agg(json_build_object('key', m."storageKey", 'caption', m.caption) ORDER BY m."sortOrder")
             FROM "PropertyMedia" m WHERE m."propertyId" = p.id AND m.kind = 'PHOTO'), '[]'::json) AS photos,
@@ -165,20 +186,20 @@ async function query(sql: string, params: unknown[]): Promise<PhListing[]> {
   return rows.map(toListing);
 }
 
-/** "BGC", "Metro Manila", "Cebu" → matching location ids (the tree below is covered by ancestorIds). */
-async function locationIds(text: string): Promise<string[]> {
+/** "BGC", "Metro Manila", "Dubai Marina" → matching location ids in one market (the tree below is covered by ancestorIds). */
+async function locationIds(text: string, country: CountryCode): Promise<string[]> {
   const pool = db()!;
   const exact = await pool.query<{ id: string }>(
-    `SELECT id FROM "Location" WHERE lower(name) = lower($1) OR lower("displayName") = lower($1)
-       OR EXISTS (SELECT 1 FROM unnest(aliases) al WHERE lower(al) = lower($1))`,
-    [text],
+    `SELECT id FROM "Location" WHERE country = $2::"Country" AND (lower(name) = lower($1) OR lower("displayName") = lower($1)
+       OR EXISTS (SELECT 1 FROM unnest(aliases) al WHERE lower(al) = lower($1)))`,
+    [text, country],
   );
   if (exact.rows.length) return exact.rows.map((r) => r.id);
   // Partial match: the broadest place wins (fewest ancestors)
   const like = text.replace(/[\\%_]/g, (c) => `\\${c}`);
   const partial = await pool.query<{ id: string }>(
-    `SELECT id FROM "Location" WHERE name ILIKE '%' || $1 || '%' ORDER BY cardinality("ancestorIds"), name LIMIT 1`,
-    [like],
+    `SELECT id FROM "Location" WHERE country = $2::"Country" AND name ILIKE '%' || $1 || '%' ORDER BY cardinality("ancestorIds"), name LIMIT 1`,
+    [like, country],
   );
   return partial.rows.map((r) => r.id);
 }
@@ -194,6 +215,7 @@ export async function searchListings(f: SearchFilters): Promise<PhListing[]> {
     params.push(value);
     where.push(clause(`$${params.length}`));
   };
+  add((n) => `loc.country = ${n}::"Country"`, f.country);
   if (f.type) add((n) => `p."listingType" = ${n}::"ListingType"`, f.type);
   if (f.propertyType) add((n) => `p."propertyType" = ${n}::"PropertyType"`, f.propertyType);
   if (f.minPrice !== undefined) add((n) => `p.price >= ${n}`, f.minPrice);
@@ -201,7 +223,7 @@ export async function searchListings(f: SearchFilters): Promise<PhListing[]> {
   if (f.beds !== undefined) add((n) => (f.beds! >= 5 ? `p.bedrooms >= ${n}` : `p.bedrooms = ${n}`), f.beds >= 5 ? 5 : f.beds);
   if (f.foreignEligible) where.push(`p."foreignOwnershipEligible" AND p."listingType" <> 'RENT'`);
   if (f.location) {
-    const ids = await locationIds(f.location);
+    const ids = await locationIds(f.location, f.country);
     if (!ids.length) return [];
     add((n) => `(loc.id = ANY(${n}::text[]) OR loc."ancestorIds" && ${n}::text[])`, ids);
   }
@@ -223,21 +245,22 @@ export async function getListingById(id: string): Promise<PhListing | undefined>
   return (await query(`${SELECT} WHERE ${LIVE} AND p.id = $1`, [id]))[0];
 }
 
-export async function latestListings(n = 6): Promise<PhListing[]> {
-  if (SAMPLE_DATA) return withAgents(sampleLatest(n));
+export async function latestListings(n = 6, country: CountryCode = "PH"): Promise<PhListing[]> {
+  if (SAMPLE_DATA) return withAgents(sampleLatest(n, country));
   await connection();
-  return query(`${SELECT} WHERE ${LIVE} ORDER BY p."publishedAt" DESC LIMIT $1`, [n]);
+  return query(`${SELECT} WHERE ${LIVE} AND loc.country = $2::"Country" ORDER BY p."publishedAt" DESC LIMIT $1`, [n, country]);
 }
 
 export async function similarListings(l: PhListing, n = 3): Promise<PhListing[]> {
   if (SAMPLE_DATA) {
-    return withAgents(LISTINGS.filter((x) => x.id !== l.id && (x.listingType === l.listingType || x.propertyType === l.propertyType)).slice(0, n));
+    const c = l.country ?? "PH";
+    return withAgents(LISTINGS.filter((x) => x.id !== l.id && (x.country ?? "PH") === c && (x.listingType === l.listingType || x.propertyType === l.propertyType)).slice(0, n));
   }
   await connection();
   return query(
-    `${SELECT} WHERE ${LIVE} AND p.id <> $1 AND (p."listingType" = $2::"ListingType" OR p."propertyType" = $3::"PropertyType")
+    `${SELECT} WHERE ${LIVE} AND p.id <> $1 AND loc.country = $5::"Country" AND (p."listingType" = $2::"ListingType" OR p."propertyType" = $3::"PropertyType")
      ORDER BY (p."locationId" = (SELECT "locationId" FROM "Property" WHERE id = $1)) DESC, p."publishedAt" DESC LIMIT $4`,
-    [l.id, l.listingType, l.propertyType, n],
+    [l.id, l.listingType, l.propertyType, n, l.country ?? "PH"],
   );
 }
 

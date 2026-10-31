@@ -3,7 +3,7 @@ import { BadgeCheck, Calculator, Clock, LogOut, Mail, MessageCircle, Phone } fro
 import { WhatsAppIcon } from "@/components/icons";
 import { ListingPhoto } from "@/components/ph/listing-photo";
 import { formatListingPrice } from "@/lib/ph/format";
-import { LISTING_TYPE_LABEL } from "@/lib/ph/listings";
+import { marketOf } from "@/lib/markets";
 import { getSession } from "@/lib/server/agent-session";
 import { agentDashboard } from "@/lib/server/dashboard-repo";
 import { setLeadStatus, signOut } from "../agent/actions";
@@ -163,7 +163,7 @@ export async function LiveDashboard() {
                             ) : (
                               <span className="line-clamp-1 font-semibold text-ink">{l.title}</span>
                             )}
-                            <p className="text-xs text-ink-soft">{LISTING_TYPE_LABEL[l.listingType as keyof typeof LISTING_TYPE_LABEL] ?? l.listingType}, {l.location}</p>
+                            <p className="text-xs text-ink-soft">{marketOf(l.country).listingTypeLabel[l.listingType as keyof ReturnType<typeof marketOf>["listingTypeLabel"]] ?? l.listingType}, {l.location}</p>
                           </div>
                         </div>
                       </td>

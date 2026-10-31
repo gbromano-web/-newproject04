@@ -11,7 +11,7 @@
  * Run: npx prisma db seed   (idempotent; safe to re-run)
  */
 import { PrismaClient } from "@prisma/client";
-import { flattenLocations } from "../src/lib/ph/locations";
+import { allLocations } from "../src/lib/ph/locations";
 
 type Category = "UNIT" | "BUILDING" | "COMMUNITY" | "SECURITY" | "UTILITIES";
 
@@ -60,8 +60,11 @@ export interface SeedClient {
 export async function seed(db: SeedClient) {
   // Locations: parent-first so parents exist before children reference them
   const idByKey = new Map<string, string>();
-  for (const loc of flattenLocations()) {
+  for (const loc of allLocations()) {
     const data = {
+      country: loc.country,
+      // Set on the emirate itself; places inside inherit it through ancestorIds
+      adPermitSystem: loc.parentKey === null ? loc.adPermit : null,
       name: loc.name,
       displayName: loc.displayName,
       level: loc.level,

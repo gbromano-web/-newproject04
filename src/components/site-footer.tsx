@@ -6,24 +6,26 @@ import { SAMPLE_DATA, STATIC_PREVIEW } from "@/lib/ph/preview";
 
 const cols = [
   {
-    title: "Popular searches",
+    title: "Philippines",
     links: [
       ["Condos for rent in BGC", "/search?type=RENT&location=BGC"],
       ["House and lot in Cavite", "/search?type=SALE&propertyType=HOUSE_AND_LOT&location=Cavite"],
       ["Pre-selling condos in Makati", "/search?type=PRE_SELLING&location=Makati"],
-      ["Beach lots in Palawan", "/search?type=SALE&propertyType=LOT_ONLY&location=Palawan"],
-      ["Condos in Cebu IT Park", "/search?location=Cebu IT Park"],
+      ["Condos open to foreign buyers", "/search?foreignEligible=1"],
+      ["Buying from abroad", "/#buying-from-abroad"],
     ],
   },
   {
-    title: "International buyers",
+    title: "UAE",
     links: [
-      ["What foreigners can own", "/#buying-from-abroad"],
-      ["Condos open to foreign buyers", "/search?foreignEligible=1"],
-      ["For overseas Filipinos", "/#buying-from-abroad"],
+      ["Apartments in Dubai Marina", "/uae/search?type=SALE&location=Dubai Marina"],
+      ["Villas in Dubai Hills Estate", "/uae/search?type=SALE&propertyType=HOUSE_AND_LOT&location=Dubai Hills Estate"],
+      ["Off-plan in Abu Dhabi", "/uae/search?type=PRE_SELLING&location=Abu Dhabi"],
+      ["Freehold homes", "/uae/search?foreignEligible=1"],
+      ["Mortgage calculator", "/uae/calculator"],
     ],
   },
-  { title: "For professionals", links: [["Agent sign in", STATIC_PREVIEW ? "/dashboard" : "/agent/sign-in"], ["Get verified (PRC / DHSUD)", "/contact#agents"], ["Advertise a project", "/contact#developers"]] },
+  { title: "For professionals", links: [["Agent sign in", STATIC_PREVIEW ? "/dashboard" : "/agent/sign-in"], ["Get verified", "/contact#agents"], ["Advertise a project", "/contact#developers"]] },
   { title: "Company", links: [["About", "/about"], ["Contact", "/contact"], ["Terms", "/terms"], ["Privacy notice", "/privacy"]] },
 ];
 
@@ -34,7 +36,7 @@ export function SiteFooter() {
         <div className="space-y-4">
           <Logo inverted />
           <p className="max-w-xs text-sm leading-relaxed text-white/65">
-            Property across the Philippines, from Metro Manila to the islands. Every agent shows a PRC or DHSUD number you can check.
+            Property in the Philippines and the UAE. Every agent shows a licence or broker registration number you can check.
           </p>
           <CurrencySelect tone="dark" />
         </div>
@@ -54,7 +56,7 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-white/45 sm:flex-row sm:justify-between sm:px-6">
           <p>© 2026 Go Search Property.{SAMPLE_DATA && " Sample listings for demonstration."}</p>
-          <p>Converted prices are estimates using {RATES_SOURCE}, {RATES_AS_OF}. Transactions are in Philippine pesos.</p>
+          <p>Converted prices are estimates using {RATES_SOURCE}, {RATES_AS_OF}. Transactions are in the local currency: pesos in the Philippines, dirhams in the UAE.</p>
         </div>
       </div>
     </footer>

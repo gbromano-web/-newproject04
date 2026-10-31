@@ -3,7 +3,7 @@ import { ContactEmail, LegalPage, operatorLine } from "@/components/legal-page";
 
 export const metadata: Metadata = {
   title: "Privacy notice",
-  description: "How Go Search Property collects, uses, shares and keeps your personal data, and how to exercise your rights under the Data Privacy Act of 2012.",
+  description: "How Go Search Property collects, uses, shares and keeps your personal data, and how to exercise your rights under the Philippine Data Privacy Act of 2012 and the UAE Personal Data Protection Law.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -48,6 +48,9 @@ const sections: [string, React.ReactNode][] = [
     "Your rights",
     <>
       Under the Data Privacy Act of 2012 (Republic Act No. 10173) you may ask what data we hold about you, get a copy, have it corrected, object to its use, withdraw your consent, or have it erased. Write to <ContactEmail />; we will confirm your identity and respond as soon as possible. If you are not satisfied, you may complain to the National Privacy Commission at privacy.gov.ph.
+      <br />
+      <br />
+      If you use the site in the United Arab Emirates, you have similar rights under Federal Decree-Law No. 45 of 2021 on the Protection of Personal Data, and you can contact us the same way.
     </>,
   ],
 ];

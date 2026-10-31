@@ -3,24 +3,32 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Minus, Plus, RotateCcw, X } from "lucide-react";
-import { formatListingPrice, formatPeso } from "@/lib/ph/format";
-import { PH_MAP_VIEWS, project } from "@/lib/ph/map-geometry";
-import { PROPERTY_TYPE_LABEL, type PhListing } from "@/lib/ph/listings";
+import { currencyOf, formatListingPrice, formatMoney } from "@/lib/ph/format";
+import { PH_MAP_VIEWS, project, type MapView } from "@/lib/ph/map-geometry";
+import type { PhListing } from "@/lib/ph/listings";
+import { marketOf, type CountryCode } from "@/lib/markets";
 import { ListingPhoto } from "./listing-photo";
 
-const VIEW = PH_MAP_VIEWS.philippines;
-const FULL = { x: 0, y: 0, w: VIEW.width, h: VIEW.height };
+const LABELS: Record<CountryCode, [string, number, number][]> = {
+  PH: [
+    ["Luzon", 16.4, 121.5],
+    ["Metro Manila", 14.6, 121.35],
+    ["Palawan", 9.6, 118.35],
+    ["Visayas", 11.25, 124.6],
+    ["Cebu", 10.6, 123.55],
+    ["Mindanao", 7.6, 124.9],
+  ],
+  AE: [
+    ["Abu Dhabi", 24.1, 54.0],
+    ["Dubai", 24.95, 55.45],
+    ["Sharjah", 25.25, 55.75],
+    ["Ras Al Khaimah", 25.75, 56.1],
+    ["Fujairah", 25.05, 56.15],
+    ["Al Ain", 24.15, 55.55],
+  ],
+};
 
-const LABELS: [string, number, number][] = [
-  ["Luzon", 16.4, 121.5],
-  ["Metro Manila", 14.6, 121.35],
-  ["Palawan", 9.6, 118.35],
-  ["Visayas", 11.25, 124.6],
-  ["Cebu", 10.6, 123.55],
-  ["Mindanao", 7.6, 124.9],
-];
-
-type Box = typeof FULL;
+type Box = { x: number; y: number; w: number; h: number };
 type Cluster = { x: number; y: number; items: PhListing[] };
 
 function cluster(points: (PhListing & { px: number; py: number })[], radius: number): Cluster[] {
@@ -36,7 +44,7 @@ function cluster(points: (PhListing & { px: number; py: number })[], radius: num
   return out;
 }
 
-const shortPrice = (l: PhListing) => (l.listingType === "RENT" ? `${formatPeso(l.price)}/mo` : formatPeso(l.price));
+const shortPrice = (l: PhListing) => formatMoney(l.price, currencyOf(l)) + (l.listingType === "RENT" ? (l.rentPeriod === "YEARLY" ? "/yr" : "/mo") : "");
 
 /**
  * Offline-friendly national map: Natural Earth outline, projected at build
@@ -45,14 +53,19 @@ const shortPrice = (l: PhListing) => (l.listingType === "RENT" ? `${formatPeso(l
  * keeping this component's props.
  */
 /** A box of width `w` centred on a coordinate, used to open the map zoomed in on one property. */
-function boxAround(lat: number, lng: number, w: number): Box {
-  const { x, y } = project(VIEW, lat, lng);
-  const h = (w * VIEW.height) / VIEW.width;
+function boxAround(view: MapView, lat: number, lng: number, w: number): Box {
+  const { x, y } = project(view, lat, lng);
+  const h = (w * view.height) / view.width;
   return { x: x - w / 2, y: y - h / 2, w, h };
 }
 
-export function PhMap({ listings, focus = false }: { listings: PhListing[]; focus?: boolean }) {
-  const initial = focus && listings[0] ? boxAround(listings[0].lat, listings[0].lng, VIEW.width / 4) : FULL;
+/** Map of one market: the Philippines, or the UAE with its neighbours drawn faintly. */
+export function PhMap({ listings, focus = false, country }: { listings: PhListing[]; focus?: boolean; country?: CountryCode }) {
+  const code = country ?? listings[0]?.country ?? "PH";
+  const VIEW = code === "AE" ? PH_MAP_VIEWS.uae : PH_MAP_VIEWS.philippines;
+  const FULL: Box = { x: 0, y: 0, w: VIEW.width, h: VIEW.height };
+  const m = marketOf(code);
+  const initial = focus && listings[0] ? boxAround(VIEW, listings[0].lat, listings[0].lng, VIEW.width / 4) : FULL;
   const [box, setBox] = useState<Box>(initial);
   const [selected, setSelected] = useState<PhListing | null>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -74,7 +87,7 @@ export function PhMap({ listings, focus = false }: { listings: PhListing[]; focu
         const { x, y } = project(VIEW, l.lat, l.lng);
         return { ...l, px: x, py: y };
       }),
-    [listings],
+    [listings, VIEW],
   );
   const clusters = useMemo(() => cluster(points, 64 / k), [points, k]);
 
@@ -96,7 +109,7 @@ export function PhMap({ listings, focus = false }: { listings: PhListing[]; focu
 
   return (
     <div ref={frame} className="relative h-full min-h-72 overflow-hidden rounded-2xl bg-[#d7e8ee] ring-1 ring-line">
-      <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 size-full transition-[all] duration-500" role="img" aria-label={`Map of the Philippines showing ${listings.length} listings`}>
+      <svg viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 size-full transition-[all] duration-500" role="img" aria-label={`Map of the ${m.name === "UAE" ? "UAE" : "Philippines"} showing ${listings.length} listings`}>
         <defs>
           <radialGradient id="sea" cx="50%" cy="45%" r="75%">
             <stop offset="0" stopColor="#e3f0f4" />
@@ -104,9 +117,10 @@ export function PhMap({ listings, focus = false }: { listings: PhListing[]; focu
           </radialGradient>
         </defs>
         <rect x={-VIEW.width} y={-VIEW.height} width={VIEW.width * 3} height={VIEW.height * 3} fill="url(#sea)" />
+        {VIEW.context && <path d={VIEW.context} fill="#ece8e0" stroke="#c4cfd2" strokeWidth={0.6 / k} strokeLinejoin="round" />}
         <path d={VIEW.path} fill="#faf8f4" stroke="#9fb7c0" strokeWidth={0.8 / k} strokeLinejoin="round" />
         <g fill="#7b8f97" fontFamily="var(--font-sans)" fontWeight={600} textAnchor="middle">
-          {LABELS.map(([name, lat, lng]) => {
+          {LABELS[code].map(([name, lat, lng]) => {
             const { x, y } = project(VIEW, lat, lng);
             return (
               <text key={name} x={x} y={y} fontSize={11 / k} letterSpacing={0.3 / k}>
@@ -152,7 +166,7 @@ export function PhMap({ listings, focus = false }: { listings: PhListing[]; focu
       <div className="absolute right-3 top-3 flex flex-col overflow-hidden rounded-xl bg-white shadow-md ring-1 ring-line">
         <button onClick={() => zoom(0.6)} className="p-2.5 text-sea-900 hover:bg-mist" aria-label="Zoom in"><Plus className="size-4" /></button>
         <button onClick={() => zoom(1.6)} className="border-t border-line p-2.5 text-sea-900 hover:bg-mist" aria-label="Zoom out"><Minus className="size-4" /></button>
-        <button onClick={() => { setBox(initial); setSelected(null); }} className="border-t border-line p-2.5 text-sea-900 hover:bg-mist" aria-label={focus ? "Reset map" : "Show all of the Philippines"}><RotateCcw className="size-4" /></button>
+        <button onClick={() => { setBox(initial); setSelected(null); }} className="border-t border-line p-2.5 text-sea-900 hover:bg-mist" aria-label={focus ? "Reset map" : `Show all of the ${code === "AE" ? "UAE" : "Philippines"}`}><RotateCcw className="size-4" /></button>
       </div>
 
       {selected && (
@@ -163,7 +177,7 @@ export function PhMap({ listings, focus = false }: { listings: PhListing[]; focu
           <div className="min-w-0 flex-1 py-0.5">
             <p className="price text-base font-bold text-sea-950">{formatListingPrice(selected)}</p>
             <Link href={`/property/${selected.slug}`} className="line-clamp-1 text-sm font-semibold text-ink hover:text-lagoon-700">{selected.title}</Link>
-            <p className="truncate text-xs text-ink-soft">{PROPERTY_TYPE_LABEL[selected.propertyType]}, {selected.locationLabel}</p>
+            <p className="truncate text-xs text-ink-soft">{m.propertyTypeLabel[selected.propertyType]}, {selected.locationLabel}</p>
           </div>
           <button onClick={() => setSelected(null)} className="self-start rounded-full p-1 text-ink-soft hover:bg-mist" aria-label="Close preview"><X className="size-4" /></button>
         </div>

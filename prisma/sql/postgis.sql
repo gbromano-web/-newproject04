@@ -90,8 +90,50 @@ ALTER TABLE "Agent" ADD CONSTRAINT agent_license_fields
     WHEN 'REAL_ESTATE_BROKER'      THEN "prcLicenseNumber" IS NOT NULL
     WHEN 'REAL_ESTATE_SALESPERSON' THEN "dhsudAccreditationNumber" IS NOT NULL
                                         AND "supervisingBrokerId" IS NOT NULL
+    -- UAE: registration with the emirate's regulator, e.g. RERA BRN (Dubai) or ADREC (Abu Dhabi)
+    WHEN 'UAE_BROKER'              THEN NULLIF(btrim("uaeBrokerNumber"), '') IS NOT NULL
+                                        AND NULLIF(btrim("uaeRegulator"), '') IS NOT NULL
     ELSE FALSE -- a new licence type must be added here explicitly (NULL would pass the CHECK)
   END);
+
+-- ─── Market rules (Philippines / UAE) ───────────────────────────────────────
+ALTER TABLE "Property" DROP CONSTRAINT IF EXISTS property_rent_cheques;
+ALTER TABLE "Property" ADD CONSTRAINT property_rent_cheques
+  CHECK ("rentCheques" IS NULL OR "rentCheques" BETWEEN 1 AND 12);
+
+-- A listing's agent must be licensed in the listing's country, and listings in
+-- emirates with an advertising-permit system (Location."adPermitSystem": Dubai
+-- DLD Trakheesi, Abu Dhabi ADREC Madhmoun, Ras Al Khaimah RAK RERA) need the
+-- permit number to go live.
+CREATE OR REPLACE FUNCTION property_market_rules() RETURNS trigger AS $$
+DECLARE
+  v_country "Country";
+  v_permit  text;
+  v_license "LicenseType";
+BEGIN
+  SELECT l.country,
+         (SELECT x."adPermitSystem" FROM "Location" x
+           WHERE (x.id = l.id OR x.id = ANY (l."ancestorIds")) AND x."adPermitSystem" IS NOT NULL LIMIT 1)
+    INTO v_country, v_permit
+    FROM "Location" l WHERE l.id = NEW."locationId";
+  SELECT a."licenseType" INTO v_license FROM "Agent" a WHERE a.id = NEW."agentId";
+
+  IF (v_country = 'AE') IS DISTINCT FROM (v_license = 'UAE_BROKER') THEN
+    RAISE EXCEPTION 'Listing %: a % listing needs an agent licensed in that country', NEW.slug, v_country
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF v_permit IS NOT NULL AND NEW.status IN ('ACTIVE', 'PENDING_REVIEW') AND NULLIF(btrim(NEW."adPermitNumber"), '') IS NULL THEN
+    RAISE EXCEPTION 'Listing %: listings here need a % number before they go live', NEW.slug, v_permit
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public, extensions;
+
+DROP TRIGGER IF EXISTS trg_property_market_rules ON "Property";
+CREATE TRIGGER trg_property_market_rules
+  BEFORE INSERT OR UPDATE OF "locationId", "agentId", status, "adPermitNumber" ON "Property"
+  FOR EACH ROW EXECUTE FUNCTION property_market_rules();
 
 -- Audit log is append-only: block updates and deletes at the database level
 CREATE OR REPLACE FUNCTION audit_log_append_only() RETURNS trigger AS $$

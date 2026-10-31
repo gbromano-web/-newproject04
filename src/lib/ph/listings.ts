@@ -3,6 +3,8 @@
 // once Supabase is connected. All people, numbers and agencies are fictional;
 // phone numbers use an obviously-demo 0000 block.
 
+import type { CountryCode } from "../markets";
+import { UAE_AGENTS, UAE_LISTINGS } from "../uae/samples";
 import type { ListingImage } from "./photos";
 
 export type ListingType = "SALE" | "RENT" | "PRE_SELLING" | "FORECLOSED";
@@ -13,8 +15,10 @@ export interface PhAgent {
   id: string;
   name: string;
   initials: string;
-  licenseType: "REAL_ESTATE_BROKER" | "REAL_ESTATE_SALESPERSON";
-  license: string; // "PRC 0031874" or "DHSUD 2025-11823"
+  licenseType: "REAL_ESTATE_BROKER" | "REAL_ESTATE_SALESPERSON" | "UAE_BROKER";
+  license: string; // "PRC 0031874", "DHSUD 2025-11823" or "RERA BRN 54321"
+  /** UAE: the brokerage's office registration, e.g. "RERA ORN 12345" (Dubai ads show both BRN and ORN) */
+  office?: string;
   verified: boolean;
   agency: string;
   mobile: string; // E.164
@@ -32,6 +36,8 @@ export interface NearbyPlace {
 
 export interface PhListing {
   id: string;
+  /** Market: "PH" when absent */
+  country?: CountryCode;
   slug: string;
   title: string;
   description: string;
@@ -39,6 +45,12 @@ export interface PhListing {
   propertyType: PropertyType;
   price: number;
   rentPeriod?: "MONTHLY" | "YEARLY" | "DAILY";
+  /** UAE rentals: number of cheques the yearly rent can be paid in */
+  rentCheques?: number;
+  /** UAE: advertising permit number (Trakheesi in Dubai, Madhmoun in Abu Dhabi) */
+  adPermit?: string;
+  /** UAE: which permit system, from the emirate ("DLD Trakheesi permit") */
+  adPermitLabel?: string;
   floorAreaSqm?: number;
   lotAreaSqm?: number;
   bedrooms?: number;
@@ -289,14 +301,16 @@ const L: PhListing[] = [
   },
 ];
 
-export const LISTINGS = L;
+export const LISTINGS: PhListing[] = [...L, ...UAE_LISTINGS];
 
-export const getAgent = (id: string) => AGENTS.find((a) => a.id === id)!;
+const ALL_AGENTS = [...AGENTS, ...UAE_AGENTS];
+export const getAgent = (id: string) => ALL_AGENTS.find((a) => a.id === id)!;
 /** The listing's agent: embedded by the data layer, or looked up among the samples. */
 export const agentOf = (l: PhListing): PhAgent => l.agent ?? getAgent(l.agentId);
 
-/** Homepage "New on Go Search Property": newest six */
-export const latestListings = (n = 6) => [...L].sort((a, b) => b.listedAt.localeCompare(a.listedAt)).slice(0, n);
+/** Homepage "New on Go Search Property": newest in one market */
+export const latestListings = (n = 6, country: CountryCode = "PH") =>
+  LISTINGS.filter((l) => (l.country ?? "PH") === country).sort((a, b) => b.listedAt.localeCompare(a.listedAt)).slice(0, n);
 
 export const PROPERTY_TYPE_LABEL: Record<PropertyType, string> = {
   CONDOMINIUM: "Condominium",

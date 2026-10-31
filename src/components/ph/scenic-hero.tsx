@@ -9,7 +9,7 @@ import { ScenePhoto } from "./scene-photo";
 import type { SceneKey } from "./scenes";
 
 export interface HeroSlide {
-  photo: PhotoKey; // production: HeroBanner.imageKey from Supabase Storage
+  photo?: PhotoKey; // production: HeroBanner.imageKey from Supabase Storage; omitted = illustration only
   scene: SceneKey; // illustration shown while the photo loads, or if it fails
   place: string;
   note: string;
@@ -25,7 +25,7 @@ const DEFAULT_SLIDES: HeroSlide[] = [
 
 const SLIDE_MS = 7000;
 
-export function ScenicHero({ slides = DEFAULT_SLIDES, children }: { slides?: HeroSlide[]; children: React.ReactNode }) {
+export function ScenicHero({ slides = DEFAULT_SLIDES, label = "Philippine destinations", children }: { slides?: HeroSlide[]; label?: string; children: React.ReactNode }) {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
   const reduce = useReducedMotion();
@@ -37,10 +37,10 @@ export function ScenicHero({ slides = DEFAULT_SLIDES, children }: { slides?: Her
   }, [index, playing, slides.length]);
 
   const slide = slides[index];
-  const credit = PHOTOS[slide.photo];
+  const credit = slide.photo ? PHOTOS[slide.photo] : null;
 
   return (
-    <section className="relative isolate overflow-hidden bg-sea-950" aria-roledescription="carousel" aria-label="Philippine destinations">
+    <section className="relative isolate overflow-hidden bg-sea-950" aria-roledescription="carousel" aria-label={label}>
       <AnimatePresence initial={false}>
         <motion.div
           key={index}
@@ -76,11 +76,13 @@ export function ScenicHero({ slides = DEFAULT_SLIDES, children }: { slides?: Her
                 <span className="block text-sm font-bold">{slide.place}</span>
                 <span className="block text-xs text-white/80">
                   {slide.note}
-                  <span className="hidden sm:inline">
-                    {". Photo: "}
-                    <a href={credit.profileUrl} target="_blank" rel="noopener noreferrer" className="underline decoration-white/40 underline-offset-2 hover:decoration-white">{credit.photographer}</a>
-                    {" on Unsplash"}
-                  </span>
+                  {credit && (
+                    <span className="hidden sm:inline">
+                      {". Photo: "}
+                      <a href={credit.profileUrl} target="_blank" rel="noopener noreferrer" className="underline decoration-white/40 underline-offset-2 hover:decoration-white">{credit.photographer}</a>
+                      {" on Unsplash"}
+                    </span>
+                  )}
                 </span>
               </span>
             </motion.div>

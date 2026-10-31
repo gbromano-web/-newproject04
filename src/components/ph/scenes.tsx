@@ -1,4 +1,4 @@
-// Illustrated Philippine landscapes used as hero slides and destination
+// Illustrated Philippine and UAE landscapes used as hero slides and destination
 // cards. They stand in for HOME_HERO banner photography (HeroBanner rows)
 // until real photos are uploaded. Pure SVG: no requests, sharp at any size.
 //
@@ -295,12 +295,147 @@ function CityScene({ uid, className }: SceneProps) {
   );
 }
 
+
+/** Dubai at dusk: a waterfront skyline with one needle-like tower, marina water */
+function SkylineScene({ uid, className }: SceneProps) {
+  const towers: [number, number, number][] = [
+    [40, 70, 250], [120, 55, 320], [185, 80, 280], [280, 60, 390], [350, 75, 340], [440, 55, 300],
+    [905, 70, 360], [985, 60, 430], [1055, 85, 330], [1150, 55, 400], [1215, 75, 310], [1300, 60, 370], [1370, 80, 290], [1460, 65, 340],
+  ];
+  const base = 600;
+  return (
+    <Svg className={className} label="Illustration of a desert city skyline at dusk across the water">
+      <defs>
+        <linearGradient id={`${uid}-sky`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#1d3a63" />
+          <stop offset=".5" stopColor="#c9708a" />
+          <stop offset=".78" stopColor="#f5b46a" />
+        </linearGradient>
+        <linearGradient id={`${uid}-water`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2c4f74" />
+          <stop offset="1" stopColor="#14304b" />
+        </linearGradient>
+      </defs>
+      <rect width={W} height={H} fill={`url(#${uid}-sky)`} />
+      <circle cx="380" cy="470" r="90" fill="#ffd98a" opacity=".85" />
+      <g fill="#7c6f96" opacity=".45">
+        {towers.map(([x, w, h], i) => <rect key={i} x={x + 30} y={base - h * 0.7} width={w * 0.8} height={h * 0.7} />)}
+      </g>
+      <g fill="#24364f">
+        {towers.map(([x, w, h], i) => <rect key={i} x={x} y={base - h} width={w} height={h} rx="3" />)}
+        {/* The tall tapering tower */}
+        <path d="M720 600 L732 330 L744 330 L752 190 L760 190 L766 70 L772 190 L780 190 L788 330 L800 330 L812 600 Z" />
+        <path d="M600 600 V420 Q640 380 680 420 V600 Z" />
+        <path d="M830 600 V380 L870 350 V600 Z" />
+      </g>
+      <g fill="#ffd27a" opacity=".8">
+        {towers.flatMap(([x, w, h], i) =>
+          Array.from({ length: Math.floor(h / 30) }, (_, r) => (
+            <rect key={`${i}-${r}`} x={x + 8} y={base - h + 16 + r * 30} width={w - 16} height="3" opacity={(i + r) % 3 === 0 ? 0.9 : 0.25} />
+          )),
+        )}
+      </g>
+      <rect y={base} width={W} height={H - base} fill={`url(#${uid}-water)`} />
+      <g stroke="#ffd27a" strokeWidth="3" opacity=".35">
+        {[640, 680, 720, 760].map((y, i) => <line key={y} x1={300 + i * 40} y1={y} x2={1300 - i * 60} y2={y} />)}
+      </g>
+    </Svg>
+  );
+}
+
+/** Desert dunes at golden hour, with a line of palms at an oasis */
+function DunesScene({ uid, className }: SceneProps) {
+  return (
+    <Svg className={className} label="Illustration of rolling desert dunes at golden hour">
+      <defs>
+        <linearGradient id={`${uid}-sky`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#5b8fc4" />
+          <stop offset=".6" stopColor="#f6c98a" />
+          <stop offset="1" stopColor="#f2a96b" />
+        </linearGradient>
+      </defs>
+      <rect width={W} height={H} fill={`url(#${uid}-sky)`} />
+      <circle cx="1180" cy="330" r="70" fill="#fff1c4" opacity=".9" />
+      <path d="M0 470 Q300 380 620 450 T1250 420 T1600 450 V800 H0 Z" fill="#e9a866" />
+      <path d="M0 560 Q350 450 760 540 T1600 520 V800 H0 Z" fill="#d98e52" />
+      <path d="M0 660 Q420 560 900 650 T1600 630 V800 H0 Z" fill="#c4743d" />
+      <path d="M760 540 Q900 500 1060 545" stroke="#f4c08a" strokeWidth="4" fill="none" opacity=".6" />
+      <Palm x={180} ground={590} s={0.75} lean={18} />
+      <Palm x={260} ground={600} s={0.6} lean={-14} flip />
+      <Palm x={1420} ground={575} s={0.7} lean={16} />
+    </Svg>
+  );
+}
+
+/** Abu Dhabi coast: white domes and minarets by calm water, mangroves in front */
+function DomesScene({ uid, className }: SceneProps) {
+  const domes = [560, 700, 840, 980];
+  return (
+    <Svg className={className} label="Illustration of white domes and minarets beside calm water">
+      <defs>
+        <linearGradient id={`${uid}-sky`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#7fb4dd" />
+          <stop offset="1" stopColor="#f3e3c8" />
+        </linearGradient>
+        <linearGradient id={`${uid}-sea`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#4aa3b5" />
+          <stop offset="1" stopColor="#1f6f86" />
+        </linearGradient>
+      </defs>
+      <rect width={W} height={H} fill={`url(#${uid}-sky)`} />
+      <Clouds y={140} opacity={0.8} />
+      <g fill="#fbf8f2" stroke="#d8cfc0" strokeWidth="2">
+        <rect x="480" y="440" width="640" height="110" />
+        {domes.map((x) => <path key={x} d={`M${x - 55} 440 A55 60 0 0 1 ${x + 55} 440 Z`} />)}
+        <path d="M710 440 A90 100 0 0 1 890 440 Z" />
+        {[440, 1160].map((x) => (
+          <g key={x}>
+            <rect x={x - 12} y="250" width="24" height="300" />
+            <path d={`M${x - 16} 250 L${x} 205 L${x + 16} 250 Z`} />
+          </g>
+        ))}
+      </g>
+      <g fill="#e2b04a">{[700, 800, 990].map((x) => <rect key={x} x={x - 2} y={x === 800 ? 322 : 368} width="4" height="18" />)}</g>
+      <rect y="550" width={W} height="250" fill={`url(#${uid}-sea)`} />
+      <g fill="#fbf8f2" opacity=".35">{[600, 760, 920].map((x) => <rect key={x} x={x - 60} y="565" width="120" height="6" rx="3" />)}</g>
+      <path d="M0 720 Q120 690 260 715 T560 705 T900 725 T1250 705 T1600 720 V800 H0 Z" fill="#2f6a46" />
+    </Svg>
+  );
+}
+
+/** Ras Al Khaimah and Fujairah: the Hajar mountains above a coastal plain */
+function MountainsScene({ uid, className }: SceneProps) {
+  return (
+    <Svg className={className} label="Illustration of rugged mountains above a coastal plain">
+      <defs>
+        <linearGradient id={`${uid}-sky`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#4f86b8" />
+          <stop offset="1" stopColor="#f1d2a6" />
+        </linearGradient>
+      </defs>
+      <rect width={W} height={H} fill={`url(#${uid}-sky)`} />
+      <Clouds y={110} opacity={0.6} />
+      <path d="M0 520 L160 330 L260 410 L420 210 L560 380 L700 260 L860 430 L1020 230 L1180 360 L1340 250 L1600 470 V800 H0 Z" fill="#9a6b4b" />
+      <path d="M0 560 L200 420 L330 480 L480 360 L640 470 L820 380 L980 500 L1150 400 L1330 480 L1600 420 V800 H0 Z" fill="#7d5139" />
+      <path d="M420 210 L455 250 L430 245 Z M1020 230 L1052 268 L1028 262 Z" fill="#c99b74" />
+      <path d="M0 620 Q400 590 800 615 T1600 605 V800 H0 Z" fill="#cdb48a" />
+      <path d="M0 700 Q380 670 820 690 T1600 680 V800 H0 Z" fill="#3e8a9a" />
+      <Palm x={1300} ground={640} s={0.55} lean={12} />
+      <Palm x={1360} ground={645} s={0.45} lean={-10} flip />
+    </Svg>
+  );
+}
+
 export const SCENES = {
   lagoon: LagoonScene,
   terraces: TerracesScene,
   volcano: VolcanoScene,
   hills: HillsScene,
   city: CityScene,
+  skyline: SkylineScene,
+  dunes: DunesScene,
+  domes: DomesScene,
+  mountains: MountainsScene,
 } as const;
 
 export type SceneKey = keyof typeof SCENES;

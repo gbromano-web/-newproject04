@@ -1,5 +1,6 @@
 // Generates src/lib/ph/map-geometry.ts: pre-projected SVG outlines of the
-// Philippines (Natural Earth 1:10m via world-atlas) for the search map.
+// Philippines and the UAE (Natural Earth 1:10m via world-atlas) for the
+// search maps. The UAE view also draws its neighbours faintly for context.
 // Projecting at build time keeps the 3.6 MB source out of the app bundle.
 //
 // Run: node scripts/build-ph-map.mjs
@@ -11,15 +12,19 @@ import { feature } from "topojson-client";
 const require = createRequire(import.meta.url);
 const topo = require("world-atlas/countries-10m.json");
 const countries = feature(topo, topo.objects.countries);
-const ph = countries.features.find((f) => f.properties.name === "Philippines");
-if (!ph) throw new Error("Philippines not found in world-atlas");
+const country = (name) => {
+  const f = countries.features.find((x) => x.properties.name === name);
+  if (!f) throw new Error(`${name} not found in world-atlas`);
+  return f;
+};
 
 /** A view = a bounding box rendered into a fixed-size SVG. */
 const VIEWS = {
   // Natural Earth 1:10m is too coarse for city-level views (no lakes such as
   // Laguna de Bay), so the app shows the national view and clusters pins.
   // Production: MapLibre GL with vector tiles for street-level zoom.
-  philippines: { width: 640, height: 900, bbox: [[116.8, 4.4], [127.0, 21.3]] },
+  philippines: { width: 640, height: 900, bbox: [[116.8, 4.4], [127.0, 21.3]], land: ["Philippines"], context: [] },
+  uae: { width: 900, height: 700, bbox: [[51.4, 22.5], [56.6, 26.3]], land: ["United Arab Emirates"], context: ["Oman", "Saudi Arabia", "Qatar"] },
 };
 
 function round(path) {
@@ -39,7 +44,8 @@ for (const [name, v] of Object.entries(VIEWS)) {
     height: v.height,
     scale: clipped.scale(),
     translate: clipped.translate(),
-    path: round(geoPath(clipped)(ph) ?? ""),
+    path: v.land.map((n) => round(geoPath(clipped)(country(n)) ?? "")).join(""),
+    context: v.context.map((n) => round(geoPath(clipped)(country(n)) ?? "")).join(""),
   };
 }
 
@@ -53,9 +59,11 @@ export interface MapView {
   scale: number;
   translate: [number, number];
   path: string;
+  /** Neighbouring countries, drawn faintly */
+  context: string;
 }
 
-export const PH_MAP_VIEWS: Record<"philippines", MapView> = ${JSON.stringify(out, null, 2)};
+export const PH_MAP_VIEWS: Record<"philippines" | "uae", MapView> = ${JSON.stringify(out, null, 2)};
 
 /** Same maths as d3.geoMercator with the stored scale and translate. */
 export function project(view: MapView, lat: number, lng: number) {

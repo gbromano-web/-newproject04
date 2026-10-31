@@ -5,17 +5,27 @@ import Link from "next/link";
 import { BadgeCheck, CheckCircle2, Clock, Languages, MessageCircle, Phone } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import type { PhAgent } from "@/lib/ph/listings";
+import { marketOf, type CountryCode } from "@/lib/markets";
 import { DEMO, leadHref, offClass, offProps, PREVIEW_CONTACT_NOTE } from "@/lib/ph/preview";
 import { COMPUTATION_EVENT, type ComputationRequest } from "./amortization-calculator";
 
-const LICENSE_LABEL = { REAL_ESTATE_BROKER: "Licensed real estate broker", REAL_ESTATE_SALESPERSON: "Accredited real estate salesperson" } as const;
+const LICENSE_LABEL = {
+  REAL_ESTATE_BROKER: "Licensed real estate broker",
+  REAL_ESTATE_SALESPERSON: "Accredited real estate salesperson",
+  UAE_BROKER: "Registered real estate broker",
+} as const;
+
+/** +63 917 000 0101, +971 50 000 0101; anything else as stored */
+const prettyPhone = (n: string) =>
+  n.replace(/^\+63(\d{3})(\d{3})(\d{4})$/, "+63 $1 $2 $3").replace(/^\+971(\d{2})(\d{3})(\d{4})$/, "+971 $1 $2 $3");
 
 /**
- * Sticky agent card: Viber (primary in the Philippines), WhatsApp, call, and
- * an inquiry form. When the buyer presses "Request sample computation" in the
- * calculator, the form switches to a computation request with those figures.
+ * Sticky agent card: Viber (primary in the Philippines; not offered in the UAE),
+ * WhatsApp, call, and an inquiry form. When the buyer presses "Request sample
+ * computation" in the calculator, the form switches to a computation request.
  */
-export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent; listingId: string; listingTitle: string }) {
+export function ContactCard({ agent, listingId, listingTitle, country }: { agent: PhAgent; listingId: string; listingTitle: string; country?: CountryCode }) {
+  const market = marketOf(country);
   const [computation, setComputation] = useState<ComputationRequest | null>(null);
   const [message, setMessage] = useState(`Hi ${agent.name.split(" ")[0]}, I'm interested in "${listingTitle}". Is it still available?`);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -27,12 +37,12 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
       setComputation(d);
       setStatus("idle");
       setMessage(
-        `Hi ${agent.name.split(" ")[0]}, please send me a sample computation for "${listingTitle}" with ${d.financingType === "PAGIBIG" ? "Pag-IBIG" : "bank"} financing: ${d.downpaymentPercent}% downpayment, ${d.termYears}-year term, rate fixed for ${d.fixingYears} ${d.fixingYears === 1 ? "year" : "years"}.`,
+        `Hi ${agent.name.split(" ")[0]}, please send me a sample computation for "${listingTitle}" with ${d.financingType === "PAGIBIG" ? "Pag-IBIG" : market.code === "AE" ? "a UAE bank mortgage" : "bank"} financing: ${d.downpaymentPercent}% downpayment, ${d.termYears}-year term, rate fixed for ${d.fixingYears} ${d.fixingYears === 1 ? "year" : "years"}.`,
       );
     };
     window.addEventListener(COMPUTATION_EVENT, onRequest);
     return () => window.removeEventListener(COMPUTATION_EVENT, onRequest);
-  }, [agent.name, listingTitle]);
+  }, [agent.name, listingTitle, market.code]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -72,16 +82,18 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
         {!agent.verified && <p className="pt-1 font-medium text-coral-600">Licence not yet verified by Go Search Property.</p>}
       </dl>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <a href={leadHref("viber", listingId)} rel="nofollow" className={`flex h-11 items-center justify-center gap-2 rounded-full bg-viber text-sm font-semibold text-white transition hover:brightness-110${offClass}`} {...offProps}>
-          <MessageCircle className="size-4" /> Viber
-        </a>
+      <div className={`mt-4 grid gap-2 ${market.hasViber ? "grid-cols-2" : "grid-cols-1"}`}>
+        {market.hasViber && (
+          <a href={leadHref("viber", listingId)} rel="nofollow" className={`flex h-11 items-center justify-center gap-2 rounded-full bg-viber text-sm font-semibold text-white transition hover:brightness-110${offClass}`} {...offProps}>
+            <MessageCircle className="size-4" /> Viber
+          </a>
+        )}
         <a href={leadHref("whatsapp", listingId)} rel="nofollow" className={`flex h-11 items-center justify-center gap-2 rounded-full bg-whatsapp text-sm font-semibold text-white transition hover:brightness-110${offClass}`} {...offProps}>
           <WhatsAppIcon className="size-4" /> WhatsApp
         </a>
       </div>
       <a href={DEMO ? undefined : `tel:${agent.mobile}`} className={`mt-2 flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold text-sea-900 ring-1 ring-line transition hover:bg-mist${offClass}`} {...offProps}>
-        <Phone className="size-4" /> Call {agent.mobile.replace(/^\+63(\d{3})(\d{3})(\d{4})$/, "+63 $1 $2 $3")}
+        <Phone className="size-4" /> Call {prettyPhone(agent.mobile)}
       </a>
 
       {DEMO && <p className="mt-2 text-center text-xs text-ink-soft">{PREVIEW_CONTACT_NOTE}.</p>}
@@ -109,12 +121,12 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
           <input name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] size-px opacity-0" />
           <input name="name" required placeholder="Full name" aria-label="Full name" autoComplete="name" className={input} />
           <input name="email" type="email" required placeholder="Email" aria-label="Email" autoComplete="email" className={input} />
-          <input name="mobile" type="tel" placeholder="Mobile, e.g. +63 917 …" aria-label="Mobile number" autoComplete="tel" className={input} />
+          <input name="mobile" type="tel" placeholder={market.code === "AE" ? "Mobile, e.g. +971 50 …" : "Mobile, e.g. +63 917 …"} aria-label="Mobile number" autoComplete="tel" className={input} />
           <textarea name="message" rows={4} value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Message" className="w-full rounded-xl bg-mist p-3.5 text-sm text-ink focus:bg-white focus:outline-none focus:ring-2 focus:ring-lagoon-500" />
           <label className="flex items-start gap-2.5 py-1 text-xs leading-relaxed text-ink-soft">
             <input type="checkbox" name="consent" required className="mt-0.5 size-4 accent-[var(--color-sea-900)]" />
             <span>
-              I agree to share these details with this agent so they can reply, under the Data Privacy Act of 2012.{" "}
+              I agree to share these details with this agent so they can reply, under {market.privacyLaw}.{" "}
               <Link href="/privacy" className="font-semibold text-sea-900 underline underline-offset-2">Privacy notice</Link>
             </span>
           </label>

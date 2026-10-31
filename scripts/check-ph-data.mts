@@ -2,11 +2,12 @@
 // Run: npm run check:ph
 import assert from "node:assert/strict";
 import { formatBedrooms, formatPeso, formatPricePerSqm, formatRent, formatSqm, formatTurnover } from "../src/lib/ph/format";
-import { flattenLocations, slugify } from "../src/lib/ph/locations";
+import { allLocations, flattenLocations, locationsFor, slugify } from "../src/lib/ph/locations";
 import { seed, type SeedClient } from "../prisma/seed";
 import { convertPeso } from "../src/lib/ph/currency";
 import { estimate, monthlyAmortization } from "../src/lib/ph/financing";
 import { LISTINGS, AGENTS, getAgent } from "../src/lib/ph/listings";
+import { UAE_AGENTS } from "../src/lib/uae/samples";
 import { PHOTOS } from "../src/lib/ph/photos";
 import { PH_MAP_VIEWS, project } from "../src/lib/ph/map-geometry";
 
@@ -52,11 +53,32 @@ for (const l of LISTINGS) {
   if (l.listingType === "PRE_SELLING") assert.ok(l.turnoverYear && l.turnoverQuarter, `${l.id} turnover`);
   if (l.listingType === "FORECLOSED") assert.ok(l.foreclosingInstitution, `${l.id} institution`);
   if (l.propertyType === "LOT_ONLY") assert.ok(l.lotAreaSqm, `${l.id} lot area`);
-  if (l.foreignBuyerEligible) assert.equal(l.propertyType, "CONDOMINIUM", "only condos can be foreign-owned");
-  const { x, y } = project(PH_MAP_VIEWS.philippines, l.lat, l.lng);
-  assert.ok(x > 0 && x < 640 && y > 0 && y < 900, `${l.id} pin inside the map`);
+  const ae = l.country === "AE";
+  // Philippines: foreigners may own condos only. UAE: freehold applies to any property type.
+  if (l.foreignBuyerEligible && !ae) assert.equal(l.propertyType, "CONDOMINIUM", "only condos can be foreign-owned");
+  const view = PH_MAP_VIEWS[ae ? "uae" : "philippines"];
+  const { x, y } = project(view, l.lat, l.lng);
+  assert.ok(x > 0 && x < view.width && y > 0 && y < view.height, `${l.id} pin inside the map`);
+  const agent = getAgent(l.agentId);
+  assert.equal(agent.licenseType === "UAE_BROKER", ae, `${l.id}: agent licensed in the listing's country`);
+  const place = locationsFor(ae ? "AE" : "PH").find((p) => p.displayName === l.locationLabel || p.name === l.city);
+  assert.ok(place, `${l.id}: location "${l.locationLabel}" is in the ${ae ? "UAE" : "Philippine"} tree`);
+  // Same rule as the database trigger: emirates with an advertising-permit system need a permit number
+  if (ae && place.adPermit) assert.ok(l.adPermit, `${l.id}: needs a ${place.adPermit} number`);
 }
-assert.ok(AGENTS.every((a) => a.mobile.startsWith("+63")), "PH mobile numbers");
+const PH_AGENTS = AGENTS.filter((a) => a.licenseType !== "UAE_BROKER");
+assert.ok(PH_AGENTS.every((a) => a.mobile.startsWith("+63")), "PH mobile numbers");
+assert.ok(UAE_AGENTS.every((a) => a.mobile.startsWith("+971") && a.licenseType === "UAE_BROKER"), "UAE brokers with UAE mobiles");
+
+// UAE locations: all seven emirates, permits where the regulator requires them
+const uae = locationsFor("AE");
+const emirates = uae.filter((l) => l.parentKey === null).map((l) => l.name).sort();
+assert.deepEqual(emirates, ["Abu Dhabi", "Ajman", "Dubai", "Fujairah", "Ras Al Khaimah", "Sharjah", "Umm Al Quwain"]);
+assert.equal(uae.find((l) => l.name === "Dubai Marina")!.adPermit, "DLD Trakheesi permit", "communities inherit the emirate's permit");
+assert.ok(uae.find((l) => l.name === "Al Marjan Island")!.adPermit, "Ras Al Khaimah requires a permit");
+assert.equal(uae.find((l) => l.name === "Aljada")!.adPermit, null, "Sharjah permit optional");
+assert.ok(uae.every((l) => l.key.startsWith("uae/")), "UAE keys cannot collide with Philippine ones");
+assert.equal(new Set(allLocations().map((l) => l.key)).size, allLocations().length, "all location keys unique");
 
 // Location tree
 assert.equal(slugify("Parañaque"), "paranaque");
@@ -106,4 +128,4 @@ const boholBanner = store.banners.find((b) => (b as { imageKey: string }).imageK
 assert.ok(boholBanner.locationId, "Chocolate Hills banner targets Bohol");
 assert.ok(boholBanner.photoCredit.includes("Unsplash"), "banner carries photo credit");
 
-console.log(`All PH data checks passed (${flat.length} locations, ${first.amenities} amenities, ${first.heroBackgrounds} hero backgrounds).`);
+console.log(`All data checks passed (${flat.length} Philippine and ${uae.length} UAE locations, ${first.amenities} amenities, ${first.heroBackgrounds} hero backgrounds).`);

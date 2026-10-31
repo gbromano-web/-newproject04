@@ -5,11 +5,11 @@ import { liveListingSlugs } from "@/lib/server/listings-repo";
 import { log } from "@/lib/server/request";
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://gosearchproperty.com").replace(/\/$/, "");
-const PAGES = ["/", "/search", "/calculator", "/about", "/contact", "/terms", "/privacy"];
+const PAGES = ["/", "/search", "/calculator", "/uae", "/uae/search", "/uae/calculator", "/about", "/contact", "/terms", "/privacy"];
 
 /** Public pages plus every live listing. Sample listings are never listed. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const pages: MetadataRoute.Sitemap = PAGES.map((p) => ({ url: SITE + p, changeFrequency: p === "/" || p === "/search" ? "daily" : "monthly" }));
+  const pages: MetadataRoute.Sitemap = PAGES.map((p) => ({ url: SITE + p, changeFrequency: ["/", "/search", "/uae", "/uae/search"].includes(p) ? "daily" : "monthly" }));
   if (SAMPLE_DATA) return pages;
   await connection(); // outside the try: the build stops here on purpose, which is not a failure
   try {

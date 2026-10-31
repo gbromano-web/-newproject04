@@ -4,7 +4,7 @@ import { BadgeCheck, Globe2, MessageCircle } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Go Search Property is a Philippine property portal where every listing comes from a licensed broker or accredited salesperson.",
+  description: "Go Search Property is a property portal for the Philippines and the UAE where every listing comes from a licensed broker.",
   alternates: { canonical: "/about" },
 };
 
@@ -12,17 +12,17 @@ const POINTS = [
   {
     icon: BadgeCheck,
     title: "Licensed agents only",
-    body: "Every agent shows a PRC licence number or DHSUD accreditation that you can check before you reply.",
+    body: "Every agent shows a number you can check: a PRC licence or DHSUD accreditation in the Philippines, a broker registration with the emirate's regulator in the UAE.",
   },
   {
     icon: Globe2,
     title: "Built for buyers abroad",
-    body: "Prices in pesos with a second currency beside them, and clear notes on which properties foreigners can own.",
+    body: "Prices in pesos or dirhams with a second currency beside them, and clear notes on which properties foreigners can own.",
   },
   {
     icon: MessageCircle,
     title: "Talk the way you already do",
-    body: "Message the agent on Viber or WhatsApp, or send an inquiry and get a sample computation with your own figures.",
+    body: "Message the agent on WhatsApp (or Viber in the Philippines), or send an inquiry and get a sample computation with your own figures.",
   },
 ];
 
@@ -31,7 +31,7 @@ export default function AboutPage() {
     <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
       <h1 className="text-3xl font-bold leading-tight text-sea-950 sm:text-[44px]">About Go Search Property</h1>
       <p className="mt-4 max-w-2xl text-[17px] leading-relaxed text-ink-soft">
-        Go Search Property helps people find homes, lots and commercial space across the Philippines, from Metro Manila to the islands, and reach the licensed professionals who list them.
+        Go Search Property helps people find homes, land and commercial space across the Philippines and all seven emirates of the UAE, and reach the licensed professionals who list them.
       </p>
       <div className="mt-12 grid gap-6 sm:grid-cols-3">
         {POINTS.map(({ icon: Icon, title, body }) => (

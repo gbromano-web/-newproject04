@@ -6,6 +6,7 @@ import { PhListingCard } from "@/components/ph/ph-listing-card";
 import { PhMap } from "@/components/ph/ph-map";
 import { searchHeading, toQuery, type SearchFilters, type SortKey } from "@/lib/ph/search";
 import type { PhListing } from "@/lib/ph/listings";
+import { marketOf } from "@/lib/markets";
 
 const SORTS: [SortKey, string][] = [
   ["featured", "Recommended"],
@@ -16,6 +17,7 @@ const SORTS: [SortKey, string][] = [
 
 /** Results list, sort links and map. Rendered on the server on the real site and in the browser in the static preview. */
 export function SearchResultsView({ f, results }: { f: SearchFilters; results: PhListing[] }) {
+  const m = marketOf(f.country);
   return (
     <div className="bg-white">
       <FilterBar key={toQuery(f)} initial={f} resultCount={results.length} />
@@ -31,7 +33,7 @@ export function SearchResultsView({ f, results }: { f: SearchFilters; results: P
               {SORTS.map(([key, label]) => (
                 <Link
                   key={key}
-                  href={`/search?${toQuery({ ...f, sort: key })}`}
+                  href={`${m.search}?${toQuery({ ...f, sort: key })}`}
                   aria-current={f.sort === key ? "true" : undefined}
                   className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 font-semibold transition-colors ${f.sort === key ? "bg-white text-sea-950 shadow-sm" : "text-ink-soft hover:text-sea-900"}`}
                 >
@@ -49,19 +51,19 @@ export function SearchResultsView({ f, results }: { f: SearchFilters; results: P
             <div className="mt-10 flex flex-col items-center rounded-3xl bg-mist px-6 py-16 text-center">
               <SearchX className="size-8 text-sea-700" />
               <p className="mt-4 text-lg font-semibold text-sea-950">No homes match all of these filters</p>
-              <p className="mt-1 max-w-sm text-sm text-ink-soft">Try a wider price range, another property type, or the province instead of the city.</p>
-              <Link href="/search" className="mt-6 rounded-full bg-sea-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sea-800">Clear filters</Link>
+              <p className="mt-1 max-w-sm text-sm text-ink-soft">Try a wider price range, another property type, or {m.code === "AE" ? "the whole emirate instead of the community" : "the province instead of the city"}.</p>
+              <Link href={m.search} className="mt-6 rounded-full bg-sea-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sea-800">Clear filters</Link>
             </div>
           )}
         </section>
 
         <aside className="hidden lg:block" aria-label="Map">
           <div className="sticky top-[84px] h-[calc(100vh-108px)]">
-            <PhMap listings={results} />
+            <PhMap listings={results} country={m.code} />
           </div>
         </aside>
       </div>
-      <MobileMapToggle listings={results} />
+      <MobileMapToggle listings={results} country={m.code} />
     </div>
   );
 }

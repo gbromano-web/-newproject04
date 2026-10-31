@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useSyncExternalStore } from "react";
 import { ChevronDown, Globe2 } from "lucide-react";
-import { CURRENCIES, RATES_AS_OF, RATES_SOURCE, convertPeso } from "@/lib/ph/currency";
+import { CURRENCIES, RATES_AS_OF, RATES_SOURCE, convertPrice } from "@/lib/ph/currency";
 
 const STORAGE_KEY = "gsp:currency";
 
@@ -77,7 +77,7 @@ export function CurrencySelect({ tone = "light" }: { tone?: "light" | "dark" }) 
       >
         {CURRENCIES.map((c) => (
           <option key={c.code} value={c.code} className="text-ink">
-            {c.code === "PHP" ? "PHP only" : `PHP + ${c.code}`}
+            {`Also in ${c.code}`}
           </option>
         ))}
       </select>
@@ -86,10 +86,13 @@ export function CurrencySelect({ tone = "light" }: { tone?: "light" | "dark" }) 
   );
 }
 
-/** "≈ US$293K" beside a peso price; renders nothing when PHP only is chosen. */
-export function ConvertedPrice({ php, className }: { php: number; className?: string }) {
+/**
+ * "≈ US$293K" beside a price in its own currency (pesos unless `from` says
+ * otherwise). Renders nothing when the visitor's currency is the same.
+ */
+export function ConvertedPrice({ php, amount, from = "PHP", className }: { php?: number; amount?: number; from?: "PHP" | "AED"; className?: string }) {
   const { code } = useCurrency();
-  const text = convertPeso(php, code);
+  const text = convertPrice(amount ?? php ?? 0, from, code);
   if (!text) return null;
   return (
     <span className={className} title={`Indicative, ${RATES_SOURCE} ${RATES_AS_OF}`}>

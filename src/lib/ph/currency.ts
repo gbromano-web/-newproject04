@@ -47,14 +47,17 @@ function roughly(n: number) {
 }
 
 /**
- * Converted, rounded price for display next to the peso price.
- *   convertPeso(18_600_000, "USD") -> "≈ US$293K"
- *   convertPeso(45_000, "USD")     -> "≈ US$710"
- *   convertPeso(18_600_000, "JPY") -> "≈ ¥46M"
+ * Converted, rounded price for display next to the listing's own price.
+ *   convertPrice(18_600_000, "PHP", "USD") -> "≈ US$293K"
+ *   convertPrice(2_450_000, "AED", "USD")  -> "≈ US$667K"
+ *   convertPrice(45_000, "PHP", "PHP")     -> null (same currency)
+ * AED goes through the peso table; the dirham is pegged to the US dollar,
+ * so AED→USD stays consistent with the BSP cross rate.
  */
-export function convertPeso(php: number, code: string) {
+export function convertPrice(amount: number, from: string, code: string) {
   const c = getCurrency(code);
-  if (c.code === "PHP") return null;
+  if (c.code === from) return null;
+  const php = amount * getCurrency(from).phpPerUnit;
   const v = roughly(php / c.phpPerUnit);
   const abs = Math.abs(v);
   let s: string;
@@ -64,3 +67,6 @@ export function convertPeso(php: number, code: string) {
   else s = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(v);
   return `≈ ${c.symbol}${s}`;
 }
+
+/** Peso price in another currency (kept for existing callers). */
+export const convertPeso = (php: number, code: string) => convertPrice(php, "PHP", code);
