@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { getAgent, type PhAgent, type PhListing } from "@/lib/ph/listings";
 import { findListing } from "@/lib/ph/leads";
+import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { saveLead } from "./leads";
 import { ipHash, isBot, log, rateLimit, requestId } from "./request";
 
@@ -14,6 +15,8 @@ const NO_STORE = { "cache-control": "no-store", "x-robots-tag": "noindex, nofoll
  */
 export async function chatRedirect(req: NextRequest, channel: "VIBER" | "WHATSAPP", target: (agent: PhAgent, listing: PhListing) => string) {
   const rid = requestId(req);
+  // Sample agents' numbers are made up but dialable: never send anyone there
+  if (SAMPLE_DATA) return NextResponse.redirect(new URL("/search", req.url), { status: 302, headers: NO_STORE });
   try {
     const listing = findListing(req.nextUrl.searchParams.get("listing"));
     if (!listing) return NextResponse.redirect(new URL("/search", req.url), { status: 302, headers: NO_STORE });

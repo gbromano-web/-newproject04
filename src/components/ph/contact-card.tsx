@@ -5,7 +5,7 @@ import Link from "next/link";
 import { BadgeCheck, CheckCircle2, Clock, Languages, MessageCircle, Phone } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import type { PhAgent } from "@/lib/ph/listings";
-import { leadHref, offClass, offProps, PREVIEW_CONTACT_NOTE, STATIC_PREVIEW } from "@/lib/ph/preview";
+import { DEMO, leadHref, offClass, offProps, PREVIEW_CONTACT_NOTE } from "@/lib/ph/preview";
 import { COMPUTATION_EVENT, type ComputationRequest } from "./amortization-calculator";
 
 const LICENSE_LABEL = { REAL_ESTATE_BROKER: "Licensed real estate broker", REAL_ESTATE_SALESPERSON: "Accredited real estate salesperson" } as const;
@@ -40,7 +40,7 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
     setError("");
     const data = Object.fromEntries(new FormData(e.currentTarget));
     // Client preview has no server: confirm without sending
-    if (STATIC_PREVIEW) return setStatus("sent");
+    if (DEMO) return setStatus("sent");
     const res = await fetch("/api/ph/leads", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -80,11 +80,11 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
           <WhatsAppIcon className="size-4" /> WhatsApp
         </a>
       </div>
-      <a href={STATIC_PREVIEW ? undefined : `tel:${agent.mobile}`} className={`mt-2 flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold text-sea-900 ring-1 ring-line transition hover:bg-mist${offClass}`} {...offProps}>
+      <a href={DEMO ? undefined : `tel:${agent.mobile}`} className={`mt-2 flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold text-sea-900 ring-1 ring-line transition hover:bg-mist${offClass}`} {...offProps}>
         <Phone className="size-4" /> Call {agent.mobile.replace(/^\+63(\d{3})(\d{3})(\d{4})$/, "+63 $1 $2 $3")}
       </a>
 
-      {STATIC_PREVIEW && <p className="mt-2 text-center text-xs text-ink-soft">{PREVIEW_CONTACT_NOTE}.</p>}
+      {DEMO && <p className="mt-2 text-center text-xs text-ink-soft">{PREVIEW_CONTACT_NOTE}.</p>}
 
       <div className="my-5 flex items-center gap-3 text-xs text-ink-soft"><span className="h-px flex-1 bg-line" />{computation ? "Request a sample computation" : "or send an inquiry"}<span className="h-px flex-1 bg-line" /></div>
 
@@ -92,7 +92,7 @@ export function ContactCard({ agent, listingId, listingTitle }: { agent: PhAgent
         <div className="flex gap-3 rounded-2xl bg-lagoon-50 p-4 text-sm text-ink">
           <CheckCircle2 className="size-5 shrink-0 text-lagoon-600" />
           <p>
-            {STATIC_PREVIEW ? (
+            {DEMO ? (
               <>
                 <span className="font-semibold">Preview only.</span> On the live site this {computation ? "computation request" : "inquiry"} goes to {agent.name.split(" ")[0]}; here nothing was sent.
               </>

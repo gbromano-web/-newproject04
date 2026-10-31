@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { findListing } from "@/lib/ph/leads";
+import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { saveLead } from "@/lib/server/leads";
 import { ipHash, log, rateLimit, requestId } from "@/lib/server/request";
 
@@ -39,6 +40,8 @@ const error = (rid: string, status: number, message: string, headers: Record<str
  */
 export async function POST(req: Request) {
   const rid = requestId(req);
+  // Sample listings have no real agents to receive inquiries
+  if (SAMPLE_DATA) return error(rid, 503, "Inquiries open when real listings go live.");
   try {
     // JSON only: a cross-site HTML form cannot send this content type without a CORS preflight, which this route never allows
     if (!req.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {

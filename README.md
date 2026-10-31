@@ -94,6 +94,10 @@ Then mark the migrations as applied so Prisma Migrate takes over from here:
 
 Never commit these values. Run the Vercel functions in the same region as the database.
 
+## Sample data switch
+
+`SAMPLE_DATA` in `src/lib/ph/preview.ts` is `true` while listings and agents come from the built-in samples. Every build then shows a sample banner, switches off Viber, WhatsApp and call, refuses inquiries, and blocks search engines. Set it to `false` only when listings and agents load from the database.
+
 ## Client preview on GitHub Pages
 
 `npm run build:preview` builds a static copy of the site with the sample data into `out/`, and `.github/workflows/pages.yml` publishes it on every push to `main`. Turn it on once in **Settings → Pages → Source: GitHub Actions**. The preview has no server: search filters run in the browser, Viber and WhatsApp open directly, and the inquiry form confirms without sending.
