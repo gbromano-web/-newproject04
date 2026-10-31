@@ -33,7 +33,7 @@ export async function saveLead(l: NewLead): Promise<{ stored: boolean; id?: stri
   const pool = db();
   if (!pool) {
     if (logOnlyAllowed()) return { stored: false };
-    throw new Error("Lead storage is not configured (DATABASE_URL missing)");
+    throw new Error("Lead storage is not configured (DATABASE_URL / POSTGRES_URL missing)");
   }
   const id = randomUUID();
   const c = l.computation ?? null;

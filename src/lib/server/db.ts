@@ -14,7 +14,9 @@ let pool: Pool | null | undefined;
 
 export function db(): Pool | null {
   if (pool !== undefined) return pool;
-  const url = process.env.DATABASE_URL;
+  // DATABASE_URL when set by hand; POSTGRES_URL when the Supabase–Vercel integration sets it
+  // (both are the transaction pooler, port 6543)
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!url) return (pool = null);
   pool = new Pool({
     connectionString: withoutSslMode(url),

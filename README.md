@@ -85,7 +85,7 @@ Then mark the migrations as applied so Prisma Migrate takes over from here:
 
 | Variable | Value |
 | --- | --- |
-| `DATABASE_URL` | Supabase → Connect → **Transaction pooler** (port 6543) string, with your database password |
+| `DATABASE_URL` | Supabase → Connect → **Transaction pooler** (port 6543) string, with your database password. Or connect the Supabase–Vercel integration, which sets `POSTGRES_URL` (also accepted) |
 | `DIRECT_URL` | Supabase → Connect → **Session pooler** (port 5432) string, for migrations |
 | `DATABASE_SSL_CA` | Supabase → Project settings → Database → SSL → download the certificate and paste its contents (verifies the database's identity) |
 | `NEXT_PUBLIC_SITE_URL` | `https://gosearchproperty.com` |
