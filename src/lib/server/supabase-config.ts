@@ -44,7 +44,21 @@ export const AUTH_COOKIE_OPTIONS = {
 /** Calls to Supabase Auth give up after this long, so a slow Auth server cannot hang a page. */
 const AUTH_TIMEOUT_MS = 5_000;
 
-export const authFetch: typeof fetch = (input, init) => {
+/** Auth calls slower than this are logged ("auth.slow"), so a degrading Auth server shows up before it times out. */
+const AUTH_SLOW_MS = 1_000;
+
+export const authFetch: typeof fetch = async (input, init) => {
   const timeout = AbortSignal.timeout(AUTH_TIMEOUT_MS);
-  return fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
+  const started = performance.now();
+  try {
+    return await fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
+  } finally {
+    const ms = Math.round(performance.now() - started);
+    if (ms > AUTH_SLOW_MS) {
+      // Path only (e.g. /auth/v1/user): never the query string or body, which can hold tokens or emails.
+      // Inline JSON rather than log() from ./request, so the proxy does not pull in that module.
+      const path = (() => { try { return new URL(input instanceof Request ? input.url : String(input)).pathname; } catch { return "?"; } })();
+      console.warn(JSON.stringify({ level: "warn", event: "auth.slow", at: new Date().toISOString(), ms, path }));
+    }
+  }
 };

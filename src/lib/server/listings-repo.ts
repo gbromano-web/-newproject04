@@ -247,9 +247,12 @@ export async function getListingById(id: string): Promise<PhListing | undefined>
   return (await query(`${SELECT} WHERE ${LIVE} AND p.id = $1`, [id]))[0];
 }
 
+/**
+ * Newest live listings in one market. Called only from the cached <LatestListings>
+ * component (see there), so it reads no request data and does not call connection().
+ */
 export async function latestListings(n = 6, country: CountryCode = "PH"): Promise<PhListing[]> {
   if (SAMPLE_DATA) return withAgents(sampleLatest(n, country));
-  await connection();
   return query(`${SELECT} WHERE ${LIVE} AND loc.country = $2::"Country" ORDER BY p."publishedAt" DESC LIMIT $1`, [n, country]);
 }
 

@@ -25,7 +25,11 @@ export default function DashboardPage() {
 }
 TSX
 mv src/app/dashboard/live-dashboard.tsx "$stash/live-dashboard.tsx"
+# "use cache" needs cacheComponents, which a static export turns off: the preview renders sample listings directly
+cp src/components/ph/latest-listings-cache.tsx "$stash/latest-listings-cache.tsx"
+printf 'export { LatestListingsList as LatestListings } from "./latest-listings";\n' > src/components/ph/latest-listings-cache.tsx
 restore() {
+  mv "$stash/latest-listings-cache.tsx" src/components/ph/latest-listings-cache.tsx
   mv "$stash/api" src/app/api; mv "$stash/robots.ts" src/app/robots.ts; mv "$stash/sitemap.ts" src/app/sitemap.ts; mv "$stash/proxy.ts" src/proxy.ts
   mv "$stash/agent" src/app/agent; mv "$stash/auth" src/app/auth
   mv "$stash/live-dashboard.tsx" src/app/dashboard/live-dashboard.tsx; mv "$stash/dashboard-page.tsx" src/app/dashboard/page.tsx

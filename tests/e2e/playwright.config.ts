@@ -26,6 +26,8 @@ const siteEnv = {
   PWNED_PASSWORDS_URL: `http://127.0.0.1:${AUTH_PORT}/pwned`,
   // Forms submitted faster than this are treated as bots (production: 3 s)
   SIGNUP_MIN_SECONDS: "2",
+  // Home-page listings are cached (60 s in production); 1 s here so tests see changes quickly
+  LISTINGS_REVALIDATE_SECONDS: "1",
 };
 
 export default defineConfig({

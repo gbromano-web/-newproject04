@@ -105,8 +105,11 @@ test.describe("Listings in both countries", () => {
       await page.goto(`/property/${AE.slug}`);
       await expect(page.locator("main")).toContainText("This page isn't here");
       await expect(page.locator("main")).not.toContainText("AED 2.45M");
-      await page.goto("/uae");
-      await expect(page.locator("main")).not.toContainText(AE.title);
+      // The home page's list is cached and refreshes in the background, so it follows within moments
+      await expect(async () => {
+        await page.goto("/uae");
+        await expect(page.locator("main")).not.toContainText(AE.title, { timeout: 1_000 });
+      }).toPass({ timeout: 15_000 });
       await page.goto("/uae/search?location=Dubai");
       await expect(page.locator("main")).not.toContainText(AE.title);
       expect(await (await request.get("/sitemap.xml")).text()).not.toContain(AE.slug);
@@ -120,6 +123,20 @@ test.describe("Listings in both countries", () => {
     }
     await page.goto(`/property/${AE.slug}`);
     await expect(page.locator("main")).toContainText("AED 2.45M");
+    await expect(async () => {
+      await page.goto("/uae");
+      await expect(page.locator("main")).toContainText(AE.title, { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
+  });
+
+  test("home pages are prerendered and served from cache, not rendered per visit", async ({ request }) => {
+    for (const path of ["/", "/uae"]) {
+      const res = await request.get(path);
+      expect(res.status(), path).toBe(200);
+      const cc = res.headers()["cache-control"] ?? "";
+      expect(cc, `${path} cache-control`).not.toMatch(/no-store|private/);
+      expect(cc, `${path} cache-control`).toMatch(/s-maxage=\d+/);
+    }
   });
 
   test("an unknown listing shows the not-found page and is not indexed", async ({ page }) => {

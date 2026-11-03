@@ -22,6 +22,7 @@ export async function isBreached(password: string): Promise<boolean | null> {
   const prefix = sha1.slice(0, 5);
   const suffix = sha1.slice(5);
   const base = (process.env.PWNED_PASSWORDS_URL || "https://api.pwnedpasswords.com").replace(/\/$/, "");
+  const started = performance.now();
   try {
     const res = await fetch(`${base}/range/${prefix}`, {
       headers: { "Add-Padding": "true", "User-Agent": "GoSearchProperty-password-check" },
@@ -37,6 +38,9 @@ export async function isBreached(password: string): Promise<boolean | null> {
   } catch (e) {
     log("warn", "password.breach_check_unavailable", { error: e instanceof Error ? e.message : String(e) });
     return null;
+  } finally {
+    const ms = Math.round(performance.now() - started);
+    if (ms > 1_000) log("warn", "hibp.slow", { ms });
   }
 }
 
