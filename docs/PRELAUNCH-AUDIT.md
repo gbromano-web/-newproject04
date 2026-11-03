@@ -1,4 +1,4 @@
-# Pre-launch audit: Phases 1–2 (database, security)
+# Pre-launch audit: database, security, performance, observability, go-live
 
 **Date:** 3 November 2026
 **Scope:** gosearchproperty.com at commit `89926a7`; Supabase project `uyfiidwrmytdugzcjjzo` (Postgres 17.11, eu-west-1); Vercel project `newproject04`.
@@ -368,7 +368,23 @@ FROM "RateLimit" cur LEFT JOIN "RateLimit" prev ON prev.key = cur.key || ':prev'
 
 ---
 
-## Order to apply (Phases 1–2)
+## Phases 1–2: what has been done (3 November 2026)
+
+| Item | Status |
+| --- | --- |
+| 2.2 Only verified agents' listings go live | ✅ Live (PR #12, commit `ee4e3d1`), with a new e2e test |
+| 1.4 Live-listing indexes | ✅ Live on the database (repo migration `3_live_listing_indexes`) |
+| 1.2 Migration 7 (UAE rules) | ✅ Applied and verified: UAE licence rule, permit trigger, rent cheques; browser key can't call the function |
+| 2.5 Server-action body limit 100 KB | ✅ Live |
+| 1.1 Nightly encrypted backup job | ✅ Merged. **Waiting for you** to add `BACKUP_DATABASE_URL` and `BACKUP_PASSPHRASE` (it skips until then) |
+| 1.1 Supabase Pro | ⏳ You |
+| 2.1 Delete 5 unused secrets in Vercel; rotate the JWT secret | ⏳ You |
+| 2.3 Branch protection | ⏳ You (command in 2.3) |
+| 2.4 Supabase Auth settings + SMTP | ⏳ You |
+| 1.3 App role `gsp_app` | ⏳ Together: you set the password and `DATABASE_URL`, I verify |
+| 1.5 `DATABASE_SSL_CA` | ⏳ You |
+
+## Order to apply (Phases 1–2), as planned
 
 | Step | Who | Item | Downtime |
 | --- | --- | --- | --- |
@@ -382,3 +398,277 @@ FROM "RateLimit" cur LEFT JOIN "RateLimit" prev ON prev.key = cur.key || ':prev'
 | 8 | Me | Rerun the 71 tests and live checks; update the playbook | none |
 
 Sources: [Supabase pricing](https://supabase.com/pricing.md) (backups, PITR, free-plan pausing); Next.js 16 bundled docs `data-security.md` and `server-actions.md` (Origin check, 1 MB action limit).
+
+
+---
+
+# PHASE 3: Performance, caching and scalability
+
+## 3.1 Core Web Vitals (measured)
+
+**How it was measured:** the production build, served locally with the test listings. A Pixel 7–sized phone emulated with 4× CPU slowdown and a ~1.6 Mbps network with 150 ms latency, roughly what Lighthouse uses for mobile.
+
+| Page | LCP | CLS | TBT | Tap → next frame | JS (compressed) | Requests |
+| --- | --- | --- | --- | --- | --- | --- |
+| `/` (Philippines home) | 1.29 s | 0 | **635 ms** | 34 ms | 217 KB | 16 |
+| `/uae` | 0.64 s | 0 | **366 ms** | 36 ms | 225 KB | 18 |
+| `/search?location=Metro Manila` | 1.03 s | 0 | **236 ms** | 37 ms | 275 KB | 21 |
+| `/property/…` (PH) | 1.13 s | 0 | **347 ms** | 34 ms | 267 KB | 24 |
+| `/property/…` (UAE) | 1.01 s | 0 | **213 ms** | 22 ms | 275 KB | 26 |
+| `/calculator` | 0.57 s | 0 | **210 ms** | 26 ms | 222 KB | 17 |
+| `/agent/sign-up` | 0.50 s | 0 | **225 ms** | 22 ms | 222 KB | 16 |
+
+**Targets ("good"):**
+- **LCP** under 2.5 s: ✅ everywhere.
+- **CLS** under 0.1: ✅ (0, since every image has fixed dimensions).
+- **INP** under 200 ms: ✅ (tap-to-frame 22–37 ms).
+- **TBT**, the lab stand-in for responsiveness while a page loads, under 200 ms: ❌ on every page. The home page is worst at 635 ms.
+
+**Caveats:**
+- The test listings use placeholder SVG photos, so LCP with real listing photos will be higher. Keep `priority` and `sizes` on each page's first photo.
+- These are local numbers, with no CDN in front. Real-user numbers will come from Vercel Speed Insights (4.3).
+
+### Where the JavaScript goes (home page, uncompressed)
+
+| Chunk | Size | What |
+| --- | --- | --- |
+| React DOM | 230 KB | The framework; unavoidable |
+| App + Next runtime | 165 KB | Router, server-action client, our components |
+| **`motion`** | **159 KB** | **Only used for the hero's photo crossfade** (`scenic-hero.tsx`) |
+| Icons + data | 31 KB | lucide icons and location names |
+| Rest | ~77 KB | Small chunks |
+
+**Fix (largest win):** load only the animation features the hero uses. This saves about 100 KB uncompressed (about 30–35 KB compressed) on every page that has the header and hero, and most of the home page's blocking time:
+
+```tsx
+// src/components/ph/scenic-hero.tsx
+import { AnimatePresence, LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+// ...
+<LazyMotion features={domAnimation} strict>
+  <AnimatePresence>
+    <m.div key={scene} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /* ... */ />
+  </AnimatePresence>
+</LazyMotion>
+// replace every <motion.x> with <m.x>; `strict` throws if a full `motion` component sneaks back in
+```
+
+A CSS-only crossfade (`@keyframes` on opacity) would remove the library entirely. It is the simplest option, but more of a rewrite.
+
+## 3.2 What is static, what renders per request (from the build)
+
+| Kind | Routes | Served from |
+| --- | --- | --- |
+| **Static** (○) | `/about`, `/contact`, `/terms`, `/privacy`, `/calculator`, `/uae/calculator`, `/saved`, `/robots.txt` | CDN, `s-maxage=31536000`. Measured 983 requests/s on one local instance |
+| **Partial prerender** (◐) | `/`, `/uae`, `/search`, `/uae/search`, `/property/[slug]`, agent pages | Static shell from the CDN. **Listings render per request** (`private, no-store`) and query the database every time |
+| **Dynamic** (ƒ) | `/api/*`, `/auth/confirm`, `/sitemap.xml` | Function every time |
+| **Static assets** | `/_next/static/*` | `public, max-age=31536000, immutable` ✅ |
+
+## 3.3 Caching listings (the change that matters most for scale)
+
+Today every home, search and listing view runs the listing queries. Listings change a few times a day, but visitors arrive every second, so the results can be cached for a minute.
+
+Next 16 `cacheComponents` is already on, so this is a directive rather than new infrastructure (bundled docs: `use-cache.md`, `cacheLife.md`, `cacheTag.md`):
+
+```ts
+// src/lib/server/listings-repo.ts
+import { cacheLife, cacheTag } from "next/cache";
+
+export async function latestListings(n = 6, country: CountryCode = "PH") {
+  "use cache";
+  cacheLife("minutes");                 // serve from cache, refresh in the background about every minute
+  cacheTag("listings", `listings:${country}`);
+  if (SAMPLE_DATA) return withAgents(sampleLatest(n, country));
+  return query(/* unchanged */);
+}
+// Same for searchListings(f) (the filters become the cache key) and getListing(slug) (tag `listing:${slug}`).
+// Remove `await connection()` from those three: "use cache" replaces it.
+
+// Wherever listings change (dashboard actions now, an admin tool later):
+import { updateTag } from "next/cache";
+updateTag("listings");
+```
+
+**What it changes:**
+- A listing edited by SQL, or an agent suspended, shows on the site within about a minute, instead of on the next request. The playbook will say so.
+- The rate limiter, leads, sessions and the dashboard stay per request. They read cookies or write data, so they can't use `"use cache"`.
+
+**Expected effect:** most page views become cache hits. Cached pages ran at 983 requests/s locally, against 45 requests/s rendered per request (3.4).
+
+## 3.4 Load test (measured locally)
+
+**Setup:** one production server on a 2-vCPU machine, with the test database. Each URL ran for 12 seconds.
+
+| URL | 20 concurrent users | 50 concurrent users | Errors |
+| --- | --- | --- | --- |
+| `/api/health` (database ping) | 781 req/s, p50 24 ms, p99 49 ms | 750 req/s, p50 65 ms, p99 87 ms | 0 |
+| `/about` (static) | 983 req/s, p50 18 ms, p99 47 ms | — | 0 |
+| `/` (listings per request) | 46 req/s, p50 66 ms, **p99 1.7 s** | 45 req/s, p50 53 ms, **p99 4.2 s** | 0 |
+| `/search?location=Metro Manila` | 53 req/s, p50 64 ms, p99 1.6 s | 44 req/s, p50 74 ms, **p99 5.8 s** | 0 |
+| `/property/…` | 45 req/s, p50 73 ms, p99 2.1 s | 39 req/s, p50 79 ms, **p99 4.4 s** | 0 |
+
+**What it shows:**
+1. **Nothing broke:** zero errors, zero timeouts, and the database pool held.
+2. **Pages that render listings per request are CPU-bound:** about 45 per second per 2-vCPU instance, roughly 40 ms of CPU each. Beyond that, requests queue, which is why the tail latency (p99) climbs while the median stays fast. Vercel adds instances under load, so production won't queue like one box does. But every render costs CPU time.
+3. **Cost ceiling on Vercel Hobby:** the plan includes **4 active CPU-hours a month** ([Vercel Hobby](https://vercel.com/docs/plans/hobby)). At about 40 ms per uncached page, that is around 360,000 page views a month. 5,000 visitors a day at 5 pages each is about 750,000. **Caching (3.3) and Vercel Pro are both needed before marketing traffic.**
+4. **Distance:** the functions run in Dublin (`dub1`, next to the database in eu-west-1), so database calls are short. Visitors in Manila and Dubai are 120–250 ms of network away from Dublin for anything not cached at the edge. Caching the shell and listings hides most of it. Moving the database to Singapore or Mumbai is a later decision.
+
+### Latency budgets (enforced by the k6 script)
+
+| Request kind | p95 | p99 | Error rate |
+| --- | --- | --- | --- |
+| Pages | < 800 ms | < 2 s | < 1% |
+| Static assets | < 300 ms | — | — |
+| `/api/health` | < 500 ms | — | — |
+
+### Production load test: `tests/load/k6.js` (added to the repo)
+
+```bash
+k6 run -e BASE=https://gosearchproperty.com -e PROFILE=smoke tests/load/k6.js        # 2 pages/s for 1 min: safe any time
+k6 run -e BASE=https://<preview>.vercel.app  -e PROFILE=peak   tests/load/k6.js       # 20 pages/s for 5 min (~3x a busy hour)
+k6 run -e BASE=https://<preview>.vercel.app  -e PROFILE=stress tests/load/k6.js       # ramps to 120 pages/s: finds the breaking point
+```
+
+- **Read-only:** it never sends inquiries or sign-ins, so it creates no leads and trips no rate limits.
+- **Traffic mix:** home pages 35%, searches 35%, listing pages 22% (real slugs from the sitemap), static pages 5%, health 3%. It also checks that static assets are immutable.
+- **Before `peak` or `stress`:** run them after Vercel Pro and the caching change, off-peak, against a preview deployment. On Hobby they would use a large share of the month's CPU allowance.
+
+---
+
+# PHASE 4: Observability, logging and alerting
+
+## 4.1 What exists
+
+| Piece | State |
+| --- | --- |
+| Structured logs | ✅ One JSON line per event: `level`, `event`, `at`, plus `requestId` (Vercel's id), `ipHash`, `listingId`, `agentId`, `status`/`code`. **No names, emails or phones.** Event catalogue: playbook §8 |
+| Health check | ✅ `/api/health`: database ping with a 2 s cap, deployed commit, `no-store`. Returns 503 when the database is down |
+| Error boundaries | ✅ `error.tsx` (inside the layout) and `global-error.tsx`. Visitors see a generic message plus a digest that matches the server log |
+| Runtime error grouping | ✅ Vercel groups errors. **Found:** 3× "Couldn't find all resumable slots… fallback to client rendering" on `/`, on 2 Nov, old deployment `dpl_B2M6…`, none since. That is the deployment-skew signature: a shell from one deployment resumed by another. Fixed by Skew Protection (5.3) |
+| Log retention | ⚠️ **1 hour on Hobby**, no log drains ([Vercel Hobby](https://vercel.com/docs/plans/hobby)). Pro keeps 1 day and allows drains |
+| Uptime monitoring and alerts | ❌ None |
+| Error tracking | ❌ Server errors only reach Vercel's 1-hour logs; browser errors only reach the visitor's console |
+| Third-party latency | ❌ Auth and breach-check calls have timeouts (5 s, 3 s) but their duration isn't logged |
+
+## 4.2 Changes (code)
+
+**a) Every unhandled server error becomes one structured line** (built into Next 16, no vendor needed). Add `src/instrumentation.ts`:
+```ts
+import type { Instrumentation } from "next";
+
+export const onRequestError: Instrumentation.onRequestError = async (err, request, context) => {
+  const e = err as { message?: string; digest?: string; name?: string };
+  console.error(JSON.stringify({
+    level: "error", event: "request.error", at: new Date().toISOString(),
+    name: e?.name, message: e?.message?.slice(0, 500), digest: e?.digest,
+    method: request.method, path: request.path.split("?")[0],          // no query string: it can hold emails
+    route: context.routePath, routeType: context.routeType, renderType: context.renderType,
+    requestId: (request.headers["x-vercel-id"] as string | undefined) ?? null,
+  }));
+};
+```
+
+**b) Slow third-party calls are logged.** In `authFetch` (`supabase-config.ts`) and `isBreached` (`password-policy.ts`):
+```ts
+const started = performance.now();
+try { return await fetch(input, { ...init, signal }); }
+finally {
+  const ms = Math.round(performance.now() - started);
+  if (ms > 1000) log("warn", "auth.slow", { ms, path: new URL(String(input)).pathname }); // "hibp.slow" in isBreached
+}
+```
+
+**c) Browser errors are reported** (optional, once a tracker is chosen). Sentry's free tier covers this scale. Running `npx @sentry/wizard@latest -i nextjs` adds the config files; then:
+- set `sendDefaultPii: false` and `tracesSampleRate: 0.1`;
+- add the Sentry ingest host to the CSP's `connect-src`;
+- keep the `beforeSend` scrubber from the wizard.
+
+## 4.3 Monitors and alerts (no code)
+
+| Monitor | Tool (free tier) | Check | Alert when | Who/where |
+| --- | --- | --- | --- | --- |
+| Site and database up | Better Stack Uptime or UptimeRobot | `GET https://gosearchproperty.com/api/health` every 1 min, expect 200 **and** body contains `"database":"ok"` | 2 failures in a row | Email + phone push; Slack if used |
+| Home page renders | same | `GET /`, expect 200 and the keyword "Go Search Property" | 2 failures | Email |
+| Sign-in reachable | same | `GET /agent/sign-in`, expect 200 | 3 failures | Email |
+| UAE home | same | `GET /uae`, expect 200 | 3 failures | Email |
+| Certificate | same | SSL expiry for both hostnames | under 14 days left (auto-renews ~30 days before 29 Jan 2027) | Email |
+| Supabase usage | Supabase → Organization → Usage, and **Pro: spend cap** | Database size, egress, Auth emails | 80% of plan | Email |
+| Vercel usage | Vercel → Settings → Billing → **Spend Management** (Pro) | CPU, invocations, bandwidth | 50% / 80% / 100% | Email; set a hard cap |
+| Errors | Vercel Observability (Pro) or Sentry | `request.error`, `lead.save_failed`, `agent.signin_unavailable`, `signup.unavailable`, `db.pool_error` | any `lead.save_failed`; more than 5 others in 10 min | Email |
+| Real-user speed | Vercel Speed Insights (10k events/30 days free) | LCP, INP, CLS on real phones | p75 LCP > 2.5 s or INP > 200 ms | Weekly look |
+
+The 1-minute health monitor also keeps the free Supabase project from pausing, until Pro removes pausing.
+
+**Response targets** for a small team (no PagerDuty needed yet):
+- Health down: acknowledge within 15 min, then follow the playbook (§0, §6.1–6.2).
+- `lead.save_failed`: same day. Buyers were told an inquiry was sent.
+- Everything else: next business day.
+
+---
+
+# PHASE 5: Go-live checklist and deployment sequence
+
+## 5.1 Domain, DNS and TLS (checked live)
+
+| Check | Result |
+| --- | --- |
+| Domains on the project | `gosearchproperty.com` (production), `www.gosearchproperty.com` → **308** to apex, `newproject04.vercel.app`. All verified |
+| DNS | Nameservers at GoDaddy (`ns33/34.domaincontrol.com`). Apex `A 76.76.21.21`. Vercel reports **not misconfigured, no conflicts** |
+| Vercel's newer IPs | Vercel now ranks `216.198.79.1` and `64.29.17.1` first ("optional change"). Switching the apex A records at GoDaddy is optional, with no downtime if you add the new ones before removing the old |
+| Certificates | Let's Encrypt via HTTP-01 for both hostnames, **auto-renew on**, expire **29 Jan 2027** (renewed automatically before then) |
+| HSTS | `max-age=63072000; includeSubDomains; preload` on every response ✅. **Don't submit to hstspreload.org yet:** preloading is hard to undo and forces HTTPS on every future subdomain (e.g. a mail provider's tracking domain). Revisit after 3 months |
+| Other headers | CSP, `X-Frame-Options: DENY`, `nosniff`, Referrer-Policy and Permissions-Policy, all live ✅ |
+| Propagation | DNS was moved on 31 Oct; Vercel verified it and issued certificates, so propagation is complete |
+
+## 5.2 How a release goes out (the standard sequence)
+
+Vercel deployments are **immutable and atomic**. Each push builds a separate deployment, and "going live" is an instant switch of the domain to point at it. That switch is the blue-green step; nothing is half-deployed.
+
+```text
+1. Branch + pull request          git switch -c fix/xyz … git push -u origin fix/xyz; open the PR
+2. Preview deployment             Vercel builds https://newproject04-<hash>-gosearchproperty.vercel.app
+3. Required checks (2.3)          CI (lint, types, build) + E2E (72 tests) + CodeQL must pass
+4. Database first, if any         apply the migration (additive only), verify with its check query
+5. Merge (squash)                 Vercel builds production from main
+6. Verify (≤ 5 min)               /api/health shows the new commit and "database":"ok"
+                                  k6 smoke: k6 run -e BASE=https://gosearchproperty.com -e PROFILE=smoke tests/load/k6.js
+                                  open /, /uae, a listing, /agent/sign-in on a phone
+7. Watch (15 min)                 Vercel → Logs / runtime errors: no new error groups
+8. Record                         note the deployment id + commit in the playbook's change log
+```
+
+**Canary releases:** Vercel *Rolling Releases* (Pro or Enterprise) send a percentage of traffic to the new deployment first, e.g. 10% for 15 minutes, then 100%. Worth turning on once there is steady traffic. At today's volume, a 10% canary would see too few visits to tell anything.
+
+## 5.3 Rollback (instant)
+
+| What broke | Undo | Time |
+| --- | --- | --- |
+| Code | Vercel → Deployments → last good one → **⋯ → Instant Rollback** (or `vercel rollback <deployment-url> --scope gosearchproperty`). Then `git revert <sha>` on `main`, or the next push brings the bug back | under 1 min |
+| A migration | Its down SQL (each migration file carries one; migration 7 is in 1.2) | minutes |
+| Bad data | Restore from backup (1.1): Pro daily backup in the dashboard, or the encrypted nightly dump | ~30–60 min |
+| An env var change | Restore the old value in Vercel, then **redeploy**. A rollback keeps the *current* env vars | ~2 min |
+| `NEXT_PUBLIC_*` change | Read at build time: redeploy after changing it | ~2 min |
+
+A rollback does **not** undo database changes, which is why migrations stay additive: the previous deployment must keep working on the new schema.
+
+**Skew Protection** (Pro or Enterprise; Settings → Advanced): browsers that loaded an older deployment keep talking to it until they navigate, instead of mixing old and new code. That is the cure for the "resumable slots" error in 4.1. It is on by default for new Pro projects; check it after upgrading.
+
+## 5.4 Go-live checklist
+
+| # | Item | State |
+| --- | --- | --- |
+| 1 | Supabase **Pro** (backups, no pausing) | ⏳ You |
+| 2 | Vercel **Pro** (commercial use allowed, 1-day logs, drains, Skew Protection, spend caps; Hobby is non-commercial only) | ⏳ You |
+| 3 | Delete 5 unused secrets in Vercel; rotate the Supabase JWT secret (2.1) | ⏳ You |
+| 4 | Supabase Auth: sign-ups on, confirm email, min length 12, signup template, **custom SMTP** (2.4) | ⏳ You |
+| 5 | Backup secrets in GitHub; first manual run of *Database backup*; one restore drill (1.1) | ⏳ You, then me |
+| 6 | Branch protection on `main` (2.3) | ⏳ You |
+| 7 | Uptime monitors (4.3) | ⏳ You (10 minutes) |
+| 8 | Caching listings (3.3), slimmer animation (3.1), error and latency logging (4.2a–b) | ⏳ Me, one PR, on your go |
+| 9 | App database role + `DATABASE_SSL_CA` (1.3, 1.5) | ⏳ Together |
+| 10 | k6 smoke on production; k6 peak on a preview after items 2 and 8 | ⏳ Me / you (k6 runs from your machine or CI) |
+| 11 | Legal review of Terms (version `2026-10-31`) and Privacy for PH and UAE | ⏳ You |
+| 12 | Verified agents only, indexes, migration 7, body limit, backup job | ✅ Done |
+| 13 | DNS, TLS, HSTS, security headers | ✅ Done |
+| 14 | 72 end-to-end tests, CI, CodeQL | ✅ Done |
+
+Sources: [Supabase pricing](https://supabase.com/pricing.md); [Vercel Hobby plan](https://vercel.com/docs/plans/hobby) (CPU allowance, log retention, drains, non-commercial use); [Vercel Skew Protection](https://vercel.com/docs/skew-protection.md); Next.js 16 bundled docs (`instrumentation.md`, `use-cache.md`, `cacheLife.md`, `cacheTag.md`, `data-security.md`, `server-actions.md`).
