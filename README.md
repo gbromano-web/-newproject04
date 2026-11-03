@@ -138,6 +138,19 @@ Use `RERA BRN` for Dubai, `ADREC` for Abu Dhabi, `RAK RERA` for Ras Al Khaimah, 
 
 A signed-in account without an `Agent` row sees no data. Lead status changes are recorded in `AuditLog`.
 
+## Auth tests
+
+`npm run test:auth` runs end-to-end tests (Playwright) for agent sign-in, invitations, password reset, sessions, sign-out, protected pages, injection attempts, rate limits and Auth outages. It builds the site into `.next-auth-test/` (your normal build is untouched) and runs it against a local stand-in for Supabase Auth (`tests/auth/support/mock-auth.mjs`) and an in-memory Postgres with the real schema (`tests/auth/support/test-db.mjs`), so no real accounts or data are touched and no secrets are needed.
+
+```bash
+npm ci
+npx playwright install chromium   # once per machine
+npm run test:auth                 # about 7 minutes, including the build
+AUTH_TEST_SKIP_BUILD=1 npm run test:auth   # rerun without rebuilding
+```
+
+The same suite runs on every push and pull request (`.github/workflows/auth-tests.yml`).
+
 ## Sample data switch
 
 `SAMPLE_DATA` in `src/lib/ph/preview.ts` is `true` while listings and agents come from the built-in samples. Every build then shows a sample banner, switches off Viber, WhatsApp and call, refuses inquiries, and blocks search engines. Set it to `false` only when listings and agents load from the database.

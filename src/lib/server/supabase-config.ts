@@ -14,10 +14,32 @@ export function supabaseConfig(): { url: string; key: string } | null {
   return url && key ? { url, key } : null;
 }
 
-/** Where a signed-in agent may be sent after sign-in. Anything else goes to the dashboard. */
+/**
+ * Where a signed-in agent may be sent after sign-in: a dashboard path only.
+ * No "//" (another host), no backslashes (browsers read them as "/") and no
+ * "." or ".." segments (which would climb out of /dashboard).
+ */
 export function safeNext(next: unknown): string {
-  return typeof next === "string" && /^\/dashboard(?:[/?#]|$)/.test(next) && !next.includes("//") ? next : "/dashboard";
+  return typeof next === "string" &&
+    /^\/dashboard(?:[/?#]|$)/.test(next) &&
+    !next.includes("//") &&
+    !next.includes("\\") &&
+    !/\/\.\.?(?:[/?#]|$)/.test(next)
+    ? next
+    : "/dashboard";
 }
+
+/**
+ * The session cookie. HttpOnly: no script on the page can read it (the site
+ * only uses Supabase on the server), so an injected script cannot steal a
+ * session. Secure in production: never sent over plain http.
+ */
+export const AUTH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+};
 
 /** Calls to Supabase Auth give up after this long, so a slow Auth server cannot hang a page. */
 const AUTH_TIMEOUT_MS = 5_000;

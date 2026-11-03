@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { getSession, supabaseServer } from "@/lib/server/agent-session";
 import { db } from "@/lib/server/db";
-import { ipHash, log, rateLimit } from "@/lib/server/request";
+import { clearRateLimit, ipHash, log, rateLimit } from "@/lib/server/request";
 import { safeNext } from "@/lib/server/supabase-config";
 
 export type FormState = { error?: string; ok?: string; email?: string };
@@ -29,25 +29,42 @@ async function limited(scope: string, email: string | null, perWindow: number) {
   return { ok: a.ok && b.ok, ip };
 }
 
+const WINDOW_MS = 15 * 60_000;
+const TOO_MANY = "Too many attempts. Please wait 15 minutes and try again.";
+const UNAVAILABLE = "Sign-in is temporarily unavailable. Please try again in a few minutes.";
+
 export async function signIn(_: FormState, form: FormData): Promise<FormState> {
   if (SAMPLE_DATA) return { error: "Agent sign-in opens when real listings go live." };
   const email = field(form, "email").trim().toLowerCase();
   const password = field(form, "password", 200);
-  if (!EMAIL.test(email) || !password) return { error: "Enter your email and password.", email };
+  if (!EMAIL.test(email) || !password.trim()) return { error: "Enter your email and password.", email };
 
-  const { ok, ip } = await limited("signin", email, 10);
-  if (!ok) {
-    log("warn", "agent.signin_rate_limited", { ipHash: ip });
-    return { error: "Too many attempts. Please wait 15 minutes and try again.", email };
+  // Per visitor, every attempt counts (30 per 15 minutes leaves room for an office on one connection).
+  // Per email, only failures count: a correct password clears them, so a real agent is never locked out
+  // by signing in often, while guessing one account's password stops after 10 tries.
+  const ip = await visitor();
+  const emailCounter = `signin:email:${emailKey(email)}`;
+  const byVisitor = await rateLimit(`signin:ip:${ip}`, 30, WINDOW_MS);
+  const byEmail = await rateLimit(emailCounter, 10, WINDOW_MS);
+  if (!byVisitor.ok || !byEmail.ok) {
+    log("warn", "agent.signin_rate_limited", { ipHash: ip, scope: byVisitor.ok ? "email" : "visitor" });
+    return { error: TOO_MANY, email };
   }
   const sb = await supabaseServer();
-  if (!sb) return { error: "Sign-in is not available right now.", email };
+  if (!sb) return { error: UNAVAILABLE, email };
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
+    // Auth server down, slow (timed out) or erroring: say so, rather than blaming the password
+    if (error.name === "AuthRetryableFetchError" || !error.status || error.status >= 500) {
+      log("error", "agent.signin_unavailable", { ipHash: ip, status: error.status ?? null, code: error.code ?? null });
+      return { error: UNAVAILABLE, email };
+    }
+    if (error.status === 429) return { error: TOO_MANY, email };
     log("info", "agent.signin_failed", { ipHash: ip, code: error.code });
     // Same message whether the email exists or not
     return { error: "That email and password do not match.", email };
   }
+  await clearRateLimit(emailCounter);
   log("info", "agent.signin", { ipHash: ip });
   redirect(safeNext(form.get("next")));
 }
@@ -81,7 +98,8 @@ export async function sendReset(_: FormState, form: FormData): Promise<FormState
 export async function setPassword(_: FormState, form: FormData): Promise<FormState> {
   const password = field(form, "password", 200);
   const confirm = field(form, "confirm", 200);
-  if (password.length < MIN_PASSWORD) return { error: `Use at least ${MIN_PASSWORD} characters.` };
+  // Spaces count inside a password, but a password of only spaces is not one
+  if (password.trim().length < MIN_PASSWORD) return { error: `Use at least ${MIN_PASSWORD} characters.` };
   if (password !== confirm) return { error: "The two passwords do not match." };
   const sb = await supabaseServer();
   const session = await getSession();

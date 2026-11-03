@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
-import { authFetch, supabaseConfig } from "@/lib/server/supabase-config";
+import { AUTH_COOKIE_OPTIONS, authFetch, supabaseConfig } from "@/lib/server/supabase-config";
 
 /**
  * Guards the agent area.
@@ -71,6 +71,7 @@ async function agentArea(req: NextRequest) {
   let res = NextResponse.next({ request: req });
   const supabase = createServerClient(cfg.url, cfg.key, {
     global: { fetch: authFetch },
+    cookieOptions: AUTH_COOKIE_OPTIONS,
     cookies: {
       getAll: () => req.cookies.getAll(),
       setAll: (list, headers) => {

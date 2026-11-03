@@ -31,6 +31,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // The auth test suite builds into its own folder so it never overwrites a normal build
+  ...(process.env.NEXT_DIST_DIR && { distDir: process.env.NEXT_DIST_DIR }),
   poweredByHeader: false,
   // Static export (preview) cannot send headers; GitHub Pages serves its own
   ...(!preview && {

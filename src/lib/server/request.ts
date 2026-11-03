@@ -71,3 +71,15 @@ export async function rateLimit(key: string, limit: number, windowMs: number): P
     return memoryRateLimit(key, limit, windowMs);
   }
 }
+
+/** Forget a counter, e.g. failed sign-ins for an email once the right password is given. */
+export async function clearRateLimit(key: string): Promise<void> {
+  windows.delete(key);
+  const pool = (await import("./db")).db();
+  if (!pool) return;
+  try {
+    await pool.query(`DELETE FROM "RateLimit" WHERE key = $1`, [key]);
+  } catch (e) {
+    log("warn", "ratelimit.clear_failed", { error: e instanceof Error ? e.message : String(e) });
+  }
+}

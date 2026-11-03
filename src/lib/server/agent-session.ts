@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { db } from "./db";
-import { authFetch, supabaseConfig } from "./supabase-config";
+import { AUTH_COOKIE_OPTIONS, authFetch, supabaseConfig } from "./supabase-config";
 
 /** A Supabase client bound to this request's cookies. New per request, never shared. */
 export async function supabaseServer() {
@@ -13,6 +13,7 @@ export async function supabaseServer() {
   const store = await cookies();
   return createServerClient(cfg.url, cfg.key, {
     global: { fetch: authFetch },
+    cookieOptions: AUTH_COOKIE_OPTIONS,
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {
@@ -53,7 +54,9 @@ export const getSession = cache(async (): Promise<Session | null> => {
   if (pool) {
     const { rows } = await pool.query(
       `SELECT a.id, a."displayName", a.verification::text AS verification, a."licenseType"::text AS "licenseType",
-              COALESCE(a."prcLicenseNumber", a."dhsudAccreditationNumber") AS "licenseNumber", ag.name AS agency
+              CASE WHEN a."licenseType" = 'UAE_BROKER'
+                   THEN NULLIF(btrim(concat_ws(' ', a."uaeRegulator", a."uaeBrokerNumber")), '')
+                   ELSE COALESCE(a."prcLicenseNumber", a."dhsudAccreditationNumber") END AS "licenseNumber", ag.name AS agency
          FROM "Agent" a
          LEFT JOIN "Agency" ag ON ag.id = a."agencyId"
         WHERE a."userId" = $1`,
