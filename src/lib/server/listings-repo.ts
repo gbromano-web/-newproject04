@@ -169,8 +169,10 @@ JOIN "Location" loc ON loc.id = p."locationId"
 JOIN "Agent" a ON a.id = p."agentId"
 LEFT JOIN "Agency" ag ON ag.id = a."agencyId"`;
 
-// Only listings that are live: active, published, not expired
-const LIVE = `p.status = 'ACTIVE' AND p."publishedAt" IS NOT NULL AND (p."expiresAt" IS NULL OR p."expiresAt" > now())`;
+// Only listings that are live: active, published, not expired, and listed by an agent whose
+// licence is currently verified (suspending an agent hides all their listings at once)
+const LIVE = `p.status = 'ACTIVE' AND p."publishedAt" IS NOT NULL AND (p."expiresAt" IS NULL OR p."expiresAt" > now())
+  AND EXISTS (SELECT 1 FROM "Agent" av WHERE av.id = p."agentId" AND av.verification = 'VERIFIED')`;
 
 const ORDER: Record<SearchFilters["sort"], string> = {
   featured: `featured DESC, p."publishedAt" DESC`,

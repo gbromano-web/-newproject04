@@ -43,6 +43,8 @@ const nextConfig: NextConfig = {
   }),
   ...(preview && { output: "export", basePath: process.env.NEXT_PUBLIC_BASE_PATH || undefined }),
   cacheComponents: !preview,
+  // The largest form (agent sign-up) is under 4 KB; refuse anything far bigger
+  experimental: { serverActions: { bodySizeLimit: "100kb" } },
   partialPrefetching: !preview,
   images: {
     unoptimized: preview,
