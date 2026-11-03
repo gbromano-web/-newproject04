@@ -1,15 +1,14 @@
 import Link from "next/link";
-import { connection } from "next/server";
 import { PhListingCard } from "@/components/ph/ph-listing-card";
 import { marketOf, type CountryCode } from "@/lib/markets";
-import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { latestListings } from "@/lib/server/listings-repo";
 import { log } from "@/lib/server/request";
 
-/** Newest listings in one market, for a home page. A database hiccup costs this section only. */
-export async function LatestListings({ country = "PH", count = 6 }: { country?: CountryCode; count?: number }) {
-  // Outside the try: during the build Next.js stops here on purpose, and that must not count as a failure
-  if (!SAMPLE_DATA) await connection();
+/**
+ * Newest listings in one market, for a home page. A database hiccup costs this section only.
+ * Pages use the cached wrapper, <LatestListings> in ./latest-listings-cache.
+ */
+export async function LatestListingsList({ country = "PH", count = 6 }: { country?: CountryCode; count?: number }) {
   let listings: Awaited<ReturnType<typeof latestListings>>;
   try {
     listings = await latestListings(count, country);

@@ -332,6 +332,22 @@ Stored in the browser only (`localStorage`), never on the server. The heart butt
 - One JSON line per event. **Never** names, emails, phones or messages, only hashed IPs and ids.
 - Leads keep `consentAt`, and personal data is stripped after 24 months (`purge_old_leads`).
 
+
+### 3.15 Home page caching (`src/components/ph/latest-listings-cache.tsx`)
+- `/` and `/uae` are **pre-rendered** at build time, including their newest listings, and served from Vercel's CDN.
+- The listings block (`"use cache"` with `cacheLife({ stale: 60, revalidate: 60, expire: 3600 })` and tags `listings`, `listings:PH|AE`) is re-rendered in the background **at most once a minute**. Visitors always get the cached page instantly, never a slow one.
+- **Consequence:** a new listing, an edit, or a **suspended agent** shows on the home pages within about a minute. Listing pages, search, chat links and inquiries check the database on every request, so a suspended agent's listings stop working there immediately.
+- **Database down during a refresh:** the section shows "Latest listings are taking a moment to load" for up to a minute, then tries again. The rest of the page is unaffected.
+- **Database down during a build:** the home pages are built with that message, and it clears itself within a minute once the database is back.
+- **To refresh at once** (e.g. a takedown on legal request): redeploy, or call `updateTag("listings")` from server code. There is no public endpoint for it, on purpose.
+- **Tests:** they set `LISTINGS_REVALIDATE_SECONDS=1` so they don't wait a minute. Never set it in production.
+- **GitHub Pages preview:** it has no cache, so `scripts/build-preview.sh` swaps this file for a plain re-export.
+
+### 3.16 Home page slideshow
+- The hero's crossfade, zoom and progress bar are plain CSS (`globals.css`, "Home hero slideshow"). No animation library ships to visitors.
+- Only the current photo and, while it fades in, the previous one are in the page.
+- With *reduce motion* switched on, slides simply switch.
+
 ---
 
 ## 4. Configuration
@@ -431,7 +447,7 @@ Check each of these:
 1. `status = 'ACTIVE'`, `publishedAt` set, `expiresAt` empty or in the future.
 2. The right country: PH listings never appear on `/uae` or its search, and vice versa.
 3. Search text: does the location exist, with that name or alias, in that country (`Location`)?
-4. Data-cache delay: listing pages read per request, so a change shows on refresh.
+4. Cache delay: the **home pages'** "latest listings" are cached and refresh in the background about once a minute (section 3.15), so a new, edited or hidden listing shows there within about a minute. Listing pages and search read the database on every request, so they change on refresh.
 
 ```sql
 SELECT p.slug, p.status, p."publishedAt", p."expiresAt", l.name, l.country
@@ -601,6 +617,8 @@ Search Vercel logs for these:
 
 | Area | Events |
 | --- | --- |
+| Server errors | `request.error` (every unhandled error in a page, route, action or the proxy; `digest` matches the one on the error page; `src/instrumentation.ts`) |
+| Slow dependencies | `auth.slow` (Supabase Auth call over 1 s, path only), `hibp.slow` (breach check over 1 s) |
 | Configuration | `config.missing` |
 | Rate limits | `ratelimit.db_fallback`, `ratelimit.clear_failed` |
 | Leads | `lead.created`, `lead.rate_limited`, `lead.honeypot`, `lead.save_failed`, `lead.chat_failed` |
@@ -609,6 +627,7 @@ Search Vercel logs for these:
 | Email links | `agent.link_cross_site` |
 | Sign-up | `signup.submitted`, `signup.honeypot`, `signup.rate_limited`, `signup.unavailable`, `signup.failed`, `signup.audit_failed` |
 | SEO | `sitemap.listings_failed` |
+| Home pages | `home.latest_failed` (the cached listings block could not load; it retries within a minute) |
 
 ---
 
