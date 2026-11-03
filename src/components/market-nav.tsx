@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Check, ChevronDown } from "lucide-react";
+import { Flag } from "./flags";
 import clsx from "clsx";
 import { MARKETS, marketFromPath, type CountryCode } from "@/lib/markets";
 
@@ -94,31 +96,72 @@ export function MarketNav() {
   );
 }
 
-const SWITCH: { code: CountryCode; short: string }[] = [
-  { code: "PH", short: "PH" },
-  { code: "AE", short: "UAE" },
+const COUNTRIES: { code: CountryCode; short: string; full: string; dial: string }[] = [
+  { code: "PH", short: "PH", full: "Philippines", dial: "+63" },
+  { code: "AE", short: "UAE", full: "United Arab Emirates", dial: "+971" },
 ];
 
-/** Philippines | UAE. Each opens that country's home page. */
+/**
+ * Country selector: flag, country and calling code. Choosing a country opens
+ * its home page; property pages set it from their listing.
+ */
 export function CountrySwitch() {
   const code = useMarket();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const current = COUNTRIES.find((c) => c.code === code) ?? COUNTRIES[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
   return (
-    <div role="group" aria-label="Country" className="flex shrink-0 rounded-full bg-mist p-0.5 text-xs font-bold">
-      {SWITCH.map((s) => {
-        const active = s.code === code;
-        return (
-          <Link
-            key={s.code}
-            href={MARKETS[s.code].home}
-            aria-current={active ? "true" : undefined}
-            title={MARKETS[s.code].name === "UAE" ? "United Arab Emirates" : MARKETS[s.code].name}
-            onClick={() => remember(s.code)}
-            className={clsx("rounded-full px-2 py-1 transition-colors sm:px-2.5", active ? "bg-white text-sea-950 shadow-sm" : "text-ink-soft hover:text-sea-900")}
-          >
-            {s.short}
-          </Link>
-        );
-      })}
+    <div ref={root} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-controls="country-menu"
+        aria-label={`Country: ${current.full} (${current.dial}). Change country`}
+        className="flex items-center gap-1 rounded-full border border-line px-2 py-1.5 sm:gap-1.5 sm:px-2.5 text-sm font-semibold text-sea-900 hover:bg-mist"
+      >
+        <Flag code={current.code} />
+        <span className="hidden sm:inline">{current.short}</span>
+        <span className="price text-xs font-medium text-ink-soft">{current.dial}</span>
+        <ChevronDown className={clsx("size-3.5 opacity-60 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <ul id="country-menu" aria-label="Choose a country" className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl bg-white p-1 shadow-lg ring-1 ring-line">
+          {COUNTRIES.map((c) => (
+            <li key={c.code}>
+              <Link
+                href={MARKETS[c.code].home}
+                aria-current={c.code === code ? "true" : undefined}
+                onClick={() => {
+                  remember(c.code);
+                  setOpen(false);
+                }}
+                className={clsx("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-mist", c.code === code ? "font-semibold text-sea-950" : "text-ink")}
+              >
+                <Flag code={c.code} className="h-4 w-6" />
+                <span className="flex-1">{c.full}</span>
+                <span className="price text-xs text-ink-soft">{c.dial}</span>
+                {c.code === code && <Check className="size-4 text-lagoon-600" aria-hidden />}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

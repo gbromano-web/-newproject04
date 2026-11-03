@@ -101,15 +101,18 @@ With live listings on (`NEXT_PUBLIC_LISTINGS_SOURCE=database`), agents sign in a
 
 **One-time Supabase setup** (Authentication settings):
 
-1. **Sign In / Providers → Email:** turn off *Allow new users to sign up*. Agents join by invitation only.
+1. **Sign In / Providers → Email:** turn **on** *Allow new users to sign up* and *Confirm email*, and set the minimum password length to 12. Agents create an account at `/agent/sign-up`; nobody can list until an admin approves their licence.
 2. **URL Configuration:** Site URL `https://gosearchproperty.com`; add `https://gosearchproperty.com/auth/confirm` to the redirect URLs.
-3. **Emails → Invite user** template: point the link at
-   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite`
-   (and the *Reset password* template at `...&type=recovery`). The link opens a "Continue" page and the one-time token is used only when that button is pressed, so mail scanners (Outlook Safe Links and similar) cannot use it up. Invited agents then land on "Set your password".
-4. **Emails → SMTP Settings:** set up custom SMTP (Resend, Postmark, AWS SES...). Supabase's built-in sender only delivers to your own Supabase team members and only a few emails per hour, so agent invites fail without it.
-5. **Sign In / Providers → Email:** minimum password length 10 (the site asks for 10; Supabase's own default is 6).
+3. **Emails:** point every template's link at `/auth/confirm` with the token hash, so mail scanners (Outlook Safe Links and similar) cannot use up the one-time link. It opens a "Continue" page and the token is used only when that button is pressed.
+   - *Confirm signup:* `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/dashboard`
+   - *Invite user:* `...&type=invite` · *Reset password:* `...&type=recovery`
+4. **Emails → SMTP Settings:** set up custom SMTP (Resend, Postmark, AWS SES...). Supabase's built-in sender only delivers to your own Supabase team members and only a few emails per hour, so confirmations, invites and resets fail without it.
+
+**Agent sign-up** (`/agent/sign-up`) asks for the agent's country, name, email, mobile (with a country-code picker), licence (PRC, or DHSUD and supervising broker, in the Philippines; emirate, broker and office registration in the UAE) and a password of at least 12 characters that is checked against known breaches (Have I Been Pwned, k-anonymity: only 5 characters of the password's hash leave the server). It has a honeypot, a signed minimum-time token, rate limits per visitor and per email, and gives the same answer for emails that already have an account. The account holds the application until an admin approves it; see the [playbook](docs/PLAYBOOK.md#71-approve-a-self-signed-up-agent) for the approval SQL.
 
 **Adding an agent:**
+
+Self sign-ups are approved with the SQL in the [playbook](docs/PLAYBOOK.md#71-approve-a-self-signed-up-agent). To add an agent by invitation instead:
 
 1. Check their PRC licence (broker) or DHSUD accreditation and supervising broker (salesperson).
 2. Supabase → Authentication → Users → *Invite user* with their email. Copy the new user's ID.
@@ -138,18 +141,22 @@ Use `RERA BRN` for Dubai, `ADREC` for Abu Dhabi, `RAK RERA` for Ras Al Khaimah, 
 
 A signed-in account without an `Agent` row sees no data. Lead status changes are recorded in `AuditLog`.
 
-## Auth tests
+## Tests
 
-`npm run test:auth` runs end-to-end tests (Playwright) for agent sign-in, invitations, password reset, sessions, sign-out, protected pages, injection attempts, rate limits and Auth outages. It builds the site into `.next-auth-test/` (your normal build is untouched) and runs it against a local stand-in for Supabase Auth (`tests/auth/support/mock-auth.mjs`) and an in-memory Postgres with the real schema (`tests/auth/support/test-db.mjs`), so no real accounts or data are touched and no secrets are needed.
+`npm run test:e2e` runs the end-to-end tests (Playwright, 71 tests): agent sign-up, sign-in, invitations, password reset, sessions, sign-out, protected pages, injection attempts, rate limits and Auth outages, plus the public site in both countries (country selector, phone codes, listings, search, inquiries, saved homes, sitemap, health). `npm run test:auth` runs only the account tests. It builds the site into `.next-auth-test/` (your normal build is untouched) and runs it against a local stand-in for Supabase Auth and the breach-check API (`tests/e2e/support/mock-auth.mjs`) and an in-memory Postgres with the real schema and two test listings (`tests/e2e/support/test-db.mjs`), so no real accounts or data are touched and no secrets are needed.
 
 ```bash
 npm ci
 npx playwright install chromium   # once per machine
-npm run test:auth                 # about 7 minutes, including the build
-AUTH_TEST_SKIP_BUILD=1 npm run test:auth   # rerun without rebuilding
+npm run test:e2e                  # about 4 minutes, including the build
+AUTH_TEST_SKIP_BUILD=1 npm run test:e2e   # rerun without rebuilding
 ```
 
-The same suite runs on every push and pull request (`.github/workflows/auth-tests.yml`).
+The same suite runs on every push and pull request (`.github/workflows/e2e-tests.yml`).
+
+## When something breaks
+
+Start with the [operations playbook](docs/PLAYBOOK.md): architecture, the rules and algorithms behind each feature, and runbooks by symptom (site down, database down, sign-in or sign-up failing, emails not arriving, listings not showing, domain, builds), plus the admin SQL.
 
 ## Sample data switch
 

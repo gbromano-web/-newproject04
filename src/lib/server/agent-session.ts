@@ -36,7 +36,30 @@ export type SessionAgent = {
   agency: string | null;
 };
 
-export type Session = { userId: string; email: string; agent: SessionAgent | null };
+/** What an agent submitted at sign-up, kept on their Supabase account until an admin approves it. */
+export type AgentApplication = {
+  country: "PH" | "AE";
+  fullName: string;
+  mobile: string;
+  brokerage?: string;
+  licenseType: "REAL_ESTATE_BROKER" | "REAL_ESTATE_SALESPERSON" | "UAE_BROKER";
+  prcLicenseNumber?: string;
+  dhsudAccreditationNumber?: string;
+  supervisingBrokerPrc?: string;
+  emirate?: string;
+  uaeRegulator?: string;
+  uaeBrokerNumber?: string;
+  uaeOfficeNumber?: string;
+  consentedAt: string;
+  termsVersion: string;
+};
+
+export type Session = { userId: string; email: string; agent: SessionAgent | null; application: AgentApplication | null };
+
+function applicationOf(meta: unknown): AgentApplication | null {
+  const a = (meta as { application?: unknown } | null)?.application as Partial<AgentApplication> | undefined;
+  return a && typeof a === "object" && (a.country === "PH" || a.country === "AE") && typeof a.fullName === "string" ? (a as AgentApplication) : null;
+}
 
 /**
  * The signed-in user, checked with the Supabase Auth server (not just the
@@ -64,5 +87,5 @@ export const getSession = cache(async (): Promise<Session | null> => {
     );
     agent = rows[0] ?? null;
   }
-  return { userId: data.user.id, email: data.user.email ?? "", agent };
+  return { userId: data.user.id, email: data.user.email ?? "", agent, application: agent ? null : applicationOf(data.user.user_metadata) };
 });

@@ -5,7 +5,7 @@ import { AUTH_PORT, BASE_URL, DB_PORT } from "./ports";
 
 const AUTH = `http://127.0.0.1:${AUTH_PORT}`;
 
-/** Accounts known to tests/auth/support/mock-auth.mjs and test-db.mjs. */
+/** Accounts known to tests/e2e/support/mock-auth.mjs and test-db.mjs. */
 export const ACCOUNTS = {
   agent: { email: "agent@test.local", password: "Correct horse battery 1", name: "Maria" },
   unlinked: { email: "unlinked@test.local", password: "Unlinked account pass 3" },
@@ -21,15 +21,22 @@ export const MESSAGES = {
   linkUsed: "That link has expired or was already used. Sign in, or ask for a new link.",
   resetSent: "If that email belongs to an agent account, a link to set a new password is on its way. It works once, for one hour.",
   invalidEmail: "Enter a valid email address.",
-  tooShort: "Use at least 10 characters.",
+  tooShort: "Use at least 12 characters.",
+  signUpSent: (email: string) =>
+    `Check your inbox at ${email} and open the link to confirm your email address (it works once). We then check your licence and email you when your agent account is active.`,
   noMatch: "The two passwords do not match.",
 } as const;
 
 /** The Supabase Auth stand-in: reset its state, read what it was asked, simulate outages. */
 export const authServer = {
   reset: () => fetch(`${AUTH}/__reset`, { method: "POST" }),
-  mode: (mode: "normal" | "down" | "hang") => fetch(`${AUTH}/__mode`, { method: "POST", body: JSON.stringify({ mode }) }),
-  log: async (): Promise<{ method: string; path: string; grant: string | null; email?: string }[]> => (await fetch(`${AUTH}/__log`)).json(),
+  mode: (mode: "normal" | "down" | "hang" | "pwned-down") => fetch(`${AUTH}/__mode`, { method: "POST", body: JSON.stringify({ mode }) }),
+  log: async (): Promise<{ method: string; path: string; grant: string | null; email?: string; prefix?: string }[]> => (await fetch(`${AUTH}/__log`)).json(),
+  user: async (email: string): Promise<null | { id: string; confirmed: boolean; user_metadata: { application?: Record<string, string> } }> =>
+    (await fetch(`${AUTH}/__user`, { method: "POST", body: JSON.stringify({ email }) })).json(),
+  /** Confirmation / invite tokens waiting for an email address (what the email link would carry). */
+  links: async (email: string): Promise<{ token: string; type: string }[]> =>
+    (await fetch(`${AUTH}/__links`, { method: "POST", body: JSON.stringify({ email }) })).json(),
   password: async (email: string): Promise<string | null> =>
     (await (await fetch(`${AUTH}/__password`, { method: "POST", body: JSON.stringify({ email }) })).json()).password,
 };
@@ -39,6 +46,17 @@ export const authServer = {
  * changed passwords, and the site's rate-limit counters are cleared, so one
  * test's sign-ins never count against another's.
  */
+/** Run SQL against the test database (for checks the UI cannot show). */
+export async function sql<T = Record<string, unknown>>(query: string, params: unknown[] = []): Promise<T[]> {
+  const db = new Client({ connectionString: `postgresql://postgres:postgres@127.0.0.1:${DB_PORT}/postgres` });
+  await db.connect();
+  try {
+    return (await db.query(query, params)).rows as T[];
+  } finally {
+    await db.end();
+  }
+}
+
 export async function resetState() {
   await authServer.reset();
   const db = new Client({ connectionString: `postgresql://postgres:postgres@127.0.0.1:${DB_PORT}/postgres` });

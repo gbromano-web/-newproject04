@@ -13,7 +13,8 @@
     "build:map": "node scripts/build-ph-map.mjs",
     "build:preview": "bash scripts/build-preview.sh",
     "seed:sql": "tsx scripts/seed-sql.mts",
-    "test:auth": "playwright test -c tests/auth/playwright.config.ts"
+    "test:auth": "playwright test -c tests/e2e/playwright.config.ts account-creation sign-up sign-in session security",
+    "test:e2e": "playwright test -c tests/e2e/playwright.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PhoneInput } from "@/components/phone-input";
 import { BadgeCheck, CheckCircle2, Clock, Languages, MessageCircle, Phone } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import type { PhAgent } from "@/lib/ph/listings";
@@ -121,7 +122,7 @@ export function ContactCard({ agent, listingId, listingTitle, country }: { agent
           <input name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] size-px opacity-0" />
           <input name="name" required placeholder="Full name" aria-label="Full name" autoComplete="name" className={input} />
           <input name="email" type="email" required placeholder="Email" aria-label="Email" autoComplete="email" className={input} />
-          <input name="mobile" type="tel" placeholder={market.code === "AE" ? "Mobile, e.g. +971 50 …" : "Mobile, e.g. +63 917 …"} aria-label="Mobile number" autoComplete="tel" className={input} />
+          <PhoneInput name="mobile" defaultCountry={market.code} label="Mobile number (optional)" inputClassName={input} />
           <textarea name="message" rows={4} value={message} onChange={(e) => setMessage(e.target.value)} aria-label="Message" className="w-full rounded-xl bg-mist p-3.5 text-sm text-ink focus:bg-white focus:outline-none focus:ring-2 focus:ring-lagoon-500" />
           <label className="flex items-start gap-2.5 py-1 text-xs leading-relaxed text-ink-soft">
             <input type="checkbox" name="consent" required className="mt-0.5 size-4 accent-[var(--color-sea-900)]" />

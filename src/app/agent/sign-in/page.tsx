@@ -32,8 +32,10 @@ export default function SignInPage(props: { searchParams: Promise<Record<string,
           <Suspense fallback={<div className="h-64" />}>
             <Form searchParams={props.searchParams} />
           </Suspense>
-          <p className="mt-6 border-t border-line pt-4 text-xs text-ink-soft">
-            New agent? Accounts are created by invitation after your PRC licence or DHSUD accreditation is checked.
+          <p className="mt-6 border-t border-line pt-4 text-sm text-ink-soft">
+            New agent?{" "}
+            <Link href="/agent/sign-up" className="font-semibold text-sea-900 underline underline-offset-2 hover:text-lagoon-700">Create an account</Link>
+            . We check your licence before it is activated.
           </p>
         </>
       )}

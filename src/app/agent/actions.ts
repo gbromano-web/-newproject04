@@ -8,12 +8,12 @@ import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { getSession, supabaseServer } from "@/lib/server/agent-session";
 import { db } from "@/lib/server/db";
 import { clearRateLimit, ipHash, log, rateLimit } from "@/lib/server/request";
+import { passwordProblem } from "@/lib/server/password-policy";
 import { safeNext } from "@/lib/server/supabase-config";
 
 export type FormState = { error?: string; ok?: string; email?: string };
 
 const EMAIL = /^[^\s@<>()]+@[^\s@<>()]+\.[^\s@<>()]{2,}$/;
-const MIN_PASSWORD = 10;
 const field = (f: FormData, k: string, max = 254) => String(f.get(k) ?? "").slice(0, max);
 const emailKey = (e: string) => createHash("sha256").update(e).digest("hex").slice(0, 24);
 
@@ -60,6 +60,10 @@ export async function signIn(_: FormState, form: FormData): Promise<FormState> {
       return { error: UNAVAILABLE, email };
     }
     if (error.status === 429) return { error: TOO_MANY, email };
+    // Only reached with the right password: Supabase checks it before the confirmation
+    if (error.code === "email_not_confirmed") {
+      return { error: "Confirm your email first: open the link we sent when you signed up. To get a new link, sign up again with the same email.", email };
+    }
     log("info", "agent.signin_failed", { ipHash: ip, code: error.code });
     // Same message whether the email exists or not
     return { error: "That email and password do not match.", email };
@@ -98,12 +102,12 @@ export async function sendReset(_: FormState, form: FormData): Promise<FormState
 export async function setPassword(_: FormState, form: FormData): Promise<FormState> {
   const password = field(form, "password", 200);
   const confirm = field(form, "confirm", 200);
-  // Spaces count inside a password, but a password of only spaces is not one
-  if (password.trim().length < MIN_PASSWORD) return { error: `Use at least ${MIN_PASSWORD} characters.` };
   if (password !== confirm) return { error: "The two passwords do not match." };
   const sb = await supabaseServer();
   const session = await getSession();
   if (!sb || !session) return { error: "Your link has expired. Ask for a new one." };
+  const weak = await passwordProblem(password, { email: session.email, name: session.agent?.displayName ?? session.application?.fullName });
+  if (weak) return { error: weak };
   const { error } = await sb.auth.updateUser({ password });
   if (error) {
     return { error: error.code === "weak_password" || error.code === "same_password" ? error.message : "The password could not be changed. Please try again." };

@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 
 /**
  * Server helpers for public endpoints: request IDs, structured logs without
@@ -82,4 +82,9 @@ export async function clearRateLimit(key: string): Promise<void> {
   } catch (e) {
     log("warn", "ratelimit.clear_failed", { error: e instanceof Error ? e.message : String(e) });
   }
+}
+
+/** HMAC of a value with the server's secret salt, for tamper-proof hidden form fields. */
+export function sign(value: string): string {
+  return createHmac("sha256", SALT).update(value).digest("base64url");
 }

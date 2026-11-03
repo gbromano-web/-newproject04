@@ -24,9 +24,10 @@ const TOPICS = [
     id: "agents",
     icon: UserRoundCheck,
     title: "Agents: get verified",
-    body: "Philippines: brokers send their PRC licence number, salespersons their DHSUD accreditation and supervising broker. UAE: send your broker registration (BRN in Dubai) and your office registration with the emirate's regulator. Once checked, we invite you to your agent account.",
+    body: "Create an agent account with your licence details: PRC or DHSUD in the Philippines, your broker and office registration with the emirate's regulator in the UAE. We check them before your account is activated.",
     cta: "Apply as an agent",
     subject: "Agent verification",
+    href: "/agent/sign-up",
   },
   {
     id: "developers",
@@ -46,12 +47,12 @@ export default function ContactPage() {
         Email <ContactEmail />. We usually reply within one business day.
       </p>
       <div className="mt-10 grid gap-6 sm:grid-cols-3">
-        {TOPICS.map(({ id, icon: Icon, title, body, cta, subject }) => (
+        {TOPICS.map(({ id, icon: Icon, title, body, cta, subject, ...rest }) => (
           <section key={id} id={id} className="flex scroll-mt-24 flex-col rounded-2xl bg-white p-6 ring-1 ring-line">
             <Icon className="size-6 text-lagoon-600" />
             <h2 className="mt-4 font-bold text-sea-950">{title}</h2>
             <p className="mt-2 flex-1 text-sm leading-relaxed text-ink-soft">{body}</p>
-            <a href={mailto(subject)} className="mt-5 self-start rounded-full bg-sea-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sea-800">{cta}</a>
+            <a href={"href" in rest ? rest.href : mailto(subject)} className="mt-5 self-start rounded-full bg-sea-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sea-800">{cta}</a>
           </section>
         ))}
       </div>

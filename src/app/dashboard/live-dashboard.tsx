@@ -47,6 +47,22 @@ export async function LiveDashboard() {
   // The proxy already sends visitors without a session to sign in; this is the second lock
   if (!session) return <Shell title="Please sign in again"><Link className="font-semibold text-sea-900 underline" href="/agent/sign-in">Sign in</Link></Shell>;
 
+  if (!session.agent && session.application) {
+    const a = session.application;
+    const licence =
+      a.licenseType === "UAE_BROKER"
+        ? `${a.uaeRegulator} ${a.uaeBrokerNumber} (${a.emirate})`
+        : a.licenseType === "REAL_ESTATE_BROKER"
+          ? `PRC ${a.prcLicenseNumber}`
+          : `DHSUD ${a.dhsudAccreditationNumber}`;
+    return (
+      <Shell title="Your application is being reviewed" action={<SignOut />}>
+        Thanks, {a.fullName.split(" ")[0]}. Your email is confirmed. We are checking licence {licence} with the regulator and will email {session.email} when your
+        agent account is active, usually within two business days. Your listings and inquiries will then appear here.
+      </Shell>
+    );
+  }
+
   if (!session.agent) {
     return (
       <Shell title="Your account is not linked to an agent profile yet" action={<SignOut />}>

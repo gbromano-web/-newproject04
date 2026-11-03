@@ -3,18 +3,22 @@
 // /__* control routes so tests can reset it, read what it was asked, and
 // simulate an outage. Never used outside tests.
 import http from "node:http";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 const PORT = Number(process.env.MOCK_AUTH_PORT || 54329);
 const SHORT_SESSION_SECONDS = 15; // inside supabase-js's refresh margin, so every request refreshes
 
 const seedUsers = () => ({
-  "agent@test.local": { id: "u_agent", password: "Correct horse battery 1" },
-  "unlinked@test.local": { id: "u_unlinked", password: "Unlinked account pass 3" },
-  "shortlived@test.local": { id: "u_short", password: "Short lived session 4", short: true },
+  "agent@test.local": { id: "u_agent", password: "Correct horse battery 1", confirmed: true },
+  "unlinked@test.local": { id: "u_unlinked", password: "Unlinked account pass 3", confirmed: true },
+  "shortlived@test.local": { id: "u_short", password: "Short lived session 4", short: true, confirmed: true },
   // Invited, has not chosen a password yet
-  "newagent@test.local": { id: "u_new", password: null },
+  "newagent@test.local": { id: "u_new", password: null, confirmed: true },
 });
+
+/** Passwords the breached-password stand-in reports as leaked. */
+const BREACHED = ["Password12345!", "Correct horse battery staple", "Iloveyou123456"];
+const sha1 = (s) => createHash("sha1").update(s).digest("hex").toUpperCase();
 const seedLinks = () => ({
   "invite-ok": { type: "invite", email: "newagent@test.local" },
   "recovery-ok": { type: "recovery", email: "agent@test.local" },
@@ -34,9 +38,11 @@ reset();
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const userJson = (email) => ({
   id: users[email].id, aud: "authenticated", role: "authenticated", email,
-  email_confirmed_at: "2026-01-01T00:00:00Z", app_metadata: { provider: "email" }, user_metadata: {},
+  email_confirmed_at: users[email].confirmed ? "2026-01-01T00:00:00Z" : null, app_metadata: { provider: "email" },
+  user_metadata: users[email].metadata ?? {}, identities: [{ identity_id: `i_${users[email].id}`, provider: "email" }],
   created_at: "2026-01-01T00:00:00Z", updated_at: new Date().toISOString(),
 });
+let signupCount = 0;
 
 function issue(email, sessionId = randomBytes(8).toString("hex")) {
   const ttl = users[email].short ? SHORT_SESSION_SECONDS : 3600;
@@ -71,6 +77,21 @@ const server = http.createServer((req, res) => {
     if (url.pathname === "/__log") return send(200, log);
     if (url.pathname === "/__mode") { mode = data.mode ?? "normal"; return send(200, { mode }); }
     if (url.pathname === "/__password") return send(200, { password: users[data.email]?.password ?? null });
+    if (url.pathname === "/__user") return send(200, users[data.email] ? { ...userJson(data.email), confirmed: users[data.email].confirmed } : null);
+    if (url.pathname === "/__links") {
+      const found = Object.entries(links).filter(([, l]) => l.email === data.email).map(([token, l]) => ({ token, type: l.type }));
+      return send(200, found);
+    }
+    // Have I Been Pwned "range" API stand-in: suffixes for the 5-character SHA-1 prefix, padded
+    if (url.pathname.startsWith("/pwned/range/")) {
+      const prefix = url.pathname.split("/").pop().toUpperCase();
+      log.push({ method: req.method, path: "/pwned/range", grant: null, prefix, at: Date.now() });
+      if (mode === "down" || mode === "pwned-down") return send(503, {});
+      const lines = BREACHED.map(sha1).filter((h) => h.startsWith(prefix)).map((h) => `${h.slice(5)}:42`);
+      for (let i = 0; i < 3; i++) lines.push(`${randomBytes(18).toString("hex").slice(0, 35).toUpperCase()}:0`);
+      res.writeHead(200, { "content-type": "text/plain" });
+      return res.end(lines.join("\r\n"));
+    }
 
     if (!url.pathname.startsWith("/auth/v1/")) return send(404, { msg: "not found" });
     const grant = url.searchParams.get("grant_type");
@@ -83,6 +104,9 @@ const server = http.createServer((req, res) => {
 
     if (url.pathname === "/auth/v1/token" && grant === "password") {
       const u = users[(data.email ?? "").toLowerCase()];
+      if (u && u.password && u.password === data.password && !u.confirmed) {
+        return send(400, { code: 400, error_code: "email_not_confirmed", msg: "Email not confirmed" });
+      }
       if (u && u.password && u.password === data.password) return send(200, issue(data.email.toLowerCase()));
       return send(400, { code: 400, error_code: "invalid_credentials", msg: "Invalid login credentials" });
     }
@@ -114,13 +138,28 @@ const server = http.createServer((req, res) => {
     }
     if (url.pathname === "/auth/v1/verify" && req.method === "POST") {
       const link = links[data.token_hash];
-      if (!link || link.type !== data.type) return send(403, { code: 403, error_code: "otp_expired", msg: "Email link is invalid or has expired" });
+      const typeMatches = link && (link.type === data.type || (link.type === "signup" && (data.type === "email" || data.type === "signup")));
+      if (!typeMatches) return send(403, { code: 403, error_code: "otp_expired", msg: "Email link is invalid or has expired" });
       delete links[data.token_hash]; // one-time
+      users[link.email].confirmed = true;
       return send(200, issue(link.email));
     }
     if (url.pathname === "/auth/v1/recover") return send(200, {});
-    // Public sign-up is switched off in the real project; mirror that
-    if (url.pathname === "/auth/v1/signup") return send(422, { code: 422, error_code: "signup_disabled", msg: "Signups not allowed for this instance" });
+    // Sign-up with "Confirm email" on, as in the real project
+    if (url.pathname === "/auth/v1/signup") {
+      const email = (data.email ?? "").toLowerCase();
+      if (typeof data.password !== "string" || data.password.length < 6) {
+        return send(422, { code: 422, error_code: "weak_password", msg: "Password should be at least 6 characters." });
+      }
+      const existing = users[email];
+      if (existing?.confirmed) {
+        // Real Supabase hides that the account exists: a fake user with no identities, no email sent
+        return send(200, { id: randomBytes(8).toString("hex"), aud: "authenticated", role: "authenticated", email, identities: [], user_metadata: {}, created_at: new Date().toISOString() });
+      }
+      if (!existing) users[email] = { id: `u_signup_${++signupCount}`, password: data.password, confirmed: false, metadata: data.data ?? {} };
+      links[`confirm-${randomBytes(6).toString("hex")}`] = { type: "signup", email };
+      return send(200, userJson(email));
+    }
     send(404, { msg: `not mocked: ${req.method} ${url.pathname}` });
   });
 });

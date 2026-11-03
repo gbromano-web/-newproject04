@@ -14,13 +14,13 @@ test.beforeEach(async () => {
 });
 
 test.describe("A. Account creation (invitation)", () => {
-  test("public self-registration is not offered", async ({ page, request }) => {
-    for (const path of ["/signup", "/sign-up", "/register", "/agent/sign-up", "/agent/register"]) {
+  test("invitations still work alongside self sign-up, and there is one sign-up address", async ({ page, request }) => {
+    expect((await request.get("/agent/sign-up")).status()).toBe(200);
+    for (const path of ["/signup", "/sign-up", "/register", "/agent/register"]) {
       expect((await request.get(path)).status(), path).toBe(404);
     }
     await page.goto("/agent/sign-in");
-    await expect(page.locator("main")).toContainText("Accounts are created by invitation");
-    expect(await authCalls({ path: "/auth/v1/signup" })).toHaveLength(0);
+    await expect(page.locator("main").getByRole("link", { name: "Create an account" })).toHaveAttribute("href", "/agent/sign-up");
   });
 
   test("happy path: invite link → choose password → signed in to the dashboard", async ({ page, context }) => {

@@ -1,6 +1,6 @@
-name: Auth tests
+name: End-to-end tests
 
-# End-to-end tests for agent sign-in, invitations, password reset and sessions.
+# End-to-end tests: agent sign-up and sign-in, sessions, security, and the public site.
 # Runs the real site against a local stand-in for Supabase Auth and an
 # in-memory Postgres: no secrets and no real accounts are used.
 on:
@@ -12,11 +12,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: auth-tests-${{ github.ref }}
+  group: e2e-tests-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  auth:
+  e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -28,5 +28,5 @@ jobs:
       - run: npm ci
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
-      - name: Auth test suite
-        run: npm run test:auth
+      - name: End-to-end test suite
+        run: npm run test:e2e

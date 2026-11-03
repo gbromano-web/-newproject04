@@ -9,12 +9,12 @@ import { CountrySwitch, MarketNav } from "./market-nav";
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-[68px] max-w-7xl items-center gap-3 px-4 sm:gap-8 sm:px-6 xl:gap-10">
+      <div className="mx-auto flex h-[68px] max-w-7xl items-center gap-2 px-4 sm:gap-8 sm:px-6 xl:gap-10">
         <Link href="/" aria-label="Go Search Property home" className="shrink-0">
           <Logo />
         </Link>
         <MarketNav />
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <CountrySwitch />
           {/* The longer name leaves no room for both the full nav and the currency control between lg and xl */}
           <div className="hidden md:block lg:hidden xl:block">
