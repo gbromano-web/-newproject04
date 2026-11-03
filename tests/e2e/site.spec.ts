@@ -99,6 +99,29 @@ test.describe("Listings in both countries", () => {
     await expect(main.getByRole("link", { name: /Viber/ })).toHaveCount(0);
   });
 
+  test("a suspended agent's listings disappear everywhere at once, and come back when reinstated", async ({ page, request }) => {
+    try {
+      await sql(`UPDATE "Agent" SET verification = 'REJECTED' WHERE id = 'a_new'`);
+      await page.goto(`/property/${AE.slug}`);
+      await expect(page.locator("main")).toContainText("This page isn't here");
+      await expect(page.locator("main")).not.toContainText("AED 2.45M");
+      await page.goto("/uae");
+      await expect(page.locator("main")).not.toContainText(AE.title);
+      await page.goto("/uae/search?location=Dubai");
+      await expect(page.locator("main")).not.toContainText(AE.title);
+      expect(await (await request.get("/sitemap.xml")).text()).not.toContain(AE.slug);
+      // Chat links and inquiries treat the listing as gone too
+      const chat = await request.get(`/api/ph/leads/whatsapp?listing=p_ae`, { maxRedirects: 0 });
+      expect(chat.headers().location).toMatch(/\/search$/);
+      const lead = await request.post("/api/ph/leads", { data: { listingId: "p_ae", name: "Ana", email: "ana@example.com", consent: true } });
+      expect(lead.status()).toBe(404);
+    } finally {
+      await sql(`UPDATE "Agent" SET verification = 'VERIFIED' WHERE id = 'a_new'`);
+    }
+    await page.goto(`/property/${AE.slug}`);
+    await expect(page.locator("main")).toContainText("AED 2.45M");
+  });
+
   test("an unknown listing shows the not-found page and is not indexed", async ({ page }) => {
     await page.goto("/property/no-such-listing");
     await expect(page.locator("main")).toContainText("This page isn't here");

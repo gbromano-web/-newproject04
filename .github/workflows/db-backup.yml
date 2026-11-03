@@ -1,0 +1,66 @@
+# Nightly encrypted database backup, held outside Supabase.
+# The repository is public: the dump is encrypted before upload, so the artifact
+# is useless without BACKUP_PASSPHRASE (keep a copy of it offline).
+#
+# Secrets (Settings > Secrets and variables > Actions):
+#   BACKUP_DATABASE_URL  Supabase > Connect > Session pooler (port 5432), read-only role
+#   BACKUP_PASSPHRASE    32+ random characters
+# Until both exist the job skips itself. Restore steps: docs/PLAYBOOK.md section 7.7.
+name: Database backup
+
+on:
+  schedule:
+    - cron: "40 20 * * *" # 00:40 in Dubai, after the daily retention job
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Check secrets
+        id: ready
+        run: |
+          if [ -z "$DB_URL" ] || [ -z "$PASSPHRASE" ]; then
+            echo "::notice::Backup secrets are not set yet; skipping."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install pg_dump 17
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          yes | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump, check and encrypt
+        if: steps.ready.outputs.ok == 'true'
+        run: |
+          set -euo pipefail
+          f="gsp-$(date -u +%F).dump"
+          /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" -Fc --no-owner --no-privileges -n public -n auth -f "$f"
+          /usr/lib/postgresql/17/bin/pg_restore --list "$f" > /dev/null # fails on a corrupt dump
+          openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in "$f" -out "$f.enc" -pass env:PASSPHRASE
+          rm "$f"
+          ls -l "$f.enc"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: steps.ready.outputs.ok == 'true'
+        with:
+          name: db-backup
+          path: "*.enc"
+          retention-days: 14
+          if-no-files-found: error
