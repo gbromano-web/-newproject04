@@ -534,6 +534,27 @@ k6 run -e BASE=https://<preview>.vercel.app  -e PROFILE=stress tests/load/k6.js 
 
 ---
 
+## 3.5 Results after PR #13 (same local setup as above)
+
+| | Before | After |
+| --- | --- | --- |
+| Home page throughput (one instance, 20 / 50 users) | 46 / 45 req/s | **356 / 401 req/s** |
+| Home page p99 at 50 users | 4.2 s | **0.24 s** |
+| Home page JS (compressed) | 217 KB | **172 KB** (every page about −45 KB) |
+| Home page LCP (emulated phone) | 1.29 s | **0.80 s** |
+| Home page blocking time (TBT) | 635 ms | **341 ms** (the rest is React itself) |
+| `/uae` blocking time | 366 ms | 365 ms (it had no extra library weight to shed beyond the shared hero) |
+
+**How the home pages work now:**
+- Both home pages are fully prerendered, with their newest listings refreshed in the background at most once a minute (playbook 3.15).
+- On Vercel they are served from the CDN, so a visit no longer runs a function.
+- The "use cache" wrapper and the CSS slideshow are documented in playbook 3.15–3.16.
+
+**Not cached, on purpose:** search and listing pages.
+- They depend on the URL, and on serverless the per-instance cache wouldn't persist between requests.
+- They also re-check agent verification on every request.
+- Revisit with `"use cache: remote"` if traffic grows.
+
 # PHASE 4: Observability, logging and alerting
 
 ## 4.1 What exists
@@ -663,7 +684,7 @@ A rollback does **not** undo database changes, which is why migrations stay addi
 | 5 | Backup secrets in GitHub; first manual run of *Database backup*; one restore drill (1.1) | ⏳ You, then me |
 | 6 | Branch protection on `main` (2.3) | ⏳ You |
 | 7 | Uptime monitors (4.3) | ⏳ You (10 minutes) |
-| 8 | Caching listings (3.3), slimmer animation (3.1), error and latency logging (4.2a–b) | ⏳ Me, one PR, on your go |
+| 8 | Home-page caching (3.3), animation library removed (3.1), error and latency logging (4.2a–b) | ✅ Done: PR #13, `78d1cf6`. Home pages served prerendered (`x-vercel-cache: PRERENDER`); no runtime errors since |
 | 9 | App database role + `DATABASE_SSL_CA` (1.3, 1.5) | ⏳ Together |
 | 10 | k6 smoke on production; k6 peak on a preview after items 2 and 8 | ⏳ Me / you (k6 runs from your machine or CI) |
 | 11 | Legal review of Terms (version `2026-10-31`) and Privacy for PH and UAE | ⏳ You |
