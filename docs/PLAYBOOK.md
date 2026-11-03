@@ -599,7 +599,7 @@ WHERE key IN (SELECT s || encode(sha256(convert_to(lower('agent@example.com'), '
 - **Database password:** Supabase → Database → reset the password, update `POSTGRES_URL`/`DATABASE_URL` in Vercel (the integration may do this), then redeploy.
 - **SMTP credentials:** update them in Supabase → Auth → SMTP.
 
-### 7.6 Apply migration 7 (UAE listing rules) — pending
+### 7.6 Apply migration 7 (UAE listing rules) — applied 3 Nov 2026
 This re-runs the current `prisma/sql/postgis.sql`, which is idempotent: the `UAE_BROKER` licence rule, the agent-country and permit trigger, and the `rentCheques` check.
 
 Run it in the Supabase SQL editor, or ask Claude to apply it as migration `7_uae_listing_rules`.
@@ -610,6 +610,40 @@ SELECT pg_get_constraintdef(oid) LIKE '%UAE_BROKER%' FROM pg_constraint WHERE co
 ```
 
 ---
+
+### 7.7 Test agent accounts
+
+Four test logins exist on the live site (created 3 Nov 2026). They are marked as test accounts:
+- Their agent ids start with `test_`.
+- Their display names start with "TEST".
+- Their Supabase metadata has `test_account: true`.
+- Their licence numbers are placeholders.
+
+| Agent id | Role |
+| --- | --- |
+| `test_ph_broker` | Philippines broker (PRC) |
+| `test_ph_salesperson` | Philippines salesperson (DHSUD), under `test_ph_broker` |
+| `test_ae_broker` | UAE broker, Dubai (RERA BRN) |
+| `test_ae_agent` | UAE agent, Abu Dhabi (ADREC) |
+
+The logins and password were given to the owner directly and are not stored in this repository.
+
+**Rules for test listings:**
+- A test listing **goes live on the public site**.
+- Give it a title starting with "TEST".
+- Set it back to `DRAFT` or `PAUSED` when done.
+
+**Remove them all before launch,** or whenever they are no longer needed:
+```sql
+BEGIN;
+DELETE FROM "Lead" WHERE "agentId" LIKE 'test\_%';
+DELETE FROM "Property" WHERE "agentId" LIKE 'test\_%';
+UPDATE "Agent" SET "supervisingBrokerId" = NULL WHERE id LIKE 'test\_%';
+DELETE FROM "Agent" WHERE id LIKE 'test\_%';
+DELETE FROM "User" WHERE id IN (SELECT id::text FROM auth.users WHERE raw_user_meta_data->>'test_account' = 'true');
+DELETE FROM auth.users WHERE raw_user_meta_data->>'test_account' = 'true';   -- identities and sessions cascade
+COMMIT;
+```
 
 ## 8. Log events
 
