@@ -32,7 +32,7 @@ const PREVIEW_CSP = [
   "img-src 'self' data: https://images.unsplash.com",
   "font-src 'self'",
   "connect-src 'self'",
-  "form-action 'self'",
+  "form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
   "base-uri 'self'",
   "object-src 'none'",
   "upgrade-insecure-requests",

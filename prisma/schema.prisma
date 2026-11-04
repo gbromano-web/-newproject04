@@ -405,6 +405,16 @@ model Agent {
   serviceAreaIds String[] // Location ids the agent covers
 
   activeListingsCount Int      @default(0)
+
+  // Billing (Stripe). The plan an agent pays for; the launch offer and Starter are
+  // worked out at request time (src/lib/server/billing.ts), not stored here.
+  plan                 String    @default("STARTER") // STARTER | PRO | BROKER
+  planInterval         String? // month | year
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  subscriptionStatus   String? // Stripe subscription status: active, trialing, past_due, canceled...
+  planRenewsAt         DateTime?
+  planCancelsAt        DateTime?
   medianReplyMinutes  Int?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -706,6 +716,13 @@ model AuditLog {
 
 /// Shared fixed-window rate limiter (one row per key). Old rows are removed by
 /// purge_old_leads() in prisma/sql/postgis.sql.
+/// Stripe webhook events already handled, so a re-delivered event is applied once.
+model StripeEvent {
+  id         String   @id // evt_...
+  type       String
+  receivedAt DateTime @default(now())
+}
+
 model RateLimit {
   key         String   @id
   windowStart DateTime

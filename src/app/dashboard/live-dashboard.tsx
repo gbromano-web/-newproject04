@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgeCheck, Calculator, Clock, LogOut, Mail, MessageCircle, Pencil, Phone, Plus } from "lucide-react";
+import { BadgeCheck, Calculator, Clock, CreditCard, LogOut, Mail, MessageCircle, Pencil, Phone, Plus } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import { ListingPhoto } from "@/components/ph/listing-photo";
 import { formatListingPrice } from "@/lib/ph/format";
@@ -93,9 +93,12 @@ export async function LiveDashboard() {
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Link href="/dashboard/listings/new" className="flex items-center gap-2 rounded-full bg-sea-900 px-4 py-2 text-sm font-semibold text-white hover:bg-sea-800">
               <Plus className="size-4" /> Add listing
+            </Link>
+            <Link href="/dashboard/billing" className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-sea-900 ring-1 ring-line hover:bg-white">
+              <CreditCard className="size-4" /> Plan and billing
             </Link>
             <SignOut />
           </div>

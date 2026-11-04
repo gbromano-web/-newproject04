@@ -1,4 +1,5 @@
 import "server-only";
+import { effectivePlan, liveListingCount } from "./billing";
 import { randomBytes } from "node:crypto";
 import type { CountryCode } from "@/lib/markets";
 import { db } from "./db";
@@ -354,7 +355,7 @@ function explain(e: unknown, country: CountryCode): never {
   throw e;
 }
 
-type Actor = { agentId: string; userId: string; country: CountryCode; ipHash: string };
+type Actor = { agentId: string; userId: string; country: CountryCode; ipHash: string; verified?: boolean };
 
 /** Creates a draft listing for the agent. Returns its id. */
 export async function createListing(a: Actor, l: CleanListing): Promise<string> {
@@ -443,7 +444,7 @@ export async function updateListing(a: Actor, id: string, l: CleanListing): Prom
 }
 
 /** Publish, pause, mark sold or rented, or back to draft. */
-export async function setStatus(a: Actor, id: string, status: AgentStatus): Promise<"ok" | "missing" | "no_photos"> {
+export async function setStatus(a: Actor, id: string, status: AgentStatus): Promise<"ok" | "missing" | "no_photos" | { limit: number; plan: string }> {
   const pool = db();
   if (!pool) throw new Error("no database");
   const cur = await pool.query<{ status: string; photos: number }>(
@@ -454,6 +455,11 @@ export async function setStatus(a: Actor, id: string, status: AgentStatus): Prom
   const row = cur.rows[0];
   if (!row) return "missing";
   if (status === "ACTIVE" && row.photos === 0) return "no_photos";
+  if (status === "ACTIVE" && row.status !== "ACTIVE") {
+    // Each plan has a number of live listings (src/lib/plans.ts)
+    const { plan } = await effectivePlan(a.agentId, a.country, a.verified ?? false);
+    if ((await liveListingCount(a.agentId, id)) >= plan.listings) return { limit: plan.listings, plan: plan.name };
+  }
   try {
     await pool.query(
       `UPDATE "Property" SET status = $3::"ListingStatus",

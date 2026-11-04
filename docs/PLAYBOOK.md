@@ -416,17 +416,45 @@ Prices are shown before VAT (12% Philippines, 5% UAE, where it applies).
 - email every agent with their plan options, or
 - move `LAUNCH_OFFER.until` later and redeploy.
 
-**Not built yet** (needed before charging anyone):
-- **Billing:** a payment provider, invoices, and a `plan` on Agent or Agency.
-- **Limits:** the site doesn't stop a Starter agent publishing more than 3 listings yet.
+**Live-listing limit:** publishing is refused once an agent has as many live listings as their plan allows (`setStatus` in `listing-editor.ts`). See 3.19 for how the plan is worked out.
 
-**Done by hand until then:**
+**Done by hand:**
 - **Featured placement:**
   ```sql
   UPDATE "Property" SET "isFeatured" = true, "featuredUntil" = now() + interval '30 days' WHERE slug = '<slug>';
   ```
 - **Brokerage seats:** link the agents to one `Agency` (`Agent."agencyId"`).
-- **Brokerage plan requests:** the "Talk to us" button emails the contact address.
+
+### 3.19 Billing with Stripe (`/dashboard/billing`, `/api/stripe/webhook`)
+Code: `src/lib/server/billing.ts`, `src/app/dashboard/billing/`, `src/app/api/stripe/webhook/route.ts`. Card details never touch the site: agents pay on Stripe Checkout and manage their plan on Stripe's customer portal.
+
+**Which plan an agent has** (`effectivePlanOf`), first match wins:
+1. **Paid:** `Agent.plan` is PRO or BROKER and `subscriptionStatus` is active, trialing or past_due (past_due = Stripe is retrying the card; the billing page warns the agent).
+2. **Launch:** verified agent, before the end of `LAUNCH_OFFER.until` (Dubai time) → Pro.
+3. **Free:** Starter.
+
+**What can be bought:** Brokerage, monthly or yearly, now. Pro checkout is hidden and refused during the launch offer; it appears by itself on 1 April 2027.
+
+**Stripe objects:** one Customer per agent (stored in `Agent.stripeCustomerId`). Prices are created on first use from `src/lib/plans.ts`, with lookup key `gsp_<plan>_<country>_<interval>_<amount>`. Changing an amount in `plans.ts` makes a new Price; existing subscribers keep the old one until they change plan. Currency is PHP for Philippine agents and AED for UAE agents; all of it settles to the one Stripe account.
+
+**Webhook:** signature checked on the raw body (`STRIPE_WEBHOOK_SECRET`, 5-minute tolerance). Each event id is stored in `StripeEvent` and handled once. Every event re-reads the subscription from Stripe, then writes plan, status, interval, renewal and cancel dates to the agent named in the subscription's metadata, **only if** that agent's stored customer id matches. Plan changes are written to `AuditLog` (`agent.plan_changed`). If handling fails, the event id is removed and the site answers 500, so Stripe retries.
+
+**Set up (once, by the owner):**
+1. Open a Stripe account for the UAE business (Stripe does not serve Philippine businesses). Finish activation.
+2. Apply migration `prisma/migrations/4_agent_billing` in the Supabase SQL editor (before deploying this code).
+3. Stripe → Developers → Webhooks → add endpoint `https://gosearchproperty.com/api/stripe/webhook` with events: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`.
+4. Stripe → Settings → Billing → Customer portal: turn on cancel, update payment method, invoice history, and switching between the Brokerage month and year prices. Save.
+5. Vercel → Settings → Environment Variables (Production): `STRIPE_SECRET_KEY` (sk_live_…) and `STRIPE_WEBHOOK_SECRET` (whsec_…), both Sensitive. Redeploy.
+6. Optional: set up Stripe Tax registrations (UAE VAT, and Philippine VAT if registered), then `STRIPE_AUTOMATIC_TAX=1`. Without it, prices are charged as listed and VAT is your own bookkeeping.
+7. Test with test-mode keys on a preview deployment first: card 4242 4242 4242 4242.
+
+**Until both keys are set** the billing page says payments are not switched on, and the webhook answers 503.
+
+**Give a plan by hand** (e.g. a partner deal), no Stripe:
+```sql
+UPDATE "Agent" SET plan = 'BROKER', "subscriptionStatus" = 'active' WHERE id = '<agent id>';
+```
+Undo with `plan = 'STARTER', "subscriptionStatus" = NULL`. A manual plan is overwritten if that agent later has a Stripe subscription event.
 
 **Benchmarks used** (November 2026):
 - Lamudi Pro: about ₱999/month for 10 listings.
@@ -774,19 +802,20 @@ Search Vercel logs for these:
 | Sign-up | `signup.submitted`, `signup.honeypot`, `signup.rate_limited`, `signup.unavailable`, `signup.failed`, `signup.audit_failed` |
 | SEO | `sitemap.listings_failed` |
 | Home pages | `home.latest_failed` (the cached listings block could not load; it retries within a minute) |
+| Billing | `billing.checkout_started`, `billing.checkout_failed`, `billing.portal_failed`, `billing.synced`, `billing.payment_failed`, `billing.webhook_bad_signature` (repeated = someone probing, or the wrong secret in Vercel), `billing.webhook_failed` (Stripe will retry), `billing.subscription_unmatched`, `billing.schema_missing` (migration 4 not applied) |
 
 ---
 
 ## 9. Tests
 
 **Commands:**
-- `npm run test:e2e`: everything, 71 tests, about 4 minutes including the build.
+- `npm run test:e2e`: everything, 84 tests, about 6 minutes including the build.
 - `npm run test:auth`: the account-related subset.
 - `AUTH_TEST_SKIP_BUILD=1 npm run test:e2e`: rerun without rebuilding.
 
 **How it runs:**
 - It builds into `.next-auth-test/` and runs it against:
-  - a local stand-in for Supabase Auth (`tests/e2e/support/mock-auth.mjs`), which also stands in for the breach-check API;
+  - a local stand-in for Supabase Auth (`tests/e2e/support/mock-auth.mjs`), which also stands in for Storage, the breach-check API and the few Stripe endpoints the site calls;
   - an in-memory Postgres (PGlite) with the real migrations, rules and seed locations (`tests/e2e/support/test-db.mjs`), with PostGIS removed.
 - Two test listings: `test-bgc-2br-condo` (PH) and `test-dubai-marina-2br` (UAE).
 - No real accounts, data or secrets are used.
@@ -800,7 +829,9 @@ Search Vercel logs for these:
 | `sign-in` | sign-in cases |
 | `session` | sessions and sign-out |
 | `security` | injection, rate limits, redirects, cookies, Auth outages |
-| `site` | country selector, phone codes, both countries' listings, inquiries, saved homes, health, sitemap, footer links, mobile width |
+| `site` | country selector, phone codes, both countries' listings, inquiries, saved homes, pricing pages, health, sitemap, footer links, mobile width |
+| `listings` | listing editor: details, price, photos, publishing, ownership, verification |
+| `billing` | Stripe checkout in pesos and dirhams, signed and forged webhooks, repeated events, past-due and cancelled plans, the customer portal, live-listing limits |
 
 **Practice:** **add a test that reproduces a bug before fixing it.** Rerun with `--repeat-each=3` to catch flaky tests.
 

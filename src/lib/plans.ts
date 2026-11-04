@@ -1,5 +1,4 @@
 import type { CountryCode } from "@/lib/markets";
-import { SITE } from "@/lib/site";
 
 /**
  * Agent plans shown on /pricing (Philippines) and /uae/pricing.
@@ -11,9 +10,10 @@ import { SITE } from "@/lib/site";
  *   Property Finder or Bayut (subscription plus listing credits).
  * Prices here sit below both, to win agents while the portal is new.
  *
- * Billing and listing limits are not enforced in the site yet: during the launch offer
- * every verified agent gets Pro, and featured placement and extra agent seats are
- * arranged by the team (Agency / Property."isFeatured"). See docs/PLAYBOOK.md 3.18.
+ * Agents pay through Stripe (src/lib/server/billing.ts, /dashboard/billing). The live
+ * listing limit is enforced when publishing; featured placement and extra agent seats
+ * are still arranged by the team (Agency / Property."isFeatured"). During the launch
+ * offer every verified agent gets Pro free. See docs/PLAYBOOK.md 3.18 and 3.19.
  */
 
 export type PlanId = "starter" | "pro" | "broker";
@@ -41,8 +41,6 @@ export const LAUNCH_OFFER = {
 };
 
 export const VAT = { PH: 12, AE: 5 } as const satisfies Record<CountryCode, number>;
-
-const contact = (subject: string) => `mailto:${SITE.contactEmail}?subject=${encodeURIComponent(subject)}`;
 
 export const PLANS: Record<CountryCode, Plan[]> = {
   PH: [
@@ -80,7 +78,7 @@ export const PLANS: Record<CountryCode, Plan[]> = {
       listings: 100,
       featuredPerMonth: 10,
       seats: 5,
-      cta: { label: "Talk to us", href: contact("Brokerage plan, Philippines") },
+      cta: { label: "Get Brokerage", href: "/dashboard/billing" },
       includes: ["Everything in Pro", "Up to 5 agents under one PRC broker", "10 featured listings a month", "Priority support"],
     },
   ],
@@ -119,7 +117,7 @@ export const PLANS: Record<CountryCode, Plan[]> = {
       listings: 100,
       featuredPerMonth: 10,
       seats: 5,
-      cta: { label: "Talk to us", href: contact("Brokerage plan, UAE") },
+      cta: { label: "Get Brokerage", href: "/dashboard/billing" },
       includes: ["Everything in Pro", "Up to 5 brokers under one office (ORN)", "10 featured listings a month", "Priority support"],
     },
   ],

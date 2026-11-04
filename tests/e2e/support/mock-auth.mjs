@@ -30,6 +30,8 @@ const seedLinks = () => ({
 let users, links, accessTokens, refreshTokens, log, mode, objects;
 function reset() {
   objects = new Map(); // storage key -> { data: Buffer, type, owner }
+  // Prices outlive a reset, as in Stripe (the site keeps their ids in memory)
+  stripe = { n: stripe?.n ?? 0, customers: new Map(), prices: stripe?.prices ?? [], sessions: new Map(), subscriptions: new Map(), calls: [] };
   users = seedUsers();
   links = seedLinks();
   accessTokens = new Map(); // token -> { email, sessionId }
@@ -37,7 +39,23 @@ function reset() {
   log = [];
   mode = "normal";
 }
+let stripe;
 reset();
+
+/** Stripe sends form-encoded bodies with bracket keys (metadata[agentId]=...): turn them into nested objects. */
+function formBody(text) {
+  const out = {};
+  for (const [k, v] of new URLSearchParams(text)) {
+    const parts = k.replace(/\]/g, "").split("[");
+    let o = out;
+    parts.forEach((p, i) => {
+      if (i === parts.length - 1) o[p] = v;
+      else o = o[p] ??= {};
+    });
+  }
+  return out;
+}
+const sid = (prefix) => `${prefix}_test_${++stripe.n}`;
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const userJson = (email) => ({
@@ -130,6 +148,68 @@ const server = http.createServer((req, res) => {
         const removed = (data.prefixes ?? []).filter((k) => k.split("/")[0] === owner && objects.delete(k));
         return send(200, removed.map((name) => ({ name })));
       }
+    }
+
+    // ── Stripe stand-in: the few /v1 endpoints the site uses ──────────────
+    if (url.pathname === "/__stripe") return send(200, { calls: stripe.calls, sessions: [...stripe.sessions.values()], subscriptions: [...stripe.subscriptions.values()] });
+    // What Stripe does when the agent pays on Checkout: a subscription with the session's subscription_data
+    if (url.pathname === "/__stripe/complete") {
+      const cs = stripe.sessions.get(data.session);
+      if (!cs) return send(404, {});
+      const price = stripe.prices.find((p) => p.id === cs.line_items["0"].price);
+      const now = Math.floor(Date.now() / 1000);
+      const sub = {
+        id: sid("sub"), object: "subscription", customer: cs.customer, status: data.status ?? "active", cancel_at: null,
+        metadata: cs.subscription_data?.metadata ?? {},
+        items: { object: "list", data: [{ id: sid("si"), price, current_period_end: now + (price.recurring.interval === "year" ? 365 : 30) * 86400 }] },
+      };
+      stripe.subscriptions.set(sub.id, sub);
+      cs.subscription = sub.id;
+      return send(200, sub);
+    }
+    if (url.pathname === "/__stripe/subscription") {
+      const sub = stripe.subscriptions.get(data.id);
+      if (!sub) return send(404, {});
+      Object.assign(sub, data.changes ?? {});
+      return send(200, sub);
+    }
+    if (url.pathname.startsWith("/__stripe/pages/")) {
+      res.writeHead(200, { "content-type": "text/html" });
+      return res.end(`<!doctype html><title>Stripe test page</title><h1>Stripe test page</h1><p>${url.pathname}</p>`);
+    }
+    if (url.pathname.startsWith("/v1/")) {
+      if (!/^Bearer sk_test_/.test(req.headers.authorization ?? "")) return send(401, { error: { type: "invalid_request_error", message: "Invalid API Key provided" } });
+      const f = req.method === "GET" ? formBody(url.search.slice(1)) : formBody(body);
+      stripe.calls.push({ method: req.method, path: url.pathname, body: f, idempotencyKey: req.headers["idempotency-key"] ?? null });
+      const self = `http://127.0.0.1:${PORT}`;
+      if (url.pathname === "/v1/customers" && req.method === "POST") {
+        const c = { id: sid("cus"), object: "customer", email: f.email, name: f.name, metadata: f.metadata ?? {} };
+        stripe.customers.set(c.id, c);
+        return send(200, c);
+      }
+      if (url.pathname === "/v1/prices" && req.method === "GET") {
+        const keys = Object.values(f.lookup_keys ?? {});
+        return send(200, { object: "list", data: stripe.prices.filter((p) => keys.includes(p.lookup_key)), has_more: false });
+      }
+      if (url.pathname === "/v1/prices" && req.method === "POST") {
+        const p = { id: sid("price"), object: "price", currency: f.currency, unit_amount: Number(f.unit_amount), lookup_key: f.lookup_key, recurring: { interval: f.recurring.interval }, metadata: f.metadata ?? {}, active: true };
+        stripe.prices.push(p);
+        return send(200, p);
+      }
+      if (url.pathname === "/v1/checkout/sessions" && req.method === "POST") {
+        const cs = { ...f, id: sid("cs"), object: "checkout.session", subscription: null };
+        cs.url = `${self}/__stripe/pages/checkout/${cs.id}`;
+        stripe.sessions.set(cs.id, cs);
+        return send(200, cs);
+      }
+      if (url.pathname.startsWith("/v1/subscriptions/") && req.method === "GET") {
+        const sub = stripe.subscriptions.get(url.pathname.split("/").pop());
+        return sub ? send(200, sub) : send(404, { error: { type: "invalid_request_error", message: "No such subscription" } });
+      }
+      if (url.pathname === "/v1/billing_portal/sessions" && req.method === "POST") {
+        return send(200, { id: sid("bps"), object: "billing_portal.session", customer: f.customer, return_url: f.return_url, url: `${self}/__stripe/pages/portal/${f.customer}` });
+      }
+      return send(404, { error: { type: "invalid_request_error", message: `not mocked: ${req.method} ${url.pathname}` } });
     }
 
     if (!url.pathname.startsWith("/auth/v1/")) return send(404, { msg: "not found" });

@@ -192,7 +192,7 @@ test.describe("Plans for agents", () => {
     await expect(main).toContainText("VAT (12% where it applies)");
     await expect(page.locator('main ul[aria-label="Plans"]:visible')).not.toContainText("AED");
     await expect(plans.nth(0).getByRole("link", { name: "Create a free account" })).toHaveAttribute("href", "/agent/sign-up");
-    await expect(plans.nth(2).getByRole("link", { name: "Talk to us" })).toHaveAttribute("href", /^mailto:.+\?subject=Brokerage%20plan%2C%20Philippines$/);
+    await expect(plans.nth(2).getByRole("link", { name: "Get Brokerage" })).toHaveAttribute("href", "/dashboard/billing");
     await expect(page.getByRole("button", { name: /^Country: Philippines/ })).toBeVisible();
   });
 
