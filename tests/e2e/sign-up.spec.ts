@@ -260,9 +260,10 @@ test.describe("C. Sign-up abuse protection", () => {
   });
 
   test("injection in sign-up fields is stored as plain text or refused", async ({ page }) => {
+    const before = await sql(`SELECT count(*)::int AS n FROM "Agent"`);
     await signUp(page, { email: "inject@test.local", brokerage: "Robert'); DROP TABLE \"Agent\";-- <b>Realty</b>" });
     await expect(statusText(page)).toBeVisible();
     expect((await authServer.user("inject@test.local"))?.user_metadata.application?.brokerage).toBe("Robert'); DROP TABLE \"Agent\";-- <b>Realty</b>");
-    expect(await sql(`SELECT count(*)::int AS n FROM "Agent"`)).toEqual([{ n: 3 }]);
+    expect(await sql(`SELECT count(*)::int AS n FROM "Agent"`)).toEqual(before); // table intact, no agent created
   });
 });

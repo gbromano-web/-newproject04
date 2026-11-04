@@ -33,12 +33,14 @@ INSERT INTO "User"(id, email, role, "updatedAt") VALUES
   ('u_agent', 'agent@test.local', 'AGENT', now()),
   ('u_new', 'newagent@test.local', 'AGENT', now()),
   ('u_short', 'shortlived@test.local', 'AGENT', now()),
-  ('u_unlinked', 'unlinked@test.local', 'BUYER', now());
+  ('u_unlinked', 'unlinked@test.local', 'BUYER', now()),
+  ('u_uae', 'uae@test.local', 'AGENT', now());
 INSERT INTO "Agency"(id, name, slug, "updatedAt") VALUES ('ag_test', 'Test Realty', 'test-realty', now());
 INSERT INTO "Agent"(id, "userId", "agencyId", "licenseType", "prcLicenseNumber", "uaeRegulator", "uaeBrokerNumber", "uaeOfficeNumber", "displayName", mobile, verification, "updatedAt") VALUES
   ('a_agent', 'u_agent', 'ag_test', 'REAL_ESTATE_BROKER', '0099999', NULL, NULL, NULL, 'Maria Santos', '+639990000001', 'VERIFIED', now()),
   ('a_new', 'u_new', 'ag_test', 'UAE_BROKER', NULL, 'RERA BRN', '12345', '6789', 'Nadia Rahman', '+971500000001', 'VERIFIED', now()),
-  ('a_short', 'u_short', 'ag_test', 'REAL_ESTATE_BROKER', '0088888', NULL, NULL, NULL, 'Sam Cruz', '+639990000002', 'VERIFIED', now());
+  ('a_short', 'u_short', 'ag_test', 'REAL_ESTATE_BROKER', '0088888', NULL, NULL, NULL, 'Sam Cruz', '+639990000002', 'VERIFIED', now()),
+  ('a_uae', 'u_uae', NULL, 'UAE_BROKER', NULL, 'RERA BRN', '54321', '9876', 'Omar Saeed', '+971500000009', 'VERIFIED', now());
 INSERT INTO "Lead"(id, "agentId", channel, name, email, message, "updatedAt") VALUES
   ('l_agent', 'a_agent', 'INQUIRY', 'Ana Reyes', 'ana@example.com', 'Is parking included?', now()),
   ('l_new', 'a_new', 'INQUIRY', 'Omar Haddad', 'omar@example.com', 'Is the unit vacant?', now());
