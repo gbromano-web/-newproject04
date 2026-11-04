@@ -119,23 +119,24 @@ export function PhotoManager({ id, initial, max, canUpload }: { id: string; init
                   defaultValue={p.caption ?? ""}
                   maxLength={120}
                   placeholder="Caption (optional)"
+                  disabled={!!busy}
                   aria-label={`Caption for photo ${i + 1}`}
                   className="w-full rounded-lg border border-line px-2.5 py-1.5 text-sm outline-none focus:border-lagoon-600"
                   onBlur={(e) => e.target.value !== (p.caption ?? "") && run("Saving caption…", () => captionPhoto(p.id, e.target.value))}
                 />
                 <div className="flex items-center gap-1">
                   {i > 0 && (
-                    <button type="button" onClick={() => run("Saving order…", () => arrangePhoto(p.id, "cover"))} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-sea-900 ring-1 ring-line hover:bg-mist" aria-label={`Make photo ${i + 1} the cover`}>
+                    <button type="button" disabled={!!busy} onClick={() => run("Saving order…", () => arrangePhoto(p.id, "cover"))} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-sea-900 ring-1 ring-line hover:bg-mist disabled:opacity-40" aria-label={`Make photo ${i + 1} the cover`}>
                       <Star className="size-3.5" /> Cover
                     </button>
                   )}
-                  <button type="button" disabled={i === 0} onClick={() => run("Saving order…", () => arrangePhoto(p.id, "up"))} className="rounded-full p-1.5 text-sea-900 ring-1 ring-line hover:bg-mist disabled:opacity-30" aria-label={`Move photo ${i + 1} earlier`}>
+                  <button type="button" disabled={!!busy || i === 0} onClick={() => run("Saving order…", () => arrangePhoto(p.id, "up"))} className="rounded-full p-1.5 text-sea-900 ring-1 ring-line hover:bg-mist disabled:opacity-30" aria-label={`Move photo ${i + 1} earlier`}>
                     <ArrowLeft className="size-3.5" />
                   </button>
-                  <button type="button" disabled={i === photos.length - 1} onClick={() => run("Saving order…", () => arrangePhoto(p.id, "down"))} className="rounded-full p-1.5 text-sea-900 ring-1 ring-line hover:bg-mist disabled:opacity-30" aria-label={`Move photo ${i + 1} later`}>
+                  <button type="button" disabled={!!busy || i === photos.length - 1} onClick={() => run("Saving order…", () => arrangePhoto(p.id, "down"))} className="rounded-full p-1.5 text-sea-900 ring-1 ring-line hover:bg-mist disabled:opacity-30" aria-label={`Move photo ${i + 1} later`}>
                     <ArrowRight className="size-3.5" />
                   </button>
-                  <button type="button" onClick={() => run("Removing…", () => removePhoto(p.id))} className="ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-50" aria-label={`Remove photo ${i + 1}`}>
+                  <button type="button" disabled={!!busy} onClick={() => run("Removing…", () => removePhoto(p.id))} className="ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-50 disabled:opacity-40" aria-label={`Remove photo ${i + 1}`}>
                     <Trash2 className="size-3.5" /> Remove
                   </button>
                 </div>

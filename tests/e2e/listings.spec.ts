@@ -116,9 +116,11 @@ test.describe("Listing editor", () => {
 
     // Reorder: the bedroom photo becomes the cover; captions save
     await page.getByRole("button", { name: "Make photo 2 the cover" }).click();
-    await expect(page.getByRole("button", { name: "Make photo 2 the cover" })).toBeVisible();
-    const media = await sql<{ storageKey: string; height: number }>(`SELECT "storageKey", height FROM "PropertyMedia" WHERE "propertyId" = $1 ORDER BY "sortOrder"`, [id]);
-    expect(media[0].height).toBeGreaterThan(1000); // the portrait photo is now first
+    // The portrait photo is now first, in the database and on screen (controls stay disabled while it saves)
+    await expect.poll(async () => (await sql<{ height: number }>(`SELECT height FROM "PropertyMedia" WHERE "propertyId" = $1 ORDER BY "sortOrder" LIMIT 1`, [id]))[0].height)
+      .toBeGreaterThan(1000);
+    await expect(page.getByText("2 of 30 photos")).toBeVisible();
+    await expect(page.getByLabel("Caption for photo 1")).toBeEnabled();
     await page.getByLabel("Caption for photo 1").fill("Main bedroom with built-in closets");
     await page.getByLabel("Caption for photo 1").blur();
     await expect.poll(async () => (await sql<{ caption: string }>(`SELECT caption FROM "PropertyMedia" WHERE "propertyId" = $1 ORDER BY "sortOrder" LIMIT 1`, [id]))[0].caption)
