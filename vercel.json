@@ -1,4 +1,24 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["dub1"]
+  "regions": ["dub1"],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "newproject04.vercel.app" }],
+      "destination": "https://gosearchproperty.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "newproject04-gosearchproperty.vercel.app" }],
+      "destination": "https://gosearchproperty.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "newproject04-git-main-gosearchproperty.vercel.app" }],
+      "destination": "https://gosearchproperty.com/:path*",
+      "permanent": true
+    }
+  ]
 }

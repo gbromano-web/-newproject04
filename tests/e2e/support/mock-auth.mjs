@@ -1,4 +1,5 @@
-// Local stand-in for Supabase Auth (GoTrue), for the auth test suite only.
+// Local stand-in for Supabase Auth (GoTrue) and the listing-photo Storage
+// bucket, for the end-to-end tests only.
 // Speaks the endpoints the site uses, keeps state in memory, and exposes
 // /__* control routes so tests can reset it, read what it was asked, and
 // simulate an outage. Never used outside tests.
@@ -14,6 +15,8 @@ const seedUsers = () => ({
   "shortlived@test.local": { id: "u_short", password: "Short lived session 4", short: true, confirmed: true },
   // Invited, has not chosen a password yet
   "newagent@test.local": { id: "u_new", password: null, confirmed: true },
+  // UAE broker (agent a_uae), for the listing editor tests
+  "uae@test.local": { id: "u_uae", password: "Marina views 2br agent", confirmed: true },
 });
 
 /** Passwords the breached-password stand-in reports as leaked. */
@@ -24,8 +27,9 @@ const seedLinks = () => ({
   "recovery-ok": { type: "recovery", email: "agent@test.local" },
 });
 
-let users, links, accessTokens, refreshTokens, log, mode;
+let users, links, accessTokens, refreshTokens, log, mode, objects;
 function reset() {
+  objects = new Map(); // storage key -> { data: Buffer, type, owner }
   users = seedUsers();
   links = seedLinks();
   accessTokens = new Map(); // token -> { email, sessionId }
@@ -60,9 +64,11 @@ function revokeUser(email) {
 }
 
 const server = http.createServer((req, res) => {
-  let body = "";
-  req.on("data", (c) => (body += c));
+  const chunks = [];
+  req.on("data", (c) => chunks.push(c));
   req.on("end", () => {
+    const raw = Buffer.concat(chunks);
+    const body = raw.toString("utf8");
     const url = new URL(req.url, "http://mock");
     const send = (status, json) => {
       res.writeHead(status, { "content-type": "application/json" });
@@ -91,6 +97,39 @@ const server = http.createServer((req, res) => {
       for (let i = 0; i < 3; i++) lines.push(`${randomBytes(18).toString("hex").slice(0, 35).toUpperCase()}:0`);
       res.writeHead(200, { "content-type": "text/plain" });
       return res.end(lines.join("\r\n"));
+    }
+
+    // ── Storage stand-in: the "listing-photos" bucket ─────────────────────
+    // Applies the same rule as prisma/sql/storage-policies.sql: a signed-in user
+    // may only write or delete under a first folder named after their own user id.
+    if (url.pathname === "/__storage") {
+      return send(200, [...objects].map(([key, o]) => ({ key, type: o.type, bytes: o.data.length, owner: o.owner, base64: data.withData ? o.data.toString("base64") : undefined })));
+    }
+    const PUBLIC = "/storage/v1/object/public/listing-photos/";
+    const OBJECT = "/storage/v1/object/listing-photos";
+    if (url.pathname.startsWith(PUBLIC) && req.method === "GET") {
+      const o = objects.get(decodeURIComponent(url.pathname.slice(PUBLIC.length)));
+      if (!o) return send(404, { statusCode: "404", error: "not_found", message: "Object not found" });
+      res.writeHead(200, { "content-type": o.type, "cache-control": "public, max-age=31536000" });
+      return res.end(o.data);
+    }
+    if (url.pathname.startsWith(OBJECT)) {
+      const s = accessTokens.get((req.headers.authorization ?? "").replace(/^Bearer /, ""));
+      const owner = s ? users[s.email].id : null;
+      const deny = () => send(403, { statusCode: "403", error: "Unauthorized", message: "new row violates row-level security policy" });
+      if (req.method === "POST" || req.method === "PUT") {
+        const key = decodeURIComponent(url.pathname.slice(OBJECT.length + 1));
+        if (!owner || key.split("/")[0] !== owner) return deny();
+        if (objects.has(key)) return send(409, { statusCode: "409", error: "Duplicate", message: "The resource already exists" });
+        objects.set(key, { data: raw, type: req.headers["content-type"] ?? "application/octet-stream", owner });
+        log.push({ method: req.method, path: "/storage/upload", key, at: Date.now() });
+        return send(200, { Key: `listing-photos/${key}`, Id: randomBytes(8).toString("hex") });
+      }
+      if (req.method === "DELETE") {
+        if (!owner) return deny();
+        const removed = (data.prefixes ?? []).filter((k) => k.split("/")[0] === owner && objects.delete(k));
+        return send(200, removed.map((name) => ({ name })));
+      }
     }
 
     if (!url.pathname.startsWith("/auth/v1/")) return send(404, { msg: "not found" });

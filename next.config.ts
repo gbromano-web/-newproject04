@@ -43,8 +43,9 @@ const nextConfig: NextConfig = {
   }),
   ...(preview && { output: "export", basePath: process.env.NEXT_PUBLIC_BASE_PATH || undefined }),
   cacheComponents: !preview,
-  // The largest form (agent sign-up) is under 4 KB; refuse anything far bigger
-  experimental: { serverActions: { bodySizeLimit: "100kb" } },
+  // Listing photos are shrunk in the browser to under 3.8 MB before upload (Vercel's request limit is 4.5 MB);
+  // every other form is a few KB. Photos are checked again on the server (src/lib/server/photo-processing.ts).
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   partialPrefetching: !preview,
   images: {
     unoptimized: preview,

@@ -141,6 +141,14 @@ Use `RERA BRN` for Dubai, `ADREC` for Abu Dhabi, `RAK RERA` for Ras Al Khaimah, 
 
 A signed-in account without an `Agent` row sees no data. Lead status changes are recorded in `AuditLog`.
 
+## Listings and photos
+
+Verified agents add and edit their own listings at `/dashboard/listings`: details, price in pesos or dirhams, area in sqm or sqft, the advertising permit in Dubai, Abu Dhabi and Ras Al Khaimah, and up to 30 photos.
+
+Photos are shrunk in the browser, then checked and re-encoded as WebP on the server, which removes GPS and camera metadata. They are stored in the Supabase `listing-photos` bucket under the agent's own folder, using the agent's session.
+
+**One-time setup:** run `prisma/sql/storage-policies.sql` in the Supabase SQL editor so verified agents can write to their folder. See the [playbook](docs/PLAYBOOK.md#317-agents-listing-editor-dashboardlistings) for the rules and troubleshooting.
+
 ## Tests
 
 `npm run test:e2e` runs the end-to-end tests (Playwright, 71 tests): agent sign-up, sign-in, invitations, password reset, sessions, sign-out, protected pages, injection attempts, rate limits and Auth outages, plus the public site in both countries (country selector, phone codes, listings, search, inquiries, saved homes, sitemap, health). `npm run test:auth` runs only the account tests. It builds the site into `.next-auth-test/` (your normal build is untouched) and runs it against a local stand-in for Supabase Auth and the breach-check API (`tests/e2e/support/mock-auth.mjs`) and an in-memory Postgres with the real schema and two test listings (`tests/e2e/support/test-db.mjs`), so no real accounts or data are touched and no secrets are needed.

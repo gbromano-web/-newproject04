@@ -11,6 +11,7 @@ export const ACCOUNTS = {
   unlinked: { email: "unlinked@test.local", password: "Unlinked account pass 3" },
   shortlived: { email: "shortlived@test.local", password: "Short lived session 4", name: "Sam" },
   invited: { email: "newagent@test.local", name: "Nadia" },
+  uae: { email: "uae@test.local", password: "Marina views 2br agent", name: "Omar" },
 } as const;
 
 export const MESSAGES = {
@@ -39,6 +40,9 @@ export const authServer = {
     (await fetch(`${AUTH}/__links`, { method: "POST", body: JSON.stringify({ email }) })).json(),
   password: async (email: string): Promise<string | null> =>
     (await (await fetch(`${AUTH}/__password`, { method: "POST", body: JSON.stringify({ email }) })).json()).password,
+  /** Files in the listing-photos bucket stand-in (with their bytes when asked). */
+  storage: async (withData = false): Promise<{ key: string; type: string; bytes: number; owner: string; base64?: string }[]> =>
+    (await fetch(`${AUTH}/__storage`, { method: "POST", body: JSON.stringify({ withData }) })).json(),
 };
 
 /**

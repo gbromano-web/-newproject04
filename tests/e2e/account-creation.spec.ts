@@ -37,7 +37,7 @@ test.describe("A. Account creation (invitation)", () => {
     await submit(page, "Save password");
 
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Mabuhay, ${ACCOUNTS.invited.name}`);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Welcome, ${ACCOUNTS.invited.name}`);
     await expect(page.locator("main")).toContainText("RERA BRN 12345");
     expect(await authServer.password(ACCOUNTS.invited.email)).toBe("Strong new password 1");
 
@@ -59,7 +59,7 @@ test.describe("A. Account creation (invitation)", () => {
 
     const { context, page: second } = await otherBrowser(browser, "invite-second-device");
     await signIn(second, ACCOUNTS.invited.email, "Strong new password 1");
-    await expect(second.getByRole("heading", { level: 1 })).toHaveText(`Mabuhay, ${ACCOUNTS.invited.name}`);
+    await expect(second.getByRole("heading", { level: 1 })).toHaveText(`Welcome, ${ACCOUNTS.invited.name}`);
     await context.close();
   });
 

@@ -350,6 +350,57 @@ Stored in the browser only (`localStorage`), never on the server. The heart butt
 
 ---
 
+### 3.17 Agents' listing editor (`/dashboard/listings`)
+Code: `src/app/dashboard/listings/*`, `src/lib/server/listing-editor.ts`, `src/lib/server/photo-processing.ts`.
+
+**Flow:** Dashboard → **Add listing** → details and price → **Create draft** → add photos → **Publish**. From then on the listing page offers **Pause**, **Mark as sold** or **rented**, and **Move to drafts**.
+
+**Who can do what:**
+- Every action re-checks the signed-in agent, and every query is limited to `Property."agentId"` = that agent. Another agent's listing id gives "not found".
+- Agents can only choose places in their licence's country.
+
+**Checked on the server** (`validate()`), with the same rules as the database:
+
+| Field | Rule |
+| --- | --- |
+| Title | 10–120 characters |
+| Description | 30–5,000 characters |
+| Price | Pesos or dirhams; commas allowed; above 0; up to 100 billion |
+| Rent | Period required; UAE cheques 1–12 |
+| Areas | Entered in sqm (PH) or sqft (UAE, stored as sqm). Lot or plot area is required for lots and houses, floor area for everything else |
+| Pre-selling | Turnover quarter and year required |
+| Foreclosed | Foreclosing institution required |
+| UAE permit | Letters, digits and dashes |
+
+Database rule errors come back as plain messages (`explain()`).
+
+**Publishing:**
+- A listing needs at least one photo.
+- In Dubai, Abu Dhabi and Ras Al Khaimah it also needs the emirate's permit number: the database trigger refuses otherwise, and the agent sees "…before they go live".
+- A published listing appears only while the agent is **verified** (3.9). If an unverified agent publishes, they're told it goes live once their licence is checked.
+- Publishing or changing a live listing refreshes the cached home pages at once (`updateTag("listings")`).
+- Price changes are recorded in `PriceChange`, and every change in `AuditLog` (`listing.created`, `listing.updated`, `listing.status_changed`).
+
+**Photos** (up to 30 per listing):
+1. **In the browser:** the photo is shrunk to under 3.8 MB, at most 2,560 px. Redrawing it also drops its metadata. iPhone HEIC photos are refused, with how to switch the camera to JPEG.
+2. **On the server:**
+   - The first bytes must be a real JPEG, PNG or WebP.
+   - It must decode, within a 60-megapixel limit.
+   - It must be at least 600 px on its long side.
+   - It is turned upright, resized to at most 2,048 px, and re-encoded as WebP. **All metadata (GPS location, camera, owner) is removed.**
+3. **Storage:** the photo is stored in the `listing-photos` bucket at `<auth user id>/<listing id>/<random>.webp`, **using the agent's own session**. No service key is involved.
+   - The storage policies (`prisma/sql/storage-policies.sql`) let only a verified agent write, and only into their own folder.
+   - Only the agent can delete their files. Nothing is ever overwritten.
+4. **Managing photos:**
+   - The first photo is the cover.
+   - "Cover" and the arrows reorder photos.
+   - Captions are up to 120 characters.
+   - "Remove" deletes both the database row and the file.
+5. **Limits:**
+   - Uploads: 300 per hour per agent.
+   - Listing saves and status changes: 120 per hour per agent.
+   - Server actions accept up to 4 MB, because of the photos.
+
 ## 4. Configuration
 
 | Variable | Where | Purpose |
@@ -499,6 +550,20 @@ Free projects pause after 7 days without activity.
 
 Search the logs for `lead.` events.
 
+### 6.13 An agent can't save, publish or upload photos
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| "Add at least one photo before publishing." | No photos yet | Add photos first |
+| "…before they go live" | Dubai, Abu Dhabi or RAK listing without its permit | Add the permit number, Save changes, then Publish |
+| "Photos can be added once your licence is verified." | Agent isn't `VERIFIED` | Verify the licence (7.1) |
+| "The photo could not be saved…" | The Storage upload was refused or failed | Check `listing.photo_upload_failed` in the logs. "row-level security" there means the storage policies are missing: run `prisma/sql/storage-policies.sql` in the SQL editor. Otherwise check Supabase Storage status |
+| "That photo isn't a JPEG, PNG or WebP photo." / "too small" / "couldn't be read" | The file was refused by the server checks (3.17) | Export the photo again as JPEG, at least 600 px |
+| "Too many changes / uploads in an hour." | Rate limit (3.17) | Wait, or clear `listing:%` keys in `RateLimit` |
+| "Your session has ended…" | Signed out | Sign in again; what was typed stays in the form until reload |
+
+The listing page shows the photos, but the home page doesn't show the listing yet: the home page refreshes at once on publish, and within a minute otherwise (3.15).
+
 ### 6.12 Strange traffic or abuse
 - **Many `signup.honeypot` or `signup.rate_limited` events:** bots. Limits hold, but consider Vercel Firewall rules or Supabase CAPTCHA.
 - **Many `agent.signin_rate_limited` events:** password guessing. The per-email limit protects accounts. Check whether one agent is targeted, and ask them to change their password.
@@ -507,6 +572,22 @@ Search the logs for `lead.` events.
 ---
 
 ## 7. Admin tasks (Supabase SQL editor)
+
+### 7.0 Listings and photos
+
+**Agents** manage their own listings and photos in the dashboard (3.17). Admins only step in for takedowns.
+
+**Take a listing down** (e.g. a complaint):
+```sql
+UPDATE "Property" SET status = 'PAUSED', "updatedAt" = now() WHERE slug = '<slug>';
+```
+The home page catches up within a minute, or at once on redeploy.
+
+**One-off admin photo:**
+1. Upload it in Storage → `listing-photos` under an `admin/<listing id>/` folder.
+2. Insert a `PropertyMedia` row with that `storageKey`.
+
+Agents can't delete admin files, only remove the photo from their listing.
 
 ### 7.1 Approve a self-signed-up agent
 **List applicants waiting for review:**

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgeCheck, Calculator, Clock, LogOut, Mail, MessageCircle, Phone } from "lucide-react";
+import { BadgeCheck, Calculator, Clock, LogOut, Mail, MessageCircle, Pencil, Phone, Plus } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import { ListingPhoto } from "@/components/ph/listing-photo";
 import { formatListingPrice } from "@/lib/ph/format";
@@ -82,7 +82,7 @@ export async function LiveDashboard() {
       <div className="mx-auto max-w-[1280px] space-y-6 px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-sea-950 sm:text-[32px]">Mabuhay, {me.displayName.split(" ")[0]}</h1>
+            <h1 className="text-2xl font-bold text-sea-950 sm:text-[32px]">{me.licenseType === "UAE_BROKER" ? "Welcome" : "Mabuhay"}, {me.displayName.split(" ")[0]}</h1>
             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-soft">
               {me.agency && <>{me.agency} · </>}
               {me.licenseNumber && <>Licence {me.licenseNumber} </>}
@@ -93,7 +93,12 @@ export async function LiveDashboard() {
               )}
             </p>
           </div>
-          <SignOut />
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/listings/new" className="flex items-center gap-2 rounded-full bg-sea-900 px-4 py-2 text-sm font-semibold text-white hover:bg-sea-800">
+              <Plus className="size-4" /> Add listing
+            </Link>
+            <SignOut />
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -155,7 +160,9 @@ export async function LiveDashboard() {
         <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-line">
           <h2 className="p-6 pb-4 text-lg font-bold text-sea-950">Your listings</h2>
           {data.listings.length === 0 ? (
-            <p className="px-6 pb-6 text-sm text-ink-soft">No listings yet. Send your listings to the Go Search Property team to have them added.</p>
+            <p className="px-6 pb-6 text-sm text-ink-soft">
+              No listings yet. <Link href="/dashboard/listings/new" className="font-semibold text-sea-900 underline">Add your first listing</Link>: details and price, then photos, then publish.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-sm">
@@ -164,7 +171,8 @@ export async function LiveDashboard() {
                     <th className="px-6 py-2.5 font-semibold">Listing</th>
                     <th className="px-3 py-2.5 font-semibold">Price</th>
                     <th className="px-3 py-2.5 font-semibold">Status</th>
-                    <th className="px-6 py-2.5 text-right font-semibold">Inquiries</th>
+                    <th className="px-3 py-2.5 text-right font-semibold">Inquiries</th>
+                    <th className="px-6 py-2.5"><span className="sr-only">Edit</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -189,7 +197,12 @@ export async function LiveDashboard() {
                           {l.live ? "Live" : l.status === "ACTIVE" ? "Expired" : LISTING_STATUS[l.status] ?? l.status}
                         </span>
                       </td>
-                      <td className="price px-6 py-3.5 text-right font-semibold">{l.leads}</td>
+                      <td className="price px-3 py-3.5 text-right font-semibold">{l.leads}</td>
+                      <td className="px-6 py-3.5 text-right">
+                        <Link href={`/dashboard/listings/${l.id}`} className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold text-sea-900 ring-1 ring-line hover:bg-mist" aria-label={`Edit ${l.title}`}>
+                          <Pencil className="size-3.5" /> Edit
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
