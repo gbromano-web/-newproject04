@@ -65,6 +65,45 @@ export const PHOTOS = {
     "Rolling Chocolate Hills in Bohol",
   ),
 
+  // UAE: hero slides and emirate cards. Each one checked on its Unsplash page
+  // for location (shown on the page) and the free Unsplash License (not Unsplash+).
+  dubaiMarinaSunset: unsplash(
+    "photo-1768463852017-921060ff24fe", "zXhqWOi2uXw", "Dawid Tkocz", "dawidtkocz",
+    "A yacht sailing past the Dubai Marina towers at sunset", ph("tower-2"),
+  ),
+  dubaiMarinaDhows: unsplash(
+    "photo-1721448277816-22bf6c8ec8dd", "w8aJFxiwtBc", "Kate Trysh", "katetrysh",
+    "Dubai skyline across the marina, with traditional wooden boats on the waterfront", ph("tower-1"),
+  ),
+  abuDhabiMosque: unsplash(
+    "photo-1512632578888-169bbbc64f33", "kZ1zThg6G40", "David Rodrigo", "david__r",
+    "The Sheikh Zayed Grand Mosque in Abu Dhabi reflected in its pools at low sun",
+  ),
+  jebelJais: unsplash(
+    "photo-1680425982087-9f6f25861db1", "8B9DS9ycgws", "Dilip James", "dilipjames",
+    "Mountain peaks seen from Jebel Jais, the highest point in the UAE, Ras Al Khaimah",
+  ),
+  sharjahNoorIsland: unsplash(
+    "photo-1627120697861-84c863582194", "N0apqUzaOzU", "Hassan Pasha", "hpzworkz",
+    "Aerial view of Al Noor Island and the Al Majaz waterfront in Sharjah",
+  ),
+  sharjahNoorIslandTrees: unsplash(
+    "photo-1640808238224-5520de93c939", "dfQL-mleVZc", "Eslam Tawakol", "eslamtawakol",
+    "Aerial view of a building among the trees on Al Noor Island, Sharjah",
+  ),
+  ajmanPark: unsplash(
+    "photo-1552141749-ba50d44c9a9f", "i3zVQHDpD68", "Jasin Jose", "jayzeejj",
+    "Al Yasmin Park on Sheikh Zayed Street, Ajman",
+  ),
+  ummAlQuwainBeach: unsplash(
+    "photo-1617298126699-b58d6a0bae56", "lNkZt4XJ1M0", "Walid A", "walidphotos",
+    "A fishing boat on Umm Al Quwain beach",
+  ),
+  fujairahMountains: unsplash(
+    "photo-1648814037760-1dd4d3169a26", "7zZIGt4cic8", "Yachuzz X1", "yachuzzmp",
+    "Fujairah with palm trees and the Hajar Mountains behind",
+  ),
+
   // Sample listing photos (stand-ins until agents upload their own)
   condoLiving: unsplash(
     "photo-1758565811176-ccd94357a844", "12WFO8yWrsw", "Caroline Badran", "___atmos",
