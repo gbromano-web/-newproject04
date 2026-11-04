@@ -7,6 +7,7 @@ import { LatestListings } from "@/components/ph/latest-listings-cache";
 import { PhSearchBox } from "@/components/ph/ph-search-box";
 import { ScenePhoto } from "@/components/ph/scene-photo";
 import type { SceneKey } from "@/components/ph/scenes";
+import type { PhotoKey } from "@/lib/ph/photos";
 import { ScenicHero, type HeroSlide } from "@/components/ph/scenic-hero";
 import { locationsFor } from "@/lib/ph/locations";
 
@@ -18,22 +19,22 @@ export const metadata: Metadata = {
 };
 
 const SLIDES: HeroSlide[] = [
-  { scene: "skyline", place: "Dubai", note: "Apartments in Dubai Marina, Downtown and Business Bay" },
-  { scene: "domes", place: "Abu Dhabi", note: "Homes on Saadiyat, Yas and Al Reem Island" },
-  { scene: "mountains", place: "Ras Al Khaimah", note: "Beach and mountain homes in the north" },
-  { scene: "dunes", place: "Sharjah and Ajman", note: "Family homes at a gentler price" },
+  { photo: "dubaiMarinaSunset", scene: "skyline", place: "Dubai Marina, Dubai", note: "Apartments in Dubai Marina, Downtown and Business Bay" },
+  { photo: "abuDhabiMosque", scene: "domes", place: "Sheikh Zayed Grand Mosque, Abu Dhabi", note: "Homes on Saadiyat, Yas and Al Reem Island" },
+  { photo: "jebelJais", scene: "mountains", place: "Jebel Jais, Ras Al Khaimah", note: "Beach and mountain homes in the north" },
+  { photo: "sharjahNoorIsland", scene: "dunes", place: "Al Noor Island, Sharjah", note: "Family homes at a gentler price in Sharjah and Ajman" },
 ];
 
 const POPULAR = ["Dubai Marina", "Downtown Dubai", "Jumeirah Village Circle", "Palm Jumeirah", "Al Reem Island", "Al Marjan Island"];
 
-const EMIRATES: { name: string; scene: SceneKey; line: string; span?: string }[] = [
-  { name: "Dubai", scene: "skyline", line: "Marina apartments, Downtown views and family villas", span: "md:col-span-2 md:row-span-2" },
-  { name: "Abu Dhabi", scene: "domes", line: "Island living on Saadiyat, Yas and Al Reem", span: "md:col-span-2" },
-  { name: "Sharjah", scene: "dunes", line: "New communities like Aljada" },
-  { name: "Ajman", scene: "dunes", line: "Waterfront homes at Al Zorah" },
-  { name: "Ras Al Khaimah", scene: "mountains", line: "Al Marjan Island and Al Hamra" },
-  { name: "Umm Al Quwain", scene: "dunes", line: "Quiet coastal living" },
-  { name: "Fujairah", scene: "mountains", line: "East-coast beaches and mountains", span: "md:col-span-2" },
+const EMIRATES: { name: string; photo: PhotoKey; scene: SceneKey; line: string; span?: string }[] = [
+  { name: "Dubai", photo: "dubaiMarinaDhows", scene: "skyline", line: "Marina apartments, Downtown views and family villas", span: "md:col-span-2 md:row-span-2" },
+  { name: "Abu Dhabi", photo: "abuDhabiMosque", scene: "domes", line: "Island living on Saadiyat, Yas and Al Reem", span: "md:col-span-2" },
+  { name: "Sharjah", photo: "sharjahNoorIslandTrees", scene: "dunes", line: "New communities like Aljada" },
+  { name: "Ajman", photo: "ajmanPark", scene: "dunes", line: "Waterfront homes at Al Zorah" },
+  { name: "Ras Al Khaimah", photo: "jebelJais", scene: "mountains", line: "Al Marjan Island and Al Hamra" },
+  { name: "Umm Al Quwain", photo: "ummAlQuwainBeach", scene: "dunes", line: "Quiet coastal living" },
+  { name: "Fujairah", photo: "fujairahMountains", scene: "mountains", line: "East-coast beaches and mountains", span: "md:col-span-2" },
 ];
 
 const TRUST = [
@@ -123,7 +124,7 @@ export default function UaeHomePage() {
           {EMIRATES.map((e) => (
             <Link key={e.name} href={`/uae/search?location=${encodeURIComponent(e.name)}`} className={`group relative isolate overflow-hidden rounded-2xl ${e.span ?? ""}`}>
               <div className="absolute inset-0 -z-10 transition-transform duration-700 ease-out group-hover:scale-[1.04]">
-                <ScenePhoto scene={e.scene} uid={`emirate-${e.name.replace(/\s+/g, "-").toLowerCase()}`} />
+                <ScenePhoto photo={e.photo} scene={e.scene} uid={`emirate-${e.name.replace(/\s+/g, "-").toLowerCase()}`} sizes={e.span ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 768px) 25vw, 100vw"} />
               </div>
               <div className="grain absolute inset-0 -z-10 bg-gradient-to-t from-sea-950/85 via-sea-950/15 to-transparent" />
               <div className="flex h-full flex-col justify-end p-5 text-white sm:p-6">
