@@ -101,6 +101,9 @@ export async function changeStatus(_: { error?: string; ok?: string }, form: For
     const r = await setStatus(a, id, status);
     if (r === "missing") return { error: "That listing could not be found." };
     if (r === "no_photos") return { error: "Add at least one photo before publishing." };
+    if (typeof r === "object") {
+      return { error: `Your ${r.plan} plan includes ${r.limit} live listings. Pause or close one, or change your plan in Billing, to publish this one.` };
+    }
     refresh(id, before || status === "ACTIVE");
   } catch (e) {
     if (e instanceof ListingError) return { error: e.message };

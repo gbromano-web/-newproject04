@@ -41,6 +41,15 @@ export const authServer = {
   password: async (email: string): Promise<string | null> =>
     (await (await fetch(`${AUTH}/__password`, { method: "POST", body: JSON.stringify({ email }) })).json()).password,
   /** Files in the listing-photos bucket stand-in (with their bytes when asked). */
+  /** The Stripe stand-in: API calls the site made, Checkout sessions and subscriptions. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the stand-in returns Stripe's loose JSON
+  stripe: async (): Promise<{ calls: { method: string; path: string; body: Record<string, any>; idempotencyKey: string | null }[]; sessions: Record<string, any>[]; subscriptions: Record<string, any>[] }> =>
+    (await fetch(`${AUTH}/__stripe`)).json(),
+  /** Pays a Checkout session, as the agent would on Stripe: returns the new subscription. */
+  completeCheckout: async (session: string, status = "active"): Promise<{ id: string; customer: string }> =>
+    (await fetch(`${AUTH}/__stripe/complete`, { method: "POST", body: JSON.stringify({ session, status }) })).json(),
+  changeSubscription: (id: string, changes: Record<string, unknown>) =>
+    fetch(`${AUTH}/__stripe/subscription`, { method: "POST", body: JSON.stringify({ id, changes }) }),
   storage: async (withData = false): Promise<{ key: string; type: string; bytes: number; owner: string; base64?: string }[]> =>
     (await fetch(`${AUTH}/__storage`, { method: "POST", body: JSON.stringify({ withData }) })).json(),
 };

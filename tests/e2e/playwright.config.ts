@@ -28,6 +28,10 @@ const siteEnv = {
   SIGNUP_MIN_SECONDS: "2",
   // Home-page listings are cached (60 s in production); 1 s here so tests see changes quickly
   LISTINGS_REVALIDATE_SECONDS: "1",
+  // Stripe calls go to the stand-in in mock-auth.mjs; webhooks are signed with this test secret
+  STRIPE_SECRET_KEY: "sk_test_e2e",
+  STRIPE_WEBHOOK_SECRET: "whsec_e2e_test_secret",
+  STRIPE_API_BASE: `http://127.0.0.1:${AUTH_PORT}`,
 };
 
 export default defineConfig({
