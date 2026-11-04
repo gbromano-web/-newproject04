@@ -25,7 +25,7 @@ const cols = [
       ["Mortgage calculator", "/uae/calculator"],
     ],
   },
-  { title: "For professionals", links: [["Agent sign in", STATIC_PREVIEW ? "/dashboard" : "/agent/sign-in"], ["Get verified", "/contact#agents"], ["Advertise a project", "/contact#developers"]] },
+  { title: "For professionals", links: [["Agent sign in", STATIC_PREVIEW ? "/dashboard" : "/agent/sign-in"], ["Plans and pricing", "/pricing"], ["Get verified", "/contact#agents"], ["Advertise a project", "/contact#developers"]] },
   { title: "Company", links: [["About", "/about"], ["Contact", "/contact"], ["Terms", "/terms"], ["Privacy notice", "/privacy"]] },
 ];
 

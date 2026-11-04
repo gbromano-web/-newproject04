@@ -50,7 +50,7 @@ test.describe("Country selector", () => {
   test("fits on a phone without sideways scrolling", async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 360, height: 780 }, bypassCSP: true, baseURL: test.info().project.use.baseURL });
     const p = await context.newPage();
-    for (const path of ["/", "/uae", `/property/${AE.slug}`, "/agent/sign-up"]) {
+    for (const path of ["/", "/uae", `/property/${AE.slug}`, "/agent/sign-up", "/pricing", "/uae/pricing"]) {
       await p.goto(path);
       expect(await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), path).toBeLessThanOrEqual(0);
     }
@@ -177,6 +177,53 @@ test.describe("Inquiries and saved homes", () => {
   });
 });
 
+test.describe("Plans for agents", () => {
+  test("the Philippine page shows peso plans, the launch offer and VAT, and links to sign-up", async ({ page }) => {
+    await page.goto("/pricing");
+    const main = page.locator("main");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Plans for agents and brokers");
+    const plans = main.getByRole("list", { name: "Plans" }).getByRole("listitem").filter({ has: page.getByRole("heading", { level: 2 }) });
+    await expect(plans.getByRole("heading", { level: 2 })).toHaveText(["Starter", "Pro", "Brokerage"]);
+    await expect(plans.nth(0)).toContainText("Free");
+    await expect(plans.nth(1)).toContainText("₱799");
+    await expect(plans.nth(1)).toContainText("₱7,990");
+    await expect(plans.nth(2)).toContainText("₱2,499");
+    await expect(main).toContainText("Pro free until 31 March 2027");
+    await expect(main).toContainText("VAT (12% where it applies)");
+    await expect(page.locator('main ul[aria-label="Plans"]:visible')).not.toContainText("AED");
+    await expect(plans.nth(0).getByRole("link", { name: "Create a free account" })).toHaveAttribute("href", "/agent/sign-up");
+    await expect(plans.nth(2).getByRole("link", { name: "Talk to us" })).toHaveAttribute("href", /^mailto:.+\?subject=Brokerage%20plan%2C%20Philippines$/);
+    await expect(page.getByRole("button", { name: /^Country: Philippines/ })).toBeVisible();
+  });
+
+  test("the UAE page shows dirham plans with 5% VAT, and each page links to the other country", async ({ page }) => {
+    await page.goto("/pricing");
+    await page.getByRole("link", { name: /Prices for UAE/ }).click();
+    await expect(page).toHaveURL(/\/uae\/pricing$/);
+    const main = page.locator("main");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Plans for brokers");
+    await expect(main).toContainText("AED 299");
+    await expect(main).toContainText("AED 999");
+    await expect(main).toContainText("VAT (5% where it applies)");
+    await expect(main).toContainText("advertising permit");
+    // The Philippine page stays mounted but hidden after the client-side navigation: check what is visible
+    await expect(page.locator('main ul[aria-label="Plans"]:visible')).not.toContainText("₱");
+    await expect(page.getByRole("button", { name: /^Country: United Arab Emirates/ })).toBeVisible();
+    await page.getByRole("link", { name: /Prices for Philippines/ }).click();
+    await expect(page).toHaveURL(/\/pricing$/);
+  });
+
+  test("plans are linked from the footer, sign-up and the sitemap", async ({ page, request }) => {
+    await page.goto("/");
+    await expect(page.locator("footer").getByRole("link", { name: "Plans and pricing" })).toHaveAttribute("href", "/pricing");
+    await page.goto("/agent/sign-up");
+    await expect(page.locator("main").getByRole("link", { name: "see plans" })).toHaveAttribute("href", "/pricing");
+    const sitemap = await (await request.get("/sitemap.xml")).text();
+    expect(sitemap).toContain("/pricing</loc>");
+    expect(sitemap).toContain("/uae/pricing</loc>");
+  });
+});
+
 test.describe("Site health", () => {
   test("health check, robots and sitemap", async ({ request }) => {
     const health = await (await request.get("/api/health")).json();
@@ -200,7 +247,7 @@ test.describe("Site health", () => {
   test("main pages load without browser errors", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    for (const path of ["/", "/uae", "/search", "/uae/search", "/calculator", "/uae/calculator", `/property/${PH.slug}`, `/property/${AE.slug}`, "/about", "/contact", "/terms", "/privacy", "/agent/sign-up"]) {
+    for (const path of ["/", "/uae", "/search", "/uae/search", "/calculator", "/uae/calculator", "/pricing", "/uae/pricing", `/property/${PH.slug}`, `/property/${AE.slug}`, "/about", "/contact", "/terms", "/privacy", "/agent/sign-up"]) {
       const res = await page.goto(path);
       expect(res?.status(), path).toBe(200);
     }

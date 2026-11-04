@@ -25,7 +25,8 @@ export default function SignUpPage() {
       ) : (
         <>
           <p className="mt-1.5 mb-6 text-sm text-ink-soft">
-            For licensed brokers and salespersons in the Philippines and the UAE. After you confirm your email, we check your licence with the regulator and email you when your account is active.
+            For licensed brokers and salespersons in the Philippines and the UAE. After you confirm your email, we check your licence with the regulator and email you when your account is active.{" "}
+            Starter is free, and Pro is free during the launch offer: <Link href="/pricing" className="font-semibold text-sea-900 underline">see plans</Link>.
           </p>
           <Suspense fallback={<div className="h-[56rem]" />}>
             <Form />
