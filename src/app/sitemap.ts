@@ -5,7 +5,7 @@ import { liveListingSlugs } from "@/lib/server/listings-repo";
 import { log } from "@/lib/server/request";
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://gosearchproperty.com").replace(/\/$/, "");
-const PAGES = ["/", "/search", "/calculator", "/uae", "/uae/search", "/uae/calculator", "/about", "/contact", "/terms", "/privacy"];
+const PAGES = ["/", "/search", "/calculator", "/uae", "/uae/search", "/uae/calculator", "/pricing", "/uae/pricing", "/about", "/contact", "/terms", "/privacy"];
 
 /** Public pages plus every live listing. Sample listings are never listed. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

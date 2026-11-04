@@ -401,6 +401,37 @@ Database rule errors come back as plain messages (`explain()`).
    - Listing saves and status changes: 120 per hour per agent.
    - Server actions accept up to 4 MB, because of the photos.
 
+### 3.18 Agent plans and pricing (`/pricing`, `/uae/pricing`)
+Prices, limits and the launch offer all live in `src/lib/plans.ts`, and both pages read from it (`src/components/pricing-page.tsx`).
+
+| Plan | Philippines | UAE | Active listings | Featured a month | Agents |
+| --- | --- | --- | --- | --- | --- |
+| Starter | Free | Free | 3 | 0 | 1 |
+| Pro | ₱799/mo or ₱7,990/yr | AED 299/mo or AED 2,990/yr | 25 | 2 | 1 |
+| Brokerage | ₱2,499/mo or ₱24,990/yr | AED 999/mo or AED 9,990/yr | 100 | 10 | 5 |
+
+Prices are shown before VAT (12% Philippines, 5% UAE, where it applies).
+
+**Launch offer:** every verified agent gets Pro free until **31 March 2027** (`LAUNCH_OFFER`). The pages promise an email at least 30 days before any charge, so **by 1 March 2027** either:
+- email every agent with their plan options, or
+- move `LAUNCH_OFFER.until` later and redeploy.
+
+**Not built yet** (needed before charging anyone):
+- **Billing:** a payment provider, invoices, and a `plan` on Agent or Agency.
+- **Limits:** the site doesn't stop a Starter agent publishing more than 3 listings yet.
+
+**Done by hand until then:**
+- **Featured placement:**
+  ```sql
+  UPDATE "Property" SET "isFeatured" = true, "featuredUntil" = now() + interval '30 days' WHERE slug = '<slug>';
+  ```
+- **Brokerage seats:** link the agents to one `Agency` (`Agent."agencyId"`).
+- **Brokerage plan requests:** the "Talk to us" button emails the contact address.
+
+**Benchmarks used** (November 2026):
+- Lamudi Pro: about ₱999/month for 10 listings.
+- UAE portals: no public rate cards; offices report about AED 2,500–15,000+ a month on Property Finder or Bayut.
+
 ## 4. Configuration
 
 | Variable | Where | Purpose |
