@@ -512,6 +512,43 @@ Undo with `plan = 'STARTER', "subscriptionStatus" = NULL`. A manual plan is over
   Apply database changes **before** deploying code that needs them.
 - **The build fails** → [6.10](#610-build-or-deploy-fails).
 
+### 5.1 Release gate (every production release)
+
+**Pre-flight:**
+1. CI green on the PR: `CI`, `End-to-end tests`, `CodeQL`.
+2. **Database backup** before any migration. On the Free plan there are no automatic backups, so take one:
+   ```bash
+   pg_dump "$DIRECT_URL" --format=custom --no-owner --file="gsp-$(date +%F-%H%M).dump"
+   ```
+   (`DIRECT_URL` = Supabase → Connect → Session pooler or direct connection. Keep the file encrypted, off the laptop's Downloads folder.)
+3. Migrations are **additive only** (new columns nullable or defaulted, new tables). A rollback SQL block is written at the top of each migration file.
+4. Secrets live only in Vercel, marked Sensitive. Check names, never print values. Required: `POSTGRES_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `LEAD_IP_SALT`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_LISTINGS_SOURCE`; for payments `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+5. Open Vercel → Logs (filter: errors) and Supabase → Logs before merging.
+
+**Execution order:**
+1. Apply the migration on live (SQL editor or `apply_migration`), then check it (`SELECT` the new columns).
+2. Merge the PR (squash). Vercel builds `main` and promotes it automatically.
+3. If Vercel doesn't start a build within 2 minutes, start it from the dashboard (Deployments → Redeploy the latest `main` commit).
+
+**Smoke tests** (run from any shell after the deploy shows Ready):
+```bash
+S=https://gosearchproperty.com
+curl -s $S/api/health                                   # {"status":"ok","database":"ok","commit":"<new sha>"}
+curl -s -o /dev/null -w "%{http_code}\n" $S/                 # 200 (307 to /uae from a UAE network)
+curl -s -o /dev/null -w "%{http_code}\n" $S/uae               # 200
+curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" $S/dashboard   # 307 to /agent/sign-in
+curl -s -o /dev/null -w "%{http_code}\n" -X POST $S/api/stripe/webhook  # 503 (payments off) or 400 (on, unsigned)
+curl -s -o /dev/null -w "%{http_code}\n" https://newproject04.vercel.app/   # 308 to gosearchproperty.com
+curl -sI $S/ | grep -i -E "strict-transport|content-security"             # both present
+```
+Then Vercel → Logs: no `request.error` for 15 minutes.
+
+**Rollback:**
+1. **Code:** Vercel → Deployments → the previous Ready production deployment → *Instant Rollback*. Then `git revert <sha>` on `main` so the next push doesn't bring it back.
+2. **Database:** only if the migration itself is the problem. Run the rollback block from the top of the migration file. Additive migrations can stay in place under the old code, so code rollback alone is usually enough.
+3. **Payments:** to switch Stripe off at once, remove `STRIPE_SECRET_KEY` in Vercel and redeploy. The billing page then says payments are off and the webhook answers 503; Stripe retries webhooks for 3 days, so nothing is lost.
+4. Write what happened in section 11.
+
 ---
 
 ## 6. Runbooks by symptom
