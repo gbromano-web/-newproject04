@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { BadgeCheck, Calculator, Clock, CreditCard, LogOut, Mail, MessageCircle, Pencil, Phone, Plus } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Calculator, Clock, CreditCard, LogOut, Mail, MessageCircle, Pencil, Phone, Plus } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons";
 import { ListingPhoto } from "@/components/ph/listing-photo";
 import { formatListingPrice } from "@/lib/ph/format";
 import { marketOf } from "@/lib/markets";
 import { getSession } from "@/lib/server/agent-session";
 import { agentDashboard } from "@/lib/server/dashboard-repo";
+import { OVER_LIMIT_GRACE_DAYS, effectivePlan, liveListingCount } from "@/lib/server/billing";
+import { countryOfLicence as marketOfLicence } from "@/lib/server/listing-editor";
 import { setLeadStatus, signOut } from "../agent/actions";
 
 type Icon = React.ComponentType<{ className?: string }>;
@@ -72,7 +74,11 @@ export async function LiveDashboard() {
   }
 
   const me = session.agent;
-  const data = await agentDashboard(me.id);
+  const [data, eff, published] = await Promise.all([
+    agentDashboard(me.id),
+    effectivePlan(me.id, marketOfLicence(me.licenseType), me.verification === "VERIFIED"),
+    liveListingCount(me.id),
+  ]);
   const live = data.listings.filter((l) => l.live).length;
   const week = Object.values(data.weekByChannel).reduce((a, b) => a + b, 0);
   const verified = me.verification === "VERIFIED";
@@ -103,6 +109,13 @@ export async function LiveDashboard() {
             <SignOut />
           </div>
         </div>
+
+        {published > eff.plan.listings && (
+          <p role="alert" className="flex flex-wrap items-center gap-2 rounded-2xl bg-mango-300/20 px-4 py-3 text-sm text-mango-700 ring-1 ring-mango-300">
+            <AlertTriangle className="size-4 shrink-0" /> You have {published} live listings and your {eff.plan.name} plan includes {eff.plan.listings}. The newest will be paused after {OVER_LIMIT_GRACE_DAYS} days.
+            <Link href="/dashboard/billing" className="font-semibold underline">See your plan</Link>
+          </p>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-3">
           {[

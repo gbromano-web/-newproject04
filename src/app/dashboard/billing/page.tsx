@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, Sparkles } from "lucide-react";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { LAUNCH_OFFER, PLANS, VAT, planPrice } from "@/lib/plans";
 import { getSession } from "@/lib/server/agent-session";
-import { agentBilling, billingEnabled, effectivePlanOf, launchOfferActive, liveListingCount } from "@/lib/server/billing";
+import { OVER_LIMIT_GRACE_DAYS, agentBilling, billingEnabled, effectivePlanOf, launchOfferActive, liveListingCount } from "@/lib/server/billing";
 import { countryOfLicence } from "@/lib/server/listing-editor";
 import { CheckoutButtons, ManageBilling } from "./billing-forms";
 
@@ -42,6 +42,19 @@ async function Billing({ searchParams }: { searchParams: Promise<{ checkout?: st
       {billing?.subscriptionStatus === "past_due" && (
         <p role="alert" className="mt-4 flex items-start gap-2 rounded-2xl bg-mango-300/20 px-4 py-3 text-sm text-mango-700 ring-1 ring-mango-300">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" /> Your last payment didn&apos;t go through. Update your card in Manage billing to keep your plan.
+        </p>
+      )}
+
+      {live > plan.listings && (
+        <p role="alert" className="mt-4 flex items-start gap-2 rounded-2xl bg-mango-300/20 px-4 py-3 text-sm text-mango-700 ring-1 ring-mango-300">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>
+            You have {live} live listings and your {plan.name} plan includes {plan.listings}.{" "}
+            {billing?.overLimitSince
+              ? `On ${date(new Date(billing.overLimitSince.getTime() + OVER_LIMIT_GRACE_DAYS * 86_400_000))} your newest ${live - plan.listings} will be paused.`
+              : `If that's still the case in ${OVER_LIMIT_GRACE_DAYS} days, your newest ${live - plan.listings} will be paused.`}{" "}
+            Pause or close some, or choose a plan below. Paused listings are kept.
+          </span>
         </p>
       )}
 

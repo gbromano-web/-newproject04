@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   } catch (e) {
     // Let Stripe retry: the event isn't marked as handled
     await forgetEvent(event.id);
-    log("error", "billing.webhook_failed", { requestId: rid, event: event.type, error: e instanceof Error ? e.message : String(e) });
+    log("error", "billing.webhook_failed", { requestId: rid, event: event.type, error: e instanceof Error ? `${e.name}${(e as { code?: string }).code ? `:${(e as { code?: string }).code}` : ""}` : "unknown" });
     return NextResponse.json({ error: "Temporary failure." }, { status: 500 });
   }
   return NextResponse.json({ received: true });

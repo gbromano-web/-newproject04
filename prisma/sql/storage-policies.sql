@@ -7,15 +7,22 @@
 -- only under a folder named after their own user id, and only they can remove
 -- them. Anyone else (anon, applicants, unlinked accounts) can write nothing.
 
-CREATE OR REPLACE FUNCTION public.can_upload_listing_photos() RETURNS boolean
+-- The helper lives in "private", a schema the Data API doesn't expose, so it
+-- can't be called as /rest/v1/rpc/... (the policies below still use it).
+CREATE SCHEMA IF NOT EXISTS private;
+REVOKE ALL ON SCHEMA private FROM PUBLIC, anon;
+GRANT USAGE ON SCHEMA private TO authenticated;
+DROP FUNCTION IF EXISTS public.can_upload_listing_photos() CASCADE;
+
+CREATE OR REPLACE FUNCTION private.can_upload_listing_photos() RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   SELECT EXISTS (
     SELECT 1 FROM public."Agent" a
      WHERE a."userId" = (SELECT auth.uid())::text AND a.verification = 'VERIFIED'
   )
 $$;
-REVOKE ALL ON FUNCTION public.can_upload_listing_photos() FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.can_upload_listing_photos() TO authenticated;
+REVOKE ALL ON FUNCTION private.can_upload_listing_photos() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.can_upload_listing_photos() TO authenticated;
 
 DROP POLICY IF EXISTS "Verified agents add listing photos to their own folder" ON storage.objects;
 CREATE POLICY "Verified agents add listing photos to their own folder" ON storage.objects
@@ -23,7 +30,7 @@ CREATE POLICY "Verified agents add listing photos to their own folder" ON storag
   WITH CHECK (
     bucket_id = 'listing-photos'
     AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
-    AND public.can_upload_listing_photos()
+    AND private.can_upload_listing_photos()
   );
 
 DROP POLICY IF EXISTS "Agents see their own listing photo files" ON storage.objects;

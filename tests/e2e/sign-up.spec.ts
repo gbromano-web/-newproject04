@@ -97,7 +97,7 @@ test.describe("A. Sign-up", () => {
     const user = await authServer.user("new.broker@test.local");
     expect(user?.confirmed).toBe(false);
     expect(user?.user_metadata.application).toMatchObject({
-      country: "PH", fullName: "Jose Dela Cruz", mobile: "+639171234567", licenseType: "REAL_ESTATE_BROKER", prcLicenseNumber: "0123456", termsVersion: "2026-10-31",
+      country: "PH", fullName: "Jose Dela Cruz", mobile: "+639171234567", licenseType: "REAL_ESTATE_BROKER", prcLicenseNumber: "0123456", termsVersion: "2026-11-05",
     });
     // Signing in before confirming is refused with a helpful message
     await page.goto("/agent/sign-in");

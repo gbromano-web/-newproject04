@@ -422,6 +422,10 @@ Prices are shown before VAT (12% Philippines, 5% UAE, where it applies).
 
 **Live-listing limit:** publishing is refused once an agent has as many live listings as their plan allows (`setStatus` in `listing-editor.ts`). See 3.19 for how the plan is worked out.
 
+**After a downgrade** (a plan ends, a payment finally fails, or the launch offer ends on 31 March 2027): a daily job, `enforce_plan_limits()` (pg_cron `plan-limits`, 20:05 UTC; migration `5_plan_limits`, live as `10_plan_limits`), marks agents with more live listings than their plan allows (`Agent."overLimitSince"`). The dashboard and billing page warn them with the date. After **14 days** the job pauses their newest live listings down to the limit (oldest stay live), writes `listing.paused_over_plan_limit` to `AuditLog`, and clears the mark. Paused listings are kept and can be published again.
+- The SQL repeats the limits (3/25/100) and the launch-offer end date from `src/lib/plans.ts`; change both together.
+- Run it by hand: `SELECT public.enforce_plan_limits();` (returns how many were paused). Give someone more time: `UPDATE "Agent" SET "overLimitSince" = now() WHERE id = '<agent id>';`
+
 **Done by hand:**
 - **Featured placement:**
   ```sql
@@ -850,7 +854,7 @@ Search Vercel logs for these:
 ## 9. Tests
 
 **Commands:**
-- `npm run test:e2e`: everything, 88 tests, about 6 minutes including the build.
+- `npm run test:e2e`: everything, 89 tests, about 6 minutes including the build.
 - `npm run test:auth`: the account-related subset.
 - `AUTH_TEST_SKIP_BUILD=1 npm run test:e2e`: rerun without rebuilding.
 
@@ -876,7 +880,7 @@ Search Vercel logs for these:
 
 **Practice:** **add a test that reproduces a bug before fixing it.** Rerun with `--repeat-each=3` to catch flaky tests.
 
-**CI:** `.github/workflows/e2e-tests.yml` runs on every push and pull request.
+**CI:** `.github/workflows/e2e-tests.yml` runs on every push and pull request. **Protect `main`** (owner, once): GitHub → Settings → Branches → Add rule for `main` → *Require status checks to pass* → tick `check` and `e2e`, and *Require branches to be up to date*. Then nothing merges with failing tests.
 
 **Other checks:**
 - `npm run lint`

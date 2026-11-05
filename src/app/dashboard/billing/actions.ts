@@ -15,6 +15,12 @@ import { log, rateLimit } from "@/lib/server/request";
 
 export type BillingState = { error?: string };
 
+/** Stripe's error type and code only: its messages can repeat the customer's email. */
+const stripeError = (e: unknown) => {
+  const x = e as { type?: string; code?: string; statusCode?: number };
+  return [x.type ?? (e instanceof Error ? e.name : "unknown"), x.code, x.statusCode].filter(Boolean).join(":");
+};
+
 const site = () => (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 const OFF = "Online payments are not switched on yet. Email us and we will set up your plan.";
 const BUSY = "Payments are not responding right now. Please try again in a few minutes.";
@@ -64,7 +70,7 @@ export async function startCheckout(_: BillingState, form: FormData): Promise<Bi
     url = checkout.url;
     log("info", "billing.checkout_started", { agentId: me.agent.id, plan: plan.id, interval });
   } catch (e) {
-    log("error", "billing.checkout_failed", { agentId: me.agent.id, error: e instanceof Error ? e.message : String(e) });
+    log("error", "billing.checkout_failed", { agentId: me.agent.id, error: stripeError(e) });
     return { error: BUSY };
   }
   if (!url) return { error: BUSY };
@@ -81,7 +87,7 @@ export async function openPortal(_: BillingState): Promise<BillingState> {
     const portal = await stripe()!.billingPortal.sessions.create({ customer: me.billing.stripeCustomerId, return_url: `${site()}/dashboard/billing` });
     url = portal.url;
   } catch (e) {
-    log("error", "billing.portal_failed", { agentId: me.agent.id, error: e instanceof Error ? e.message : String(e) });
+    log("error", "billing.portal_failed", { agentId: me.agent.id, error: stripeError(e) });
     return { error: BUSY };
   }
   redirect(url);
