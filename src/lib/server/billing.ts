@@ -1,6 +1,6 @@
 import "server-only";
 import Stripe from "stripe";
-import { LAUNCH_OFFER, PLANS, type Plan, type PlanId } from "@/lib/plans";
+import { LAUNCH_OFFER, PLANS, PLAN_CURRENCY, type Plan, type PlanId } from "@/lib/plans";
 import type { CountryCode } from "@/lib/markets";
 import { paymentModeFor, type PaymentMode } from "@/lib/payment-mode";
 import { SITE } from "@/lib/site";
@@ -173,12 +173,13 @@ const prices = new Map<string, string>();
  * The Stripe Price for a plan, created on first use and found again by its lookup
  * key. The amount is part of the key, so changing a price in src/lib/plans.ts
  * makes a new Stripe Price; existing subscribers keep theirs until they change plan.
+ * Every plan is charged in US dollars (PLAN_CURRENCY); Stripe settles to the account in AED.
  */
 export async function priceFor(country: CountryCode, plan: Plan, interval: "month" | "year"): Promise<string> {
   const s = stripe()!;
   const amount = interval === "year" ? plan.yearly : plan.monthly;
-  const currency = country === "AE" ? "aed" : "php";
-  const key = `gsp_${plan.id}_${country.toLowerCase()}_${interval}_${amount}`;
+  const currency = PLAN_CURRENCY.code;
+  const key = `gsp_${plan.id}_${country.toLowerCase()}_${interval}_${currency}_${amount}`;
   const cached = prices.get(key);
   if (cached) return cached;
   const found = await s.prices.list({ lookup_keys: [key], active: true, limit: 1 });

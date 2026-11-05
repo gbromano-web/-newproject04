@@ -27,6 +27,14 @@ for (const dir of fs.readdirSync(path.join(prisma, "migrations")).filter((d) => 
 }
 await db.exec(withoutPostgis(fs.readFileSync(path.join(prisma, "sql", "postgis.sql"), "utf8")));
 
+// Supabase Auth's users table, as far as the site reads it (agent applications for /admin)
+await db.exec(`
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE TABLE IF NOT EXISTS auth.users (
+  id uuid PRIMARY KEY, email text NOT NULL, email_confirmed_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(),
+  raw_user_meta_data jsonb NOT NULL DEFAULT '{}'
+);`);
+
 // Test accounts. User.id = the auth user id in tests/e2e/support/mock-auth.mjs
 await db.exec(`
 INSERT INTO "User"(id, email, role, "updatedAt") VALUES

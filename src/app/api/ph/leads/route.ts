@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getListingById } from "@/lib/server/listings-repo";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { saveLead } from "@/lib/server/leads";
+import { leadAlert } from "@/lib/server/notices";
 import { ipHash, log, rateLimit, requestId } from "@/lib/server/request";
 
 const EMAIL = /^[^\s@<>()]+@[^\s@<>()]+\.[^\s@<>()]{2,}$/;
@@ -104,6 +105,15 @@ export async function POST(req: Request) {
 
     // Log the event, not the person: no name, email, phone or message in logs
     log("info", "lead.created", { requestId: rid, channel, listingId: listing.id, agentId: listing.agentId, leadId: saved.id, stored: saved.stored, hasMobile: !!mobile, hasComputation: !!computation });
+    // Email the agent after the buyer has their answer (no-op until email is configured)
+    if (saved.stored) {
+      after(() =>
+        leadAlert({
+          agentId: listing.agentId, listingTitle: listing.title, listingSlug: listing.slug, buyerName: name, buyerEmail: email,
+          buyerMobile: mobile || null, message: message || null, withComputation: !!computation,
+        }).catch(() => {}),
+      );
+    }
     return NextResponse.json({ ok: true, channel, requestId: rid }, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (e) {
     log("error", "lead.failed", { requestId: rid, error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined });

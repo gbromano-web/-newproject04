@@ -408,13 +408,13 @@ Database rule errors come back as plain messages (`explain()`).
 ### 3.18 Agent plans and pricing (`/pricing`, `/uae/pricing`)
 Prices, limits and the launch offer all live in `src/lib/plans.ts`, and both pages read from it (`src/components/pricing-page.tsx`).
 
-| Plan | Philippines | UAE | Active listings | Featured a month | Agents |
+| Plan | Philippine agents | UAE agents | Active listings | Featured a month | Agents |
 | --- | --- | --- | --- | --- | --- |
 | Starter | Free | Free | 3 | 0 | 1 |
-| Pro | ₱799/mo or ₱7,990/yr | AED 299/mo or AED 2,990/yr | 25 | 2 | 1 |
-| Brokerage | ₱2,499/mo or ₱24,990/yr | AED 999/mo or AED 9,990/yr | 100 | 10 | 5 |
+| Pro | $14/mo or $140/yr | $79/mo or $790/yr | 25 | 2 | 1 |
+| Brokerage | $44/mo or $440/yr | $269/mo or $2,690/yr | 100 | 10 | 5 |
 
-Prices are shown before VAT (12% Philippines, 5% UAE, where it applies).
+All plans are priced and **charged in US dollars** (`PLAN_CURRENCY`), with a separate price list per country, before VAT (12% Philippines, 5% UAE, where it applies). Stripe converts to the account's AED payout (Stripe charges a conversion fee on that). Agents paying with a peso or dirham card may see a conversion fee from their bank; the pricing page and Terms say so.
 
 **Launch offer:** every verified agent gets Pro free until **31 March 2027** (`LAUNCH_OFFER`). The pages promise an email at least 30 days before any charge, so **by 1 March 2027** either:
 - email every agent with their plan options, or
@@ -443,7 +443,7 @@ Code: `src/lib/server/billing.ts`, `src/app/dashboard/billing/`, `src/app/api/st
 
 **What can be bought:** Brokerage, monthly or yearly, now. Pro checkout is hidden and refused during the launch offer; it appears by itself on 1 April 2027.
 
-**Stripe objects:** one Customer per agent (stored in `Agent.stripeCustomerId`). Prices are created on first use from `src/lib/plans.ts`, with lookup key `gsp_<plan>_<country>_<interval>_<amount>`. Changing an amount in `plans.ts` makes a new Price; existing subscribers keep the old one until they change plan. Currency is PHP for Philippine agents and AED for UAE agents; all of it settles to the one Stripe account.
+**Stripe objects:** one Customer per agent (stored in `Agent.stripeCustomerId`). Prices are created on first use from `src/lib/plans.ts`, with lookup key `gsp_<plan>_<country>_<interval>_<amount>`. Changing an amount in `plans.ts` makes a new Price; existing subscribers keep the old one until they change plan. Every price is in USD; lookup keys look like `gsp_broker_ph_month_usd_44`. All of it settles to the one Stripe account.
 
 **Webhook:** signature checked on the raw body (`STRIPE_WEBHOOK_SECRET`, 5-minute tolerance). Each event id is stored in `StripeEvent` and handled once. Every event re-reads the subscription from Stripe, then writes plan, status, interval, renewal and cancel dates to the agent named in the subscription's metadata, **only if** that agent's stored customer id matches. Plan changes are written to `AuditLog` (`agent.plan_changed`). If handling fails, the event id is removed and the site answers 500, so Stripe retries.
 
@@ -498,6 +498,24 @@ Undo with `plan = 'STARTER', "subscriptionStatus" = NULL`. A manual plan is over
 - Lamudi Pro: about ₱999/month for 10 listings.
 - UAE portals: no public rate cards; offices report about AED 2,500–15,000+ a month on Property Finder or Bayut.
 
+### 3.21 Email (Resend)
+Code: `src/lib/server/email.ts`, `src/lib/server/notices.ts`. **Off until `RESEND_API_KEY` is set**; each skipped email is logged as `email.skipped`. Plain text; logs never hold addresses or content.
+
+| Email | To | When |
+| --- | --- | --- |
+| `lead_alert` | the listing's agent, reply-to the buyer | an inquiry or sample-computation request is stored (not Viber/WhatsApp taps) |
+| `application_alert` | everyone in `ADMIN_EMAILS` | a new agent signs up |
+| `agent_approved` / `agent_rejected` | the applicant | an admin decides on `/admin/agents` |
+
+Supabase's own emails (confirm sign-up, invite, password reset) go through **Supabase's SMTP settings**, which can use the same Resend account.
+
+**Set up (once, by the owner):**
+1. Create a Resend account (resend.com) → Domains → add `gosearchproperty.com` → add the DNS records it shows (SPF, DKIM, and the MX for bounces) at your domain's DNS host → wait for *Verified*.
+2. Resend → API Keys → create a key with *Sending access* for that domain.
+3. Vercel → Environment Variables (Production): `RESEND_API_KEY` (Sensitive), `EMAIL_FROM` = `Go Search Property <hello@gosearchproperty.com>`, `ADMIN_EMAILS` = your email (comma-separate several). Redeploy.
+4. Supabase → Authentication → Emails → SMTP Settings → *Enable custom SMTP*: host `smtp.resend.com`, port `465`, username `resend`, password = a Resend API key, sender `hello@gosearchproperty.com`, name `Go Search Property`. Then set the templates in section 4 if not done.
+5. Test: sign up with a spare address → the confirmation email arrives; you get `application_alert`; approve → the agent gets `agent_approved`.
+
 ## 4. Configuration
 
 | Variable | Where | Purpose |
@@ -512,6 +530,9 @@ Undo with `plan = 'STARTER', "subscriptionStatus" = NULL`. A manual plan is over
 | `PWNED_PASSWORDS_URL` | optional | Override the breach-check endpoint (tests) |
 | `SIGNUP_MIN_SECONDS` | optional | Minimum time to fill in the sign-up form (default 3) |
 | `LEADS_LOG_ONLY` | demo servers only | Log inquiries without a database. Never set in production |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Vercel (email, 3.21) | Resend key (Sensitive) and the From address on the verified domain |
+| `ADMIN_EMAILS` | Vercel | Who may open `/admin/agents` and gets new-application emails (comma-separated) |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `LIVE_PAYMENTS_APPROVED`, `CRON_SECRET`, `STRIPE_AUTOMATIC_TAX` | Vercel (payments, 3.19) | See 3.19 |
 
 **Supabase Auth settings that production needs** (dashboard → Authentication):
 
@@ -724,6 +745,15 @@ The home page catches up within a minute, or at once on redeploy.
 Agents can't delete admin files, only remove the photo from their listing.
 
 ### 7.1 Approve a self-signed-up agent
+
+**Use the admin screen:** sign in with an email listed in `ADMIN_EMAILS` → Dashboard → **Review agent applications** (`/admin/agents`). Each application shows the licence and what to check with the regulator.
+- **Approve** creates the `User` and `Agent` rows (verified), writes `agent.verified` to `AuditLog` with your email, and emails the agent. It's disabled while their email is unconfirmed, or for a salesperson whose PRC broker isn't approved yet (approve the broker first).
+- **Decline** needs a reason (5–500 characters). It's stored in `ApplicationDecision`, shown on the applicant's dashboard and emailed to them.
+- **An admin login:** Supabase → Authentication → Users → *Invite user* with your email (invites reach Supabase team members even before SMTP is set up), set a password from the link, and put the same email in `ADMIN_EMAILS`.
+
+The SQL below does the same as **Approve**, for when the screen is unavailable.
+
+#### By SQL
 **List applicants waiting for review:**
 ```sql
 SELECT u.id, u.email, u.email_confirmed_at IS NOT NULL AS email_confirmed, u.created_at,
@@ -877,6 +907,8 @@ Search Vercel logs for these:
 | Sign-up | `signup.submitted`, `signup.honeypot`, `signup.rate_limited`, `signup.unavailable`, `signup.failed`, `signup.audit_failed` |
 | SEO | `sitemap.listings_failed` |
 | Home pages | `home.latest_failed` (the cached listings block could not load; it retries within a minute) |
+| Email | `email.sent`, `email.failed` (check the Resend dashboard), `email.skipped` (no key set) |
+| Admin | `admin.agent_approved`, `admin.agent_rejected` |
 | Billing | `billing.live_blocked` (live key without approval), `billing.control_unreadable` (kill-switch table missing: checkout closed), `billing.refunded`, `billing.dispute_opened` (act in Stripe), `billing.dispute_closed`, `billing.reconciled`, `billing.reconcile_failed`, `billing.checkout_started`, `billing.checkout_failed`, `billing.portal_failed`, `billing.synced`, `billing.payment_failed`, `billing.webhook_bad_signature` (repeated = someone probing, or the wrong secret in Vercel), `billing.webhook_failed` (Stripe will retry), `billing.subscription_unmatched`, `billing.schema_missing` (migration 4 not applied) |
 
 ---
@@ -884,7 +916,7 @@ Search Vercel logs for these:
 ## 9. Tests
 
 **Commands:**
-- `npm run test:e2e`: everything, 93 tests, about 6 minutes including the build.
+- `npm run test:e2e`: everything, 95 tests, about 6 minutes including the build.
 - `npm run test:auth`: the account-related subset.
 - `AUTH_TEST_SKIP_BUILD=1 npm run test:e2e`: rerun without rebuilding.
 
@@ -906,6 +938,7 @@ Search Vercel logs for these:
 | `security` | injection, rate limits, redirects, cookies, Auth outages |
 | `site` | country selector, phone codes, both countries' listings, inquiries, saved homes, pricing pages, health, sitemap, footer links, mobile width |
 | `listings` | listing editor: details, price, photos, publishing, ownership, verification |
+| `admin` | admin screen: access, approve, blocked cases, decline with reason, emails |
 | `billing` | Stripe checkout in pesos and dirhams, signed and forged webhooks, repeated events, past-due and cancelled plans, the customer portal, live-listing limits |
 
 **Practice:** **add a test that reproduces a bug before fixing it.** Rerun with `--repeat-each=3` to catch flaky tests.
