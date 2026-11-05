@@ -880,7 +880,7 @@ Search Vercel logs for these:
 
 **Practice:** **add a test that reproduces a bug before fixing it.** Rerun with `--repeat-each=3` to catch flaky tests.
 
-**CI:** `.github/workflows/e2e-tests.yml` runs on every push and pull request. `main` is protected: a pull request can only merge once the `check` (CI) and `e2e` jobs pass, on an up-to-date branch.
+**CI:** `.github/workflows/e2e-tests.yml` runs on every push and pull request. **Protect `main`** (owner, once): GitHub → Settings → Branches → Add rule for `main` → *Require status checks to pass* → tick `check` and `e2e`, and *Require branches to be up to date*. Then nothing merges with failing tests.
 
 **Other checks:**
 - `npm run lint`
