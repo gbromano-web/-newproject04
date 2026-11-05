@@ -32,6 +32,8 @@ const siteEnv = {
   STRIPE_SECRET_KEY: "sk_test_e2e",
   STRIPE_WEBHOOK_SECRET: "whsec_e2e_test_secret",
   STRIPE_API_BASE: `http://127.0.0.1:${AUTH_PORT}`,
+  // Daily reconciliation endpoint (Vercel cron sends it as a Bearer token)
+  CRON_SECRET: "e2e-cron-secret",
 };
 
 export default defineConfig({

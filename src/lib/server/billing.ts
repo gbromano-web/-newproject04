@@ -2,6 +2,8 @@ import "server-only";
 import Stripe from "stripe";
 import { LAUNCH_OFFER, PLANS, type Plan, type PlanId } from "@/lib/plans";
 import type { CountryCode } from "@/lib/markets";
+import { paymentModeFor, type PaymentMode } from "@/lib/payment-mode";
+import { SITE } from "@/lib/site";
 import { db } from "./db";
 import { log } from "./request";
 
@@ -18,6 +20,8 @@ import { log } from "./request";
  *   LAUNCH_OFFER.until), otherwise Starter.
  *
  * Settings: STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET switch payments on.
+ * A live key also needs LIVE_PAYMENTS_APPROVED=true and SITE.legalReviewed
+ * (src/lib/payment-mode.ts); without both the site refuses to use it.
  * STRIPE_AUTOMATIC_TAX=1 turns on Stripe Tax (set it up in Stripe first).
  * STRIPE_API_BASE exists only for the end-to-end tests' stand-in.
  */
@@ -29,11 +33,20 @@ export const toDbPlan = (p: PlanId): DbPlan => (p === "broker" ? "BROKER" : p ==
 /** Subscription states in which the agent keeps their paid plan (past_due: Stripe is still retrying the card). */
 const PAID_STATUSES = new Set(["active", "trialing", "past_due"]);
 
+export const paymentMode = (): PaymentMode =>
+  paymentModeFor(
+    { secretKey: process.env.STRIPE_SECRET_KEY, webhookSecret: process.env.STRIPE_WEBHOOK_SECRET, liveApproved: process.env.LIVE_PAYMENTS_APPROVED },
+    SITE.legalReviewed,
+  );
+
 let client: Stripe | null | undefined;
+/** The Stripe client, or null when payments are off or a live key isn't approved yet. */
 export function stripe(): Stripe | null {
   if (client !== undefined) return client;
+  const mode = paymentMode();
+  if (mode === "live_blocked") log("error", "billing.live_blocked", { hint: "live Stripe key without LIVE_PAYMENTS_APPROVED=true and SITE.legalReviewed" });
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return (client = null);
+  if (!key || (mode !== "test" && mode !== "live")) return (client = null);
   const config: Stripe.StripeConfig = { maxNetworkRetries: 2, timeout: 15_000, appInfo: { name: "Go Search Property" } };
   const base = process.env.STRIPE_API_BASE;
   if (base) {
@@ -43,7 +56,42 @@ export function stripe(): Stripe | null {
   return (client = new Stripe(key, config));
 }
 
-export const billingEnabled = () => Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
+export const billingEnabled = () => stripe() !== null;
+
+/**
+ * Kill switch: may agents in this country start a new checkout? ("PaymentControl",
+ * migration 6). Fails closed: if it can't be read, no new checkout starts.
+ */
+export async function checkoutOpen(country: CountryCode): Promise<boolean> {
+  try {
+    const { rows } = await db()!.query<{ on: boolean }>(`SELECT "checkoutEnabled" AS on FROM "PaymentControl" WHERE country = $1`, [country]);
+    return rows[0]?.on === true;
+  } catch (e) {
+    log("error", "billing.control_unreadable", { code: (e as { code?: string }).code ?? null });
+    return false;
+  }
+}
+
+/**
+ * Before a new checkout: if the agent has one open, expire it so it can't be paid
+ * as well. "pending" when the earlier one was just paid and its webhook hasn't
+ * arrived: starting another would charge twice.
+ */
+export async function closeEarlierCheckout(agentId: string): Promise<"none" | "closed" | "pending"> {
+  const { rows } = await db()!.query<{ id: string | null }>(`SELECT "pendingCheckoutId" AS id FROM "Agent" WHERE id = $1`, [agentId]);
+  const id = rows[0]?.id;
+  if (!id) return "none";
+  const s = stripe()!;
+  const cs = await s.checkout.sessions.retrieve(id).catch(() => null);
+  if (cs?.status === "complete") return "pending";
+  if (cs?.status === "open") await s.checkout.sessions.expire(id).catch(() => {});
+  await db()!.query(`UPDATE "Agent" SET "pendingCheckoutId" = NULL WHERE id = $1 AND "pendingCheckoutId" = $2`, [agentId, id]);
+  return "closed";
+}
+
+export async function rememberCheckout(agentId: string, sessionId: string): Promise<void> {
+  await db()!.query(`UPDATE "Agent" SET "pendingCheckoutId" = $2 WHERE id = $1`, [agentId, sessionId]);
+}
 
 /** The launch offer runs to the end of LAUNCH_OFFER.until, Dubai time. */
 export function launchOfferActive(now = new Date()): boolean {
@@ -187,15 +235,18 @@ export async function syncSubscription(subscriptionId: string): Promise<{ agentI
   const plan: DbPlan = paid ? wanted : "STARTER";
   const pool = db()!;
   const { rows } = await pool.query<{ before: string }>(
-    `WITH old AS (SELECT id, plan FROM "Agent" WHERE id = $1 AND "stripeCustomerId" = $2 FOR UPDATE)
+    // An ended subscription that is no longer the agent's current one (they had a second) changes nothing
+    `WITH old AS (SELECT id, plan FROM "Agent" WHERE id = $1 AND "stripeCustomerId" = $2
+                    AND ("stripeSubscriptionId" IS NULL OR "stripeSubscriptionId" = $5 OR $9::boolean) FOR UPDATE)
      UPDATE "Agent" a SET plan = $3, "planInterval" = $4, "stripeSubscriptionId" = $5, "subscriptionStatus" = $6,
-            "planRenewsAt" = $7, "planCancelsAt" = $8, "updatedAt" = now()
+            "planRenewsAt" = $7, "planCancelsAt" = $8, "pendingCheckoutId" = NULL, "updatedAt" = now()
        FROM old WHERE a.id = old.id
      RETURNING old.plan AS before`,
     [
       agentId, customer, plan, paid ? interval : null, sub.id, sub.status,
       periodEnd ? new Date(periodEnd * 1000) : null,
       sub.cancel_at ? new Date(sub.cancel_at * 1000) : null,
+      paid,
     ],
   );
   if (!rows[0]) {
@@ -222,4 +273,61 @@ export async function firstTimeEvent(id: string, type: string): Promise<boolean>
 
 export async function forgetEvent(id: string): Promise<void> {
   await db()!.query(`DELETE FROM "StripeEvent" WHERE id = $1`, [id]).catch(() => {});
+}
+
+// ─── Refunds and disputes: recorded for reconciliation, plan unchanged ──────
+
+/** Writes a refund or dispute to the AuditLog of the agent who owns the Stripe customer. */
+export async function recordMoneyEvent(action: "billing.refunded" | "billing.dispute_opened" | "billing.dispute_closed", customer: string | null, after: Record<string, unknown>): Promise<string | null> {
+  if (!customer) return null;
+  const pool = db()!;
+  const { rows } = await pool.query<{ id: string }>(`SELECT id FROM "Agent" WHERE "stripeCustomerId" = $1`, [customer]);
+  const agentId = rows[0]?.id ?? null;
+  await pool.query(
+    `INSERT INTO "AuditLog" (id, action, "entityType", "entityId", after, "createdAt") VALUES (gen_random_uuid()::text, $1, 'Agent', $2, $3, now())`,
+    [action, agentId ?? `stripe:${customer}`, after],
+  );
+  return agentId;
+}
+
+// ─── Daily reconciliation (/api/cron/billing-reconcile) ─────────────────────
+
+/**
+ * Compares the site with Stripe: re-syncs every subscription the site knows, and
+ * finds paid subscriptions in Stripe that no agent row points to (e.g. an agent
+ * charged twice). Returns counts only.
+ */
+export async function reconcile(): Promise<{ checked: number; changed: number; relinked: number; duplicates: string[]; unlinked: string[] }> {
+  const pool = db()!;
+  const s = stripe()!;
+  const { rows } = await pool.query<{ id: string; sub: string | null; plan: string; status: string | null }>(
+    `SELECT id, "stripeSubscriptionId" AS sub, plan, "subscriptionStatus" AS status FROM "Agent" WHERE "stripeCustomerId" IS NOT NULL`,
+  );
+  let changed = 0;
+  for (const r of rows) {
+    if (!r.sub) continue;
+    const after = await syncSubscription(r.sub);
+    if (after && (after.plan !== r.plan || after.status !== r.status)) changed++;
+  }
+  // Re-read: syncing may have changed statuses
+  const { rows: now } = await pool.query<{ id: string; sub: string | null; status: string | null }>(
+    `SELECT id, "stripeSubscriptionId" AS sub, "subscriptionStatus" AS status FROM "Agent" WHERE "stripeCustomerId" IS NOT NULL`,
+  );
+  const byAgent = new Map(now.map((r) => [r.id, r]));
+  const known = new Set(now.map((r) => r.sub).filter(Boolean));
+  let relinked = 0;
+  const duplicates: string[] = [];
+  const unlinked: string[] = [];
+  for await (const sub of s.subscriptions.list({ status: "all", limit: 100 })) {
+    if (!PAID_STATUSES.has(sub.status) || !sub.metadata?.agentId || known.has(sub.id)) continue;
+    const agent = byAgent.get(sub.metadata.agentId);
+    if (agent?.sub && agent.status && PAID_STATUSES.has(agent.status)) {
+      duplicates.push(sub.id); // the agent already pays through another subscription: refund one in Stripe
+    } else if (await syncSubscription(sub.id)) {
+      relinked++; // a missed webhook, now applied
+    } else {
+      unlinked.push(sub.id);
+    }
+  }
+  return { checked: rows.filter((r) => r.sub).length, changed, relinked, duplicates, unlinked };
 }

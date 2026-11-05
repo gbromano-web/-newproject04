@@ -31,7 +31,7 @@ let users, links, accessTokens, refreshTokens, log, mode, objects;
 function reset() {
   objects = new Map(); // storage key -> { data: Buffer, type, owner }
   // Prices outlive a reset, as in Stripe (the site keeps their ids in memory)
-  stripe = { n: stripe?.n ?? 0, customers: new Map(), prices: stripe?.prices ?? [], sessions: new Map(), subscriptions: new Map(), calls: [] };
+  stripe = { n: stripe?.n ?? 0, customers: new Map(), prices: stripe?.prices ?? [], sessions: new Map(), subscriptions: new Map(), charges: new Map(), calls: [] };
   users = seedUsers();
   links = seedLinks();
   accessTokens = new Map(); // token -> { email, sessionId }
@@ -165,7 +165,23 @@ const server = http.createServer((req, res) => {
       };
       stripe.subscriptions.set(sub.id, sub);
       cs.subscription = sub.id;
+      cs.status = "complete";
       return send(200, sub);
+    }
+    // A subscription made outside the site's checkout (e.g. an agent charged twice)
+    if (url.pathname === "/__stripe/subscription/create") {
+      const price = stripe.prices[0];
+      const sub = {
+        id: sid("sub"), object: "subscription", customer: data.customer, status: "active", cancel_at: null, metadata: data.metadata ?? {},
+        items: { object: "list", data: [{ id: sid("si"), price, current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400 }] },
+      };
+      stripe.subscriptions.set(sub.id, sub);
+      return send(200, sub);
+    }
+    if (url.pathname === "/__stripe/charge") {
+      const c = { id: sid("ch"), object: "charge", customer: data.customer, amount: data.amount ?? 249900, amount_refunded: 0, currency: data.currency ?? "php" };
+      stripe.charges.set(c.id, c);
+      return send(200, c);
     }
     if (url.pathname === "/__stripe/subscription") {
       const sub = stripe.subscriptions.get(data.id);
@@ -196,8 +212,25 @@ const server = http.createServer((req, res) => {
         stripe.prices.push(p);
         return send(200, p);
       }
+      const csPath = url.pathname.match(/^\/v1\/checkout\/sessions\/([^/]+)(\/expire)?$/);
+      if (csPath) {
+        const cs = stripe.sessions.get(csPath[1]);
+        if (!cs) return send(404, { error: { type: "invalid_request_error", message: "No such checkout.session" } });
+        if (csPath[2] && req.method === "POST") {
+          if (cs.status !== "open") return send(400, { error: { type: "invalid_request_error", message: "Only open sessions can be expired" } });
+          cs.status = "expired";
+        }
+        return send(200, cs);
+      }
+      if (url.pathname === "/v1/subscriptions" && req.method === "GET") {
+        return send(200, { object: "list", data: [...stripe.subscriptions.values()], has_more: false, url: "/v1/subscriptions" });
+      }
+      if (url.pathname.startsWith("/v1/charges/") && req.method === "GET") {
+        const c = stripe.charges.get(url.pathname.split("/").pop());
+        return c ? send(200, c) : send(404, { error: { type: "invalid_request_error", message: "No such charge" } });
+      }
       if (url.pathname === "/v1/checkout/sessions" && req.method === "POST") {
-        const cs = { ...f, id: sid("cs"), object: "checkout.session", subscription: null };
+        const cs = { ...f, id: sid("cs"), object: "checkout.session", subscription: null, status: "open" };
         cs.url = `${self}/__stripe/pages/checkout/${cs.id}`;
         stripe.sessions.set(cs.id, cs);
         return send(200, cs);

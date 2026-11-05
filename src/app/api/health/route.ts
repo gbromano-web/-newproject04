@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { db } from "@/lib/server/db";
+import { paymentMode } from "@/lib/server/billing";
 
 /**
  * Health check for uptime monitors and load balancers. Returns the deployed
@@ -19,7 +20,7 @@ export async function GET() {
   }
   const ok = database !== "down";
   return Response.json(
-    { status: ok ? "ok" : "degraded", database, commit, at: new Date().toISOString() },
+    { status: ok ? "ok" : "degraded", database, payments: paymentMode(), commit, at: new Date().toISOString() },
     { status: ok ? 200 : 503, headers: { "cache-control": "no-store" } },
   );
 }

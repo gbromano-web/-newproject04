@@ -38,5 +38,7 @@ jobs:
         run: npm run lint
       - name: Philippine data checks
         run: npm run check:ph
+      - name: Live-payment block
+        run: npm run check:payments
       - name: Build
         run: npm run build

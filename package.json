@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "check:ph": "tsx scripts/check-ph-data.mts",
+    "check:payments": "tsx scripts/check-payments.mts",
     "db:postgis": "psql \"$DIRECT_URL\" -f prisma/sql/postgis.sql",
     "typecheck": "next typegen && tsc --noEmit",
     "build:map": "node scripts/build-ph-map.mjs",

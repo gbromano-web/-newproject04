@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, Sparkles } from "lucide-react";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { LAUNCH_OFFER, PLANS, VAT, planPrice } from "@/lib/plans";
 import { getSession } from "@/lib/server/agent-session";
-import { OVER_LIMIT_GRACE_DAYS, agentBilling, billingEnabled, effectivePlanOf, launchOfferActive, liveListingCount } from "@/lib/server/billing";
+import { OVER_LIMIT_GRACE_DAYS, agentBilling, billingEnabled, checkoutOpen, effectivePlanOf, launchOfferActive, liveListingCount } from "@/lib/server/billing";
 import { countryOfLicence } from "@/lib/server/listing-editor";
 import { CheckoutButtons, ManageBilling } from "./billing-forms";
 
@@ -24,6 +24,7 @@ async function Billing({ searchParams }: { searchParams: Promise<{ checkout?: st
   const { plan, source } = effectivePlanOf(billing, country, verified);
   const live = await liveListingCount(session.agent.id);
   const enabled = billingEnabled() && billing !== null;
+  const open = enabled && (await checkoutOpen(country));
   const ae = country === "AE";
   const broker = PLANS[country].find((p) => p.id === "broker")!;
   const pro = PLANS[country].find((p) => p.id === "pro")!;
@@ -101,7 +102,9 @@ async function Billing({ searchParams }: { searchParams: Promise<{ checkout?: st
                   {p.listings} live listings, {p.featuredPerMonth} featured a month{p.seats > 1 ? `, up to ${p.seats} ${ae ? "brokers" : "agents"}` : ""}.
                 </p>
                 <div className="mt-4">
-                  {enabled ? (
+                  {enabled && !open ? (
+                    <p className="text-sm text-ink-soft">Card payments are paused for your country at the moment. Your current plan is not affected. Please try again later or email us.</p>
+                  ) : enabled ? (
                     <CheckoutButtons plan={p.id} monthly={planPrice(p.monthly, country)} yearly={planPrice(p.yearly, country)} />
                   ) : (
                     <p className="text-sm text-ink-soft">Online payments are not switched on yet. Email us and we will set up your plan.</p>
