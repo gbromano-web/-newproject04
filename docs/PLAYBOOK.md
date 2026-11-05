@@ -148,6 +148,10 @@ Self sign-up never creates an `Agent` row. Nobody can list properties until an a
 - **Menu** (`ul#country-menu`, labelled "Choose a country"): one link per market's home page, with flag, full name, calling code and a check mark on the current one (`aria-current`).
 - **Closing:** Escape, a click outside, or choosing a country.
 - **Current country:** the URL decides it (`/uae*` means UAE). On shared pages it is the last one chosen; a listing page sets it to the listing's country.
+- **Home page by location** (`homeByLocation` in `src/proxy.ts`): a visitor in the UAE who opens `/` is sent to `/uae` (307, not cached); everyone else, in the Philippines or anywhere else, stays on `/`. The location is Vercel's `x-vercel-ip-country` header.
+  - A country picked in the selector is stored for a year in the `gsp_country` cookie and always wins over location.
+  - Crawlers and link-preview bots are never redirected, so both home pages keep their own URL in search results.
+  - "Someone in Dubai keeps getting the Philippine home page": they picked the Philippines before. Picking the UAE in the selector fixes it, or clearing cookies.
 - **Adding a country:**
   1. Add it to `MARKETS` in `src/lib/markets.ts` and to `CALLING_CODES` in `src/lib/phone.ts`.
   2. Add a flag in `flags.tsx`.
@@ -809,7 +813,7 @@ Search Vercel logs for these:
 ## 9. Tests
 
 **Commands:**
-- `npm run test:e2e`: everything, 84 tests, about 6 minutes including the build.
+- `npm run test:e2e`: everything, 88 tests, about 6 minutes including the build.
 - `npm run test:auth`: the account-related subset.
 - `AUTH_TEST_SKIP_BUILD=1 npm run test:e2e`: rerun without rebuilding.
 

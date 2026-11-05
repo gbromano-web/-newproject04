@@ -58,6 +58,58 @@ test.describe("Country selector", () => {
   });
 });
 
+test.describe("Home page by location", () => {
+  const from = (country: string) => ({ extraHTTPHeaders: { "x-vercel-ip-country": country } });
+
+  test.describe("a visitor in the UAE", () => {
+    test.use(from("AE"));
+    test("opens the UAE home page, and can still choose the Philippines", async ({ page }) => {
+      await page.goto("/");
+      await expect(page).toHaveURL(/\/uae$/);
+      await expect(page.getByRole("button", { name: /^Country: United Arab Emirates/ })).toBeVisible();
+
+      // Picking the Philippines is remembered, so "/" no longer follows the location
+      await page.getByRole("button", { name: /^Country:/ }).click();
+      await page.getByRole("list", { name: "Choose a country" }).getByRole("link", { name: /Philippines/ }).click();
+      await expect(page).toHaveURL(/\/$/);
+      await expect(page.getByRole("button", { name: /^Country: Philippines/ })).toBeVisible();
+      await page.goto("/");
+      await expect(page).toHaveURL(/\/$/);
+      expect((await page.context().cookies()).find((c) => c.name === "gsp_country")?.value).toBe("PH");
+    });
+
+    test("search engines and link previews are not redirected", async ({ request }) => {
+      const r = await request.get("/", { maxRedirects: 0, headers: { "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" } });
+      expect(r.status()).toBe(200);
+      const human = await request.get("/", { maxRedirects: 0 });
+      expect(human.status()).toBe(307);
+      expect(human.headers().location).toMatch(/\/uae$/);
+      expect(human.headers()["cache-control"]).toContain("no-store");
+    });
+  });
+
+  test.describe("a visitor in the Philippines", () => {
+    test.use(from("PH"));
+    test("opens the Philippine home page, and a UAE choice is remembered", async ({ page }) => {
+      await page.goto("/");
+      await expect(page).toHaveURL(/\/$/);
+      await expect(page.getByRole("button", { name: /^Country: Philippines/ })).toBeVisible();
+      await page.getByRole("button", { name: /^Country:/ }).click();
+      await page.getByRole("list", { name: "Choose a country" }).getByRole("link", { name: /United Arab Emirates/ }).click();
+      await expect(page).toHaveURL(/\/uae$/);
+      await page.goto("/");
+      await expect(page).toHaveURL(/\/uae$/);
+    });
+  });
+
+  test("visitors elsewhere get the Philippine home page", async ({ request }) => {
+    for (const country of ["US", "SA", ""]) {
+      const r = await request.get("/", { maxRedirects: 0, headers: country ? { "x-vercel-ip-country": country } : {} });
+      expect(r.status(), country || "no location").toBe(200);
+    }
+  });
+});
+
 test.describe("Listings in both countries", () => {
   test("each home page shows only its own country's listings", async ({ page }) => {
     await page.goto("/");

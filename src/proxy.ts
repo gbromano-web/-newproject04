@@ -100,10 +100,31 @@ async function agentArea(req: NextRequest) {
   return res;
 }
 
+/**
+ * The home page by location: a visitor in the UAE who opens "/" goes to /uae;
+ * everyone else stays on the Philippine home page. A country picked in the
+ * selector (cookie gsp_country, set by market-nav.tsx) always wins, and search
+ * engine crawlers are never redirected, so each home page keeps its own URL.
+ * The country comes from Vercel's x-vercel-ip-country header.
+ */
+const CRAWLER = /bot|crawl|spider|slurp|facebookexternalhit|whatsapp|telegram|preview|lighthouse/i;
+
+function homeByLocation(req: NextRequest): NextResponse {
+  const choice = req.cookies.get("gsp_country")?.value;
+  const country = choice === "PH" || choice === "AE" ? choice : CRAWLER.test(req.headers.get("user-agent") ?? "") ? "PH" : req.headers.get("x-vercel-ip-country")?.toUpperCase();
+  if (country !== "AE") return NextResponse.next();
+  const to = req.nextUrl.clone();
+  to.pathname = "/uae";
+  const res = NextResponse.redirect(to, 307);
+  res.headers.set("cache-control", "private, no-store");
+  return res;
+}
+
 export function proxy(req: NextRequest) {
+  if (req.nextUrl.pathname === "/") return homeByLocation(req);
   return SAMPLE_DATA ? sampleDashboard(req) : agentArea(req);
 }
 
 export const config = {
-  matcher: ["/dashboard", "/dashboard/:path*", "/agent/:path*"],
+  matcher: ["/", "/dashboard", "/dashboard/:path*", "/agent/:path*"],
 };

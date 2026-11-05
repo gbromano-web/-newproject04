@@ -15,6 +15,8 @@ import { MARKETS, marketFromPath, type CountryCode } from "@/lib/markets";
  * property page also sets from its listing.
  */
 const STORAGE_KEY = "gsp:market";
+/** Read by src/proxy.ts: a country picked in the selector beats the visitor's location. */
+export const CHOICE_COOKIE = "gsp_country";
 let memory: CountryCode = "PH";
 const listeners = new Set<() => void>();
 
@@ -103,7 +105,8 @@ const COUNTRIES: { code: CountryCode; short: string; full: string; dial: string 
 
 /**
  * Country selector: flag, country and calling code. Choosing a country opens
- * its home page; property pages set it from their listing.
+ * its home page and is remembered for a year (CHOICE_COOKIE), so "/" no longer
+ * follows the visitor's location; property pages set it from their listing.
  */
 export function CountrySwitch() {
   const code = useMarket();
@@ -147,9 +150,19 @@ export function CountrySwitch() {
               <Link
                 href={MARKETS[c.code].home}
                 aria-current={c.code === code ? "true" : undefined}
-                onClick={() => {
+                // No prefetch: "/" answers by location until the choice cookie below is set
+                prefetch={false}
+                onClick={(e) => {
+                  // A full page load: links to "/" prefetched earlier may hold the location redirect
+                  e.preventDefault();
+                  try {
+                    document.cookie = `${CHOICE_COOKIE}=${c.code}; path=/; max-age=31536000; samesite=lax${location.protocol === "https:" ? "; secure" : ""}`;
+                  } catch {
+                    /* cookies blocked: location decides "/" */
+                  }
                   remember(c.code);
                   setOpen(false);
+                  window.location.assign(MARKETS[c.code].home);
                 }}
                 className={clsx("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-mist", c.code === code ? "font-semibold text-sea-950" : "text-ink")}
               >
