@@ -4,10 +4,14 @@ import type { CountryCode } from "@/lib/markets";
  * Agent plans shown on /pricing (Philippines) and /uae/pricing.
  * Change prices, limits or the launch offer here; both pages read this file.
  *
+ * Plans are priced and charged in US dollars, with a separate price list per
+ * country (Philippine agents can't pay UAE prices, and UAE prices at Philippine
+ * levels would undersell the market). Amounts are whole dollars before VAT.
+ *
  * Benchmarks when set (November 2026):
- * - Philippines: Lamudi Pro about PHP 999/month for 10 listings, with a free basic tier.
- * - UAE: no public rate cards; brokerages report AED 2,500-15,000+ per office per month on
- *   Property Finder or Bayut (subscription plus listing credits).
+ * - Philippines: Lamudi Pro about PHP 999 (about US$17) a month for 10 listings, with a free basic tier.
+ * - UAE: no public rate cards; brokerages report AED 2,500-15,000+ (about US$680-4,100) per office
+ *   per month on Property Finder or Bayut (subscription plus listing credits).
  * Prices here sit below both, to win agents while the portal is new.
  *
  * Agents pay through Stripe (src/lib/server/billing.ts, /dashboard/billing). The live
@@ -22,9 +26,9 @@ export interface Plan {
   id: PlanId;
   name: string;
   tagline: string;
-  /** Per month, before VAT. 0 = free. */
+  /** US dollars per month, before VAT. 0 = free. */
   monthly: number;
-  /** Per year, before VAT (two months free). */
+  /** US dollars per year, before VAT (two months free). */
   yearly: number;
   listings: number;
   featuredPerMonth: number;
@@ -41,6 +45,9 @@ export const LAUNCH_OFFER = {
 };
 
 export const VAT = { PH: 12, AE: 5 } as const satisfies Record<CountryCode, number>;
+
+/** Currency every plan is charged in (Stripe). */
+export const PLAN_CURRENCY = { code: "usd", label: "US dollars (USD)" } as const;
 
 export const PLANS: Record<CountryCode, Plan[]> = {
   PH: [
@@ -60,8 +67,8 @@ export const PLANS: Record<CountryCode, Plan[]> = {
       id: "pro",
       name: "Pro",
       tagline: "For full-time brokers and salespersons",
-      monthly: 799,
-      yearly: 7990,
+      monthly: 14,
+      yearly: 140,
       listings: 25,
       featuredPerMonth: 2,
       seats: 1,
@@ -73,8 +80,8 @@ export const PLANS: Record<CountryCode, Plan[]> = {
       id: "broker",
       name: "Brokerage",
       tagline: "For a broker with a team of salespersons",
-      monthly: 2499,
-      yearly: 24990,
+      monthly: 44,
+      yearly: 440,
       listings: 100,
       featuredPerMonth: 10,
       seats: 5,
@@ -99,8 +106,8 @@ export const PLANS: Record<CountryCode, Plan[]> = {
       id: "pro",
       name: "Pro",
       tagline: "For full-time brokers",
-      monthly: 299,
-      yearly: 2990,
+      monthly: 79,
+      yearly: 790,
       listings: 25,
       featuredPerMonth: 2,
       seats: 1,
@@ -112,8 +119,8 @@ export const PLANS: Record<CountryCode, Plan[]> = {
       id: "broker",
       name: "Brokerage",
       tagline: "For an office with several brokers",
-      monthly: 999,
-      yearly: 9990,
+      monthly: 269,
+      yearly: 2690,
       listings: 100,
       featuredPerMonth: 10,
       seats: 5,
@@ -123,9 +130,8 @@ export const PLANS: Record<CountryCode, Plan[]> = {
   ],
 };
 
-/** "₱2,499" or "AED 999"; 0 is "Free". */
-export function planPrice(amount: number, country: CountryCode): string {
+/** "$44" or "$2,690" (US dollars); 0 is "Free". The country is kept for callers; every plan is in USD. */
+export function planPrice(amount: number, _country?: CountryCode): string {
   if (amount === 0) return "Free";
-  const n = amount.toLocaleString("en-US");
-  return country === "AE" ? `AED ${n}` : `₱${n}`;
+  return `$${amount.toLocaleString("en-US")}`;
 }

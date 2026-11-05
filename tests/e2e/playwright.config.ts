@@ -34,6 +34,11 @@ const siteEnv = {
   STRIPE_API_BASE: `http://127.0.0.1:${AUTH_PORT}`,
   // Daily reconciliation endpoint (Vercel cron sends it as a Bearer token)
   CRON_SECRET: "e2e-cron-secret",
+  // Email goes to the Resend stand-in; admin is admin@test.local
+  RESEND_API_KEY: "re_test_e2e",
+  RESEND_API_BASE: `http://127.0.0.1:${AUTH_PORT}`,
+  EMAIL_FROM: "Go Search Property <hello@test.local>",
+  ADMIN_EMAILS: "admin@test.local",
 };
 
 export default defineConfig({

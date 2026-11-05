@@ -46,7 +46,7 @@ const agentRow = async (id = "a_agent") =>
 /** Signs in, buys Brokerage on the (stand-in) Stripe Checkout, and has Stripe report it. */
 async function buyBrokerage(page: import("@playwright/test").Page, interval: "month" | "year" = "month") {
   await page.goto("/dashboard/billing");
-  const label = interval === "month" ? "Pay ₱2,499 a month" : "Pay ₱24,990 a year";
+  const label = interval === "month" ? "Pay $44 a month" : "Pay $440 a year";
   await page.getByRole("button", { name: label }).click();
   await page.waitForURL(/\/__stripe\/pages\/checkout\/cs_test_\d+$/);
   const csId = page.url().split("/").pop()!;
@@ -76,7 +76,7 @@ test.describe("agent billing", () => {
     expect(cs.success_url).toMatch(/\/dashboard\/billing\?checkout=success$/);
     expect(cs.payment_method_options).toEqual({ card: { request_three_d_secure: "any" } });
     const price = state.calls.find((c) => c.path === "/v1/prices" && c.method === "POST")!;
-    expect(price.body).toMatchObject({ currency: "php", unit_amount: "249900", lookup_key: "gsp_broker_ph_month_2499", recurring: { interval: "month" } });
+    expect(price.body).toMatchObject({ currency: "usd", unit_amount: "4400", lookup_key: "gsp_broker_ph_month_usd_44", recurring: { interval: "month" } });
     const customer = state.calls.find((c) => c.path === "/v1/customers")!;
     expect(customer.body).toMatchObject({ email: ACCOUNTS.agent.email, metadata: { agentId: "a_agent" } });
     expect(customer.idempotencyKey).toBe("customer-a_agent");
@@ -85,7 +85,7 @@ test.describe("agent billing", () => {
     await page.goto("/dashboard/billing?checkout=success");
     await expect(page.locator("#plan-h")).toHaveText("Brokerage");
     await expect(page.getByText(/Thank you\. Your payment went through/)).toBeVisible();
-    await expect(page.getByText(/₱2,499 a month before VAT\. Renews on /)).toBeVisible();
+    await expect(page.getByText(/\$44 a month before VAT\. Renews on /)).toBeVisible();
     await expect(page.getByRole("button", { name: /^Pay / })).toHaveCount(0);
     const audit = await sql<{ after: { plan: string } }>(`SELECT after FROM "AuditLog" WHERE action = 'agent.plan_changed' AND "entityId" = 'a_agent' ORDER BY "createdAt" DESC LIMIT 1`);
     expect(audit[0].after.plan).toBe("BROKER");
@@ -171,16 +171,16 @@ test.describe("agent billing", () => {
     await expect.poll(async () => (await sql<{ status: string }>(`SELECT status::text FROM "Property" WHERE id = 'l_draft'`))[0].status).toBe("ACTIVE");
   });
 
-  test("a UAE broker pays in dirhams, and Pro cannot be bought during the launch offer", async ({ page }) => {
+  test("a UAE broker pays the UAE dollar price, and Pro cannot be bought during the launch offer", async ({ page }) => {
     await signIn(page, ACCOUNTS.uae.email, ACCOUNTS.uae.password);
     await page.goto("/dashboard/billing");
-    await expect(page.getByRole("button", { name: "Pay AED 999 a month" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /AED 299/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Pay $269 a month" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /\$79/ })).toHaveCount(0);
     await expect(page.getByText("Pro is free until 31 March 2027; there is nothing to pay for it yet.")).toBeVisible();
-    await page.getByRole("button", { name: "Pay AED 9,990 a year" }).click();
+    await page.getByRole("button", { name: "Pay $2,690 a year" }).click();
     await page.waitForURL(/\/__stripe\/pages\/checkout\/cs_test_\d+$/);
     const price = (await authServer.stripe()).calls.find((c) => c.path === "/v1/prices" && c.method === "POST")!;
-    expect(price.body).toMatchObject({ currency: "aed", unit_amount: "999000", lookup_key: "gsp_broker_ae_year_9990", recurring: { interval: "year" } });
+    expect(price.body).toMatchObject({ currency: "usd", unit_amount: "269000", lookup_key: "gsp_broker_ae_year_usd_2690", recurring: { interval: "year" } });
   });
 
   test("after a plan ends, the newest listings over the limit are paused once 14 days have passed", async ({ page }) => {
@@ -239,11 +239,11 @@ test.describe("agent billing", () => {
 
     // Two checkouts one after the other: the first is expired, so it can't be paid too
     await page.goto("/dashboard/billing");
-    await page.getByRole("button", { name: "Pay ₱2,499 a month" }).click();
+    await page.getByRole("button", { name: "Pay $44 a month" }).click();
     await page.waitForURL(/\/__stripe\/pages\/checkout\/(cs_test_\d+)$/);
     const first = page.url().split("/").pop()!;
     await page.goto("/dashboard/billing");
-    await page.getByRole("button", { name: "Pay ₱2,499 a month" }).click();
+    await page.getByRole("button", { name: "Pay $44 a month" }).click();
     await page.waitForURL(/\/__stripe\/pages\/checkout\/(cs_test_\d+)$/);
     const second = page.url().split("/").pop()!;
     expect(second).not.toBe(first);
@@ -254,7 +254,7 @@ test.describe("agent billing", () => {
     // Paid, but Stripe's webhook hasn't arrived yet: a third checkout is refused
     const sub = await authServer.completeCheckout(second);
     await page.goto("/dashboard/billing");
-    await page.getByRole("button", { name: "Pay ₱2,499 a month" }).click();
+    await page.getByRole("button", { name: "Pay $44 a month" }).click();
     await expect(page.getByText("Your last payment is being confirmed.")).toBeVisible();
 
     // The webhook arrives: the plan is set and the pending checkout cleared
@@ -267,8 +267,8 @@ test.describe("agent billing", () => {
     const { sub } = await buyBrokerage(page);
     const charge = await authServer.createCharge(sub.customer);
 
-    expect((await webhook("charge.refunded", { id: charge.id, object: "charge", customer: sub.customer, amount_refunded: 249900, currency: "php" })).status).toBe(200);
-    expect((await webhook("charge.dispute.created", { id: "dp_1", object: "dispute", charge: charge.id, amount: 249900, currency: "php", reason: "fraudulent", status: "needs_response" })).status).toBe(200);
+    expect((await webhook("charge.refunded", { id: charge.id, object: "charge", customer: sub.customer, amount_refunded: 4400, currency: "usd" })).status).toBe(200);
+    expect((await webhook("charge.dispute.created", { id: "dp_1", object: "dispute", charge: charge.id, amount: 4400, currency: "usd", reason: "fraudulent", status: "needs_response" })).status).toBe(200);
     const audit = await sql<{ action: string }>(
       `SELECT action FROM "AuditLog" WHERE "entityId" = 'a_agent' AND action IN ('billing.refunded', 'billing.dispute_opened') ORDER BY "createdAt"`);
     expect(audit.map((a) => a.action)).toEqual(["billing.refunded", "billing.dispute_opened"]);
@@ -290,7 +290,7 @@ test.describe("agent billing", () => {
     // Paid on Stripe, but the webhook never came: reconciliation applies it
     await signIn(page, ACCOUNTS.agent.email, ACCOUNTS.agent.password);
     await page.goto("/dashboard/billing");
-    await page.getByRole("button", { name: "Pay ₱2,499 a month" }).click();
+    await page.getByRole("button", { name: "Pay $44 a month" }).click();
     await page.waitForURL(/\/__stripe\/pages\/checkout\/cs_test_\d+$/);
     const sub = await authServer.completeCheckout(page.url().split("/").pop()!);
     expect((await agentRow()).plan).toBe("STARTER");

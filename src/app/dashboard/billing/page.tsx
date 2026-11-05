@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Sparkles } from "lucide-react";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
-import { LAUNCH_OFFER, PLANS, VAT, planPrice } from "@/lib/plans";
+import { LAUNCH_OFFER, PLANS, PLAN_CURRENCY, VAT, planPrice } from "@/lib/plans";
 import { getSession } from "@/lib/server/agent-session";
 import { OVER_LIMIT_GRACE_DAYS, agentBilling, billingEnabled, checkoutOpen, effectivePlanOf, launchOfferActive, liveListingCount } from "@/lib/server/billing";
 import { countryOfLicence } from "@/lib/server/listing-editor";
@@ -114,7 +114,7 @@ async function Billing({ searchParams }: { searchParams: Promise<{ checkout?: st
             ))}
           </ul>
           <p className="mt-4 text-xs text-ink-soft">
-            Prices before VAT ({VAT[country]}% where it applies). Card payments are handled by Stripe; this site never sees your card.{" "}
+            Prices in {PLAN_CURRENCY.label}, before VAT ({VAT[country]}% where it applies). Card payments are handled by Stripe; this site never sees your card.{" "}
             <Link href={ae ? "/uae/pricing" : "/pricing"} className="font-semibold text-sea-900 underline">Compare plans</Link>
           </p>
         </section>

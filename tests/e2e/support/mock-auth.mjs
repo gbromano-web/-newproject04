@@ -17,6 +17,8 @@ const seedUsers = () => ({
   "newagent@test.local": { id: "u_new", password: null, confirmed: true },
   // UAE broker (agent a_uae), for the listing editor tests
   "uae@test.local": { id: "u_uae", password: "Marina views 2br agent", confirmed: true },
+  // Site admin (ADMIN_EMAILS in the test config), no agent profile
+  "admin@test.local": { id: "u_admin", password: "Admin reviews licences 7", confirmed: true },
 });
 
 /** Passwords the breached-password stand-in reports as leaked. */
@@ -31,6 +33,7 @@ let users, links, accessTokens, refreshTokens, log, mode, objects;
 function reset() {
   objects = new Map(); // storage key -> { data: Buffer, type, owner }
   // Prices outlive a reset, as in Stripe (the site keeps their ids in memory)
+  emails = [];
   stripe = { n: stripe?.n ?? 0, customers: new Map(), prices: stripe?.prices ?? [], sessions: new Map(), subscriptions: new Map(), charges: new Map(), calls: [] };
   users = seedUsers();
   links = seedLinks();
@@ -39,7 +42,7 @@ function reset() {
   log = [];
   mode = "normal";
 }
-let stripe;
+let stripe, emails;
 reset();
 
 /** Stripe sends form-encoded bodies with bracket keys (metadata[agentId]=...): turn them into nested objects. */
@@ -148,6 +151,14 @@ const server = http.createServer((req, res) => {
         const removed = (data.prefixes ?? []).filter((k) => k.split("/")[0] === owner && objects.delete(k));
         return send(200, removed.map((name) => ({ name })));
       }
+    }
+
+    // ── Resend stand-in: POST /emails ──────────────────────────────────────
+    if (url.pathname === "/__emails") return send(200, emails);
+    if (url.pathname === "/emails" && req.method === "POST") {
+      if (req.headers.authorization !== "Bearer re_test_e2e") return send(401, { name: "validation_error", message: "API key is invalid" });
+      emails.push({ ...data, at: Date.now() });
+      return send(200, { id: `em_${emails.length}` });
     }
 
     // ── Stripe stand-in: the few /v1 endpoints the site uses ──────────────

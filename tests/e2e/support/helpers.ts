@@ -12,6 +12,7 @@ export const ACCOUNTS = {
   shortlived: { email: "shortlived@test.local", password: "Short lived session 4", name: "Sam" },
   invited: { email: "newagent@test.local", name: "Nadia" },
   uae: { email: "uae@test.local", password: "Marina views 2br agent", name: "Omar" },
+  admin: { email: "admin@test.local", password: "Admin reviews licences 7" },
 } as const;
 
 export const MESSAGES = {
@@ -41,6 +42,9 @@ export const authServer = {
   password: async (email: string): Promise<string | null> =>
     (await (await fetch(`${AUTH}/__password`, { method: "POST", body: JSON.stringify({ email }) })).json()).password,
   /** Files in the listing-photos bucket stand-in (with their bytes when asked). */
+  /** Emails the site sent through the Resend stand-in. */
+  emails: async (): Promise<{ from: string; to: string[]; subject: string; text: string; reply_to?: string; tags: { name: string; value: string }[] }[]> =>
+    (await fetch(`${AUTH}/__emails`)).json(),
   /** The Stripe stand-in: API calls the site made, Checkout sessions and subscriptions. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the stand-in returns Stripe's loose JSON
   stripe: async (): Promise<{ calls: { method: string; path: string; body: Record<string, any>; idempotencyKey: string | null }[]; sessions: Record<string, any>[]; subscriptions: Record<string, any>[] }> =>

@@ -93,6 +93,10 @@ test.describe("A. Sign-up", () => {
   test("happy path, Philippine broker: account → confirm email → application under review", async ({ page, context }) => {
     await signUp(page, { email: "new.broker@test.local" });
     await expect(statusText(page)).toHaveText(MESSAGES.signUpSent("new.broker@test.local"));
+    // The admin is told there's an application to review
+    await expect.poll(async () => (await authServer.emails()).filter((e) => e.tags[0]?.value === "application_alert").map((e) => [e.to, e.subject])).toEqual([
+      [["admin@test.local"], "New agent application: Jose Dela Cruz (Philippines)"],
+    ]);
 
     const user = await authServer.user("new.broker@test.local");
     expect(user?.confirmed).toBe(false);

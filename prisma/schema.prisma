@@ -792,3 +792,12 @@ model PaymentControl {
   note            String?
   updatedAt       DateTime @default(now())
 }
+
+/// Admin rejections of agent applications (/admin/agents). Server-only; migration 7_application_decisions.
+model ApplicationDecision {
+  userId    String   @id
+  decision  String
+  reason    String
+  decidedBy String
+  decidedAt DateTime @default(now())
+}

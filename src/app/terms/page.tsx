@@ -70,7 +70,7 @@ const sections: [string, React.ReactNode][] = [
     "Paid plans for agents",
     <>
       <p>
-        Agents can use the free Starter plan or a paid plan (Pro or Brokerage), described on the <Link href="/pricing" className="font-semibold text-sea-900 underline">pricing page</Link>. Paid plans are subscriptions billed monthly or yearly in advance, in Philippine pesos for Philippine accounts and UAE dirhams for UAE accounts, plus VAT where it applies. Payments are handled by Stripe; we never see or store card details.
+        Agents can use the free Starter plan or a paid plan (Pro or Brokerage), described on the <Link href="/pricing" className="font-semibold text-sea-900 underline">pricing page</Link>. Paid plans are subscriptions billed monthly or yearly in advance, in US dollars, plus VAT where it applies. If your card is in another currency, your bank converts the amount and may charge its own fee. Payments are handled by Stripe; we never see or store card details.
       </p>
       <p>
         A plan renews automatically at the end of each period until you cancel it. You can cancel at any time in Plan and billing, then Manage billing. Your plan then continues until the end of the period already paid, and the unused part is not refunded, except where the law requires a refund.

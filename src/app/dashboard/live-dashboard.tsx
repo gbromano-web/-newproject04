@@ -6,6 +6,7 @@ import { formatListingPrice } from "@/lib/ph/format";
 import { marketOf } from "@/lib/markets";
 import { getSession } from "@/lib/server/agent-session";
 import { agentDashboard } from "@/lib/server/dashboard-repo";
+import { decisionFor, isAdminEmail } from "@/lib/server/admin";
 import { OVER_LIMIT_GRACE_DAYS, effectivePlan, liveListingCount } from "@/lib/server/billing";
 import { countryOfLicence as marketOfLicence } from "@/lib/server/listing-editor";
 import { setLeadStatus, signOut } from "../agent/actions";
@@ -49,8 +50,25 @@ export async function LiveDashboard() {
   // The proxy already sends visitors without a session to sign in; this is the second lock
   if (!session) return <Shell title="Please sign in again"><Link className="font-semibold text-sea-900 underline" href="/agent/sign-in">Sign in</Link></Shell>;
 
+  const admin = isAdminEmail(session.email);
+  if (!session.agent && admin) {
+    return (
+      <Shell title="Admin" action={<div className="flex flex-wrap gap-2"><Link href="/admin/agents" className="rounded-full bg-sea-900 px-4 py-2 text-sm font-semibold text-white hover:bg-sea-800">Review agent applications</Link><SignOut /></div>}>
+        You are signed in as {session.email}, an admin.
+      </Shell>
+    );
+  }
+
   if (!session.agent && session.application) {
     const a = session.application;
+    const declined = await decisionFor(session.userId).catch(() => null);
+    if (declined) {
+      return (
+        <Shell title="Your application was not approved" action={<SignOut />}>
+          Thanks for applying, {a.fullName.split(" ")[0]}. We could not approve your agent account: {declined.reason} If something can be corrected, email us and we will look again.
+        </Shell>
+      );
+    }
     const licence =
       a.licenseType === "UAE_BROKER"
         ? `${a.uaeRegulator} ${a.uaeBrokerNumber} (${a.emirate})`
@@ -103,6 +121,11 @@ export async function LiveDashboard() {
             <Link href="/dashboard/listings/new" className="flex items-center gap-2 rounded-full bg-sea-900 px-4 py-2 text-sm font-semibold text-white hover:bg-sea-800">
               <Plus className="size-4" /> Add listing
             </Link>
+            {admin && (
+              <Link href="/admin/agents" className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-sea-900 ring-1 ring-line hover:bg-white">
+                <BadgeCheck className="size-4" /> Applications
+              </Link>
+            )}
             <Link href="/dashboard/billing" className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-sea-900 ring-1 ring-line hover:bg-white">
               <CreditCard className="size-4" /> Plan and billing
             </Link>

@@ -58,7 +58,7 @@ function sampleDashboard(req: NextRequest) {
 
 async function agentArea(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  const needsSession = path.startsWith("/dashboard") || path === "/agent/set-password";
+  const needsSession = path.startsWith("/dashboard") || path.startsWith("/admin") || path === "/agent/set-password";
   if (!needsSession) {
     // Sign-in and password-reset pages need no session check; skip the call to the Auth server
     const open = NextResponse.next();
@@ -122,9 +122,10 @@ function homeByLocation(req: NextRequest): NextResponse {
 
 export function proxy(req: NextRequest) {
   if (req.nextUrl.pathname === "/") return homeByLocation(req);
+  if (SAMPLE_DATA && req.nextUrl.pathname.startsWith("/admin")) return NextResponse.next(); // the page itself is a 404 there
   return SAMPLE_DATA ? sampleDashboard(req) : agentArea(req);
 }
 
 export const config = {
-  matcher: ["/", "/dashboard", "/dashboard/:path*", "/agent/:path*"],
+  matcher: ["/", "/dashboard", "/dashboard/:path*", "/admin/:path*", "/agent/:path*"],
 };

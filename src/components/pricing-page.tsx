@@ -4,7 +4,7 @@ import { ArrowRight, BadgeCheck, Check, Minus, Sparkles } from "lucide-react";
 import { RememberMarket } from "@/components/market-nav";
 import { Flag } from "@/components/flags";
 import { MARKETS, type CountryCode } from "@/lib/markets";
-import { LAUNCH_OFFER, PLANS, VAT, planPrice, type Plan } from "@/lib/plans";
+import { LAUNCH_OFFER, PLANS, PLAN_CURRENCY, VAT, planPrice, type Plan } from "@/lib/plans";
 
 /** Agent plans for one country: /pricing (Philippines) and /uae/pricing. Prices come from src/lib/plans.ts. */
 export function PricingPage({ country }: { country: CountryCode }) {
@@ -36,8 +36,8 @@ export function PricingPage({ country }: { country: CountryCode }) {
     ["What is a featured listing?", "A featured listing is shown ahead of the others in search results (the default \"Featured\" order) for 30 days. Your monthly featured listings renew each month."],
     ["Can I change or cancel my plan?", "Yes. Plans are monthly or yearly with no long contract. Moving down a plan takes effect at the end of the period you paid for."],
     [
-      "Are prices with VAT?",
-      `Prices are shown before VAT. Where it applies, ${ae ? "UAE VAT of 5%" : "Philippine VAT of 12%"} is added to the invoice.`,
+      "What currency are plans in, and is VAT included?",
+      `Plans are priced and charged in US dollars, before VAT. Where it applies, ${ae ? "UAE VAT of 5%" : "Philippine VAT of 12%"} is added to the invoice. If your card is in ${ae ? "dirhams" : "pesos"}, your bank converts the amount and may add its own fee.`,
     ],
     [
       ae ? "Do I need an advertising permit?" : "Do salespersons need their own plan?",
@@ -106,7 +106,7 @@ export function PricingPage({ country }: { country: CountryCode }) {
           ))}
         </ul>
         <p className="mt-5 text-center text-sm text-ink-soft">
-          Prices before VAT ({VAT[country]}% where it applies). {ae ? "Dirhams (AED)." : "Philippine pesos (PHP)."}
+          Prices in {PLAN_CURRENCY.label}, before VAT ({VAT[country]}% where it applies).
         </p>
 
         <section className="mt-16 overflow-hidden rounded-3xl bg-white ring-1 ring-line" aria-labelledby="compare-h">

@@ -2,6 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { SAMPLE_DATA } from "@/lib/ph/preview";
 import { regulatorFor } from "@/lib/uae/regulators";
 import { supabaseServer } from "@/lib/server/agent-session";
@@ -9,6 +10,7 @@ import { db } from "@/lib/server/db";
 import { passwordProblem } from "@/lib/server/password-policy";
 import { checkFormToken } from "@/lib/server/form-token";
 import { ipHash, log, rateLimit } from "@/lib/server/request";
+import { applicationAlert } from "@/lib/server/notices";
 import type { AgentApplication } from "@/lib/server/agent-session";
 
 /** Values echoed back on an error so the form stays filled (never the password). */
@@ -148,6 +150,14 @@ export async function signUp(_: SignUpState, form: FormData): Promise<SignUpStat
         [data.user!.id, { country: application.country, licenseType: application.licenseType }, ip],
       )
       .catch((e) => log("warn", "signup.audit_failed", { error: e instanceof Error ? e.message : String(e) }));
+    const a = application;
+    const licence =
+      a.licenseType === "UAE_BROKER"
+        ? `${a.uaeRegulator} ${a.uaeBrokerNumber} (${a.emirate})`
+        : a.licenseType === "REAL_ESTATE_BROKER"
+          ? `PRC ${a.prcLicenseNumber}`
+          : `DHSUD ${a.dhsudAccreditationNumber}, under PRC broker ${a.supervisingBrokerPrc}`;
+    after(() => applicationAlert({ name: a.fullName, country: a.country, licence }).catch(() => {}));
   }
   log("info", "signup.submitted", { ipHash: ip, created, country: application.country });
   return { ok: sent(email) };
