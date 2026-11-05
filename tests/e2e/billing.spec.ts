@@ -16,8 +16,9 @@ const cleanUp = async () => {
   await sql(`DELETE FROM "PriceChange" WHERE "propertyId" LIKE 'l\\_%'`);
   await sql(`DELETE FROM "Property" WHERE id LIKE 'l\\_%'`);
   await sql(`DELETE FROM "StripeEvent"`);
+  await sql(`UPDATE "PaymentControl" SET "checkoutEnabled" = true, note = NULL`);
   await sql(`UPDATE "Agent" SET plan = 'STARTER', "planInterval" = NULL, "stripeCustomerId" = NULL, "stripeSubscriptionId" = NULL,
-               "subscriptionStatus" = NULL, "planRenewsAt" = NULL, "planCancelsAt" = NULL, "overLimitSince" = NULL, verification = 'VERIFIED'
+               "subscriptionStatus" = NULL, "planRenewsAt" = NULL, "planCancelsAt" = NULL, "overLimitSince" = NULL, "pendingCheckoutId" = NULL, verification = 'VERIFIED'
              WHERE id IN ('a_agent', 'a_uae')`);
 };
 test.beforeEach(async () => {
@@ -73,6 +74,7 @@ test.describe("agent billing", () => {
     expect(cs.metadata).toEqual({ agentId: "a_agent", plan: "broker", country: "PH" });
     expect(cs.subscription_data.metadata).toEqual({ agentId: "a_agent", plan: "broker", country: "PH" });
     expect(cs.success_url).toMatch(/\/dashboard\/billing\?checkout=success$/);
+    expect(cs.payment_method_options).toEqual({ card: { request_three_d_secure: "any" } });
     const price = state.calls.find((c) => c.path === "/v1/prices" && c.method === "POST")!;
     expect(price.body).toMatchObject({ currency: "php", unit_amount: "249900", lookup_key: "gsp_broker_ph_month_2499", recurring: { interval: "month" } });
     const customer = state.calls.find((c) => c.path === "/v1/customers")!;
@@ -223,5 +225,88 @@ test.describe("agent billing", () => {
       `SELECT p.proacl IS NULL OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE') AS open
          FROM pg_proc p WHERE p.proname = 'enforce_plan_limits'`);
     expect(open).toBe(false);
+  });
+
+  test("payment controls: per-country kill switch, one open checkout per agent, no second charge while one is confirming", async ({ page }) => {
+    await signIn(page, ACCOUNTS.agent.email, ACCOUNTS.agent.password);
+
+    // Kill switch off for the Philippines: no checkout, a plain message
+    await sql(`UPDATE "PaymentControl" SET "checkoutEnabled" = false, note = 'test' WHERE country = 'PH'`);
+    await page.goto("/dashboard/billing");
+    await expect(page.getByText("Card payments are paused for your country at the moment.")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Pay / })).toHaveCount(0);
+    await sql(`UPDATE "PaymentControl" SET "checkoutEnabled" = true WHERE country = 'PH'`);
+
+    // Two checkouts one after the other: the first is expired, so it can't be paid too
+    await page.goto("/dashboard/billing");
+    await page.getByRole("button", { name: "Pay ₱2,499 a month" }).click();
+    await page.waitForURL(/\/__stripe\/pages\/checkout\/(cs_test_\d+)$/);
+    const first = page.url().split("/").pop()!;
+    await page.goto("/dashboard/billing");
+    await page.getByRole("button", { name: "Pay ₱2,499 a month" }).click();
+    await page.waitForURL(/\/__stripe\/pages\/checkout\/(cs_test_\d+)$/);
+    const second = page.url().split("/").pop()!;
+    expect(second).not.toBe(first);
+    const sessions = (await authServer.stripe()).sessions;
+    expect(sessions.find((x) => x.id === first)!.status).toBe("expired");
+    expect((await sql<{ p: string }>(`SELECT "pendingCheckoutId" AS p FROM "Agent" WHERE id = 'a_agent'`))[0].p).toBe(second);
+
+    // Paid, but Stripe's webhook hasn't arrived yet: a third checkout is refused
+    const sub = await authServer.completeCheckout(second);
+    await page.goto("/dashboard/billing");
+    await page.getByRole("button", { name: "Pay ₱2,499 a month" }).click();
+    await expect(page.getByText("Your last payment is being confirmed.")).toBeVisible();
+
+    // The webhook arrives: the plan is set and the pending checkout cleared
+    expect((await webhook("checkout.session.completed", { id: second, object: "checkout.session", mode: "subscription", subscription: sub.id })).status).toBe(200);
+    expect(await sql(`SELECT plan, "pendingCheckoutId" FROM "Agent" WHERE id = 'a_agent'`)).toEqual([{ plan: "BROKER", pendingCheckoutId: null }]);
+  });
+
+  test("refunds and disputes are recorded, and an old subscription ending doesn't cancel the current one", async ({ page }) => {
+    await signIn(page, ACCOUNTS.agent.email, ACCOUNTS.agent.password);
+    const { sub } = await buyBrokerage(page);
+    const charge = await authServer.createCharge(sub.customer);
+
+    expect((await webhook("charge.refunded", { id: charge.id, object: "charge", customer: sub.customer, amount_refunded: 249900, currency: "php" })).status).toBe(200);
+    expect((await webhook("charge.dispute.created", { id: "dp_1", object: "dispute", charge: charge.id, amount: 249900, currency: "php", reason: "fraudulent", status: "needs_response" })).status).toBe(200);
+    const audit = await sql<{ action: string }>(
+      `SELECT action FROM "AuditLog" WHERE "entityId" = 'a_agent' AND action IN ('billing.refunded', 'billing.dispute_opened') ORDER BY "createdAt"`);
+    expect(audit.map((a) => a.action)).toEqual(["billing.refunded", "billing.dispute_opened"]);
+    expect((await agentRow()).plan).toBe("BROKER"); // money events don't change the plan
+
+    // A second subscription becomes current; the first one ending later must not downgrade the agent
+    const newer = await authServer.createSubscription(sub.customer, { agentId: "a_agent", plan: "broker" });
+    expect((await webhook("customer.subscription.created", { id: newer.id })).status).toBe(200);
+    await authServer.changeSubscription(sub.id, { status: "canceled" });
+    expect((await webhook("customer.subscription.deleted", { id: sub.id })).status).toBe(200);
+    expect(await agentRow()).toMatchObject({ plan: "BROKER", subscriptionStatus: "active" });
+  });
+
+  test("daily reconciliation: needs the cron secret, applies missed webhooks, and reports double charges", async ({ page, request }) => {
+    const call = (auth?: string) => request.get("/api/cron/billing-reconcile", { headers: auth ? { authorization: auth } : {} });
+    expect((await call()).status()).toBe(401);
+    expect((await call("Bearer wrong-secret-xxxxx")).status()).toBe(401);
+
+    // Paid on Stripe, but the webhook never came: reconciliation applies it
+    await signIn(page, ACCOUNTS.agent.email, ACCOUNTS.agent.password);
+    await page.goto("/dashboard/billing");
+    await page.getByRole("button", { name: "Pay ₱2,499 a month" }).click();
+    await page.waitForURL(/\/__stripe\/pages\/checkout\/cs_test_\d+$/);
+    const sub = await authServer.completeCheckout(page.url().split("/").pop()!);
+    expect((await agentRow()).plan).toBe("STARTER");
+    let r = await call("Bearer e2e-cron-secret");
+    expect(r.status()).toBe(200);
+    expect(await r.json()).toMatchObject({ relinked: 1, duplicates: [], unlinked: [] });
+    expect((await agentRow()).plan).toBe("BROKER");
+
+    // A second paid subscription for the same agent is reported, not silently linked
+    const dup = await authServer.createSubscription(sub.customer, { agentId: "a_agent", plan: "broker" });
+    r = await call("Bearer e2e-cron-secret");
+    expect(await r.json()).toMatchObject({ checked: 1, relinked: 0, duplicates: [dup.id], unlinked: [] });
+  });
+
+  test("the health check says which payment mode is running", async ({ request }) => {
+    const h = await (await request.get("/api/health")).json();
+    expect(h.payments).toBe("test");
   });
 });

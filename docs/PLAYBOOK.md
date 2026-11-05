@@ -450,13 +450,43 @@ Code: `src/lib/server/billing.ts`, `src/app/dashboard/billing/`, `src/app/api/st
 **Set up (once, by the owner):**
 1. Open a Stripe account for the UAE business (Stripe does not serve Philippine businesses). Finish activation.
 2. Apply migration `prisma/migrations/4_agent_billing` in the Supabase SQL editor (before deploying this code).
-3. Stripe → Developers → Webhooks → add endpoint `https://gosearchproperty.com/api/stripe/webhook` with events: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`.
+3. Stripe → Developers → Webhooks → add endpoint `https://gosearchproperty.com/api/stripe/webhook` with events: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`.
 4. Stripe → Settings → Billing → Customer portal: turn on cancel, update payment method, invoice history, and switching between the Brokerage month and year prices. Save.
 5. Vercel → Settings → Environment Variables (Production): `STRIPE_SECRET_KEY` (sk_live_…) and `STRIPE_WEBHOOK_SECRET` (whsec_…), both Sensitive. Redeploy.
 6. Optional: set up Stripe Tax registrations (UAE VAT, and Philippine VAT if registered), then `STRIPE_AUTOMATIC_TAX=1`. Without it, prices are charged as listed and VAT is your own bookkeeping.
 7. Test with test-mode keys on a preview deployment first: card 4242 4242 4242 4242.
 
 **Until both keys are set** the billing page says payments are not switched on, and the webhook answers 503.
+
+**Live-payment block** (`src/lib/payment-mode.ts`, checked in CI by `npm run check:payments`): a live key (`sk_live_`/`rk_live_`) is refused unless **both** `LIVE_PAYMENTS_APPROVED=true` is set in Vercel **and** `SITE.legalReviewed` is `true` in `src/lib/site.ts`. Flip `legalReviewed` only in a commit made after the lawyer's written sign-off on the Terms (paid plans), refund terms and Privacy notice, and mention the sign-off in the commit message. Until then a live key runs as `live_blocked`: no checkout or portal, webhook 503 (Stripe holds and retries events for 3 days), `billing.live_blocked` in the logs. `/api/health` shows the mode: `off`, `test`, `live` or `live_blocked`.
+
+**Other protections:**
+- **One open checkout per agent** (`Agent."pendingCheckoutId"`): starting a new one expires the earlier one, and if the earlier one was just paid and its webhook hasn't arrived, the agent is told to wait instead of paying twice. Checkouts expire after an hour.
+- **3D Secure** is requested on every checkout card payment the card supports (`request_three_d_secure: "any"`); renewals are charged off-session under Stripe's exemptions.
+- **Refunds and disputes** (`charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`) are written to `AuditLog` (`billing.refunded`, `billing.dispute_opened`, `billing.dispute_closed`). They don't change the plan. **Answer a dispute in the Stripe dashboard before its evidence deadline.** Refunds are made in the Stripe dashboard (Payments → the payment → Refund).
+- **Old subscriptions:** when an agent has two, the older one ending doesn't downgrade them.
+- **Failed payments:** Stripe → Settings → Billing → Subscriptions and emails: turn on Smart Retries and "cancel the subscription if all retries fail". The site keeps the plan while the status is `past_due` and moves the agent to Starter when it becomes `unpaid` or `canceled`.
+
+**Daily reconciliation** (`/api/cron/billing-reconcile`, Vercel cron at 20:30 UTC, `vercel.json`): re-reads every subscription the site knows from Stripe, applies any missed webhook, and reports:
+- `duplicates`: an agent paying through two subscriptions. Refund and cancel one in Stripe.
+- `unlinked`: a paid subscription that matches no agent. Look it up in Stripe.
+Logged as `billing.reconciled` (level `error` when either list isn't empty). Needs `CRON_SECRET` in Vercel (Production, Sensitive, a long random string); without it the endpoint answers 503 and nothing runs.
+
+### 3.20 Payment kill switch (under a minute)
+Stops **new** checkouts in one country or both; existing plans, the portal and webhooks keep working. Supabase → SQL editor:
+```sql
+-- stop the UAE (or 'PH'); both rows = everything
+UPDATE "PaymentControl" SET "checkoutEnabled" = false, note = '<reason, your name>', "updatedAt" = now() WHERE country = 'AE';
+-- check
+SELECT * FROM "PaymentControl";
+-- reopen
+UPDATE "PaymentControl" SET "checkoutEnabled" = true, note = NULL, "updatedAt" = now() WHERE country = 'AE';
+```
+It takes effect on the next click (nothing is cached). Agents see "Card payments are paused for your country". If the setting can't be read, checkout stays closed (fails closed).
+
+**Stop everything, including the portal and webhooks** (takes a redeploy, about 2 minutes): Vercel → Environment Variables → remove `STRIPE_SECRET_KEY` (or `LIVE_PAYMENTS_APPROVED`) → Redeploy. Stripe keeps undelivered webhooks for 3 days, so put the key back within that time and nothing is lost.
+
+**Back to test mode:** set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to the test-mode values → Redeploy.
 
 **Give a plan by hand** (e.g. a partner deal), no Stripe:
 ```sql
@@ -847,14 +877,14 @@ Search Vercel logs for these:
 | Sign-up | `signup.submitted`, `signup.honeypot`, `signup.rate_limited`, `signup.unavailable`, `signup.failed`, `signup.audit_failed` |
 | SEO | `sitemap.listings_failed` |
 | Home pages | `home.latest_failed` (the cached listings block could not load; it retries within a minute) |
-| Billing | `billing.checkout_started`, `billing.checkout_failed`, `billing.portal_failed`, `billing.synced`, `billing.payment_failed`, `billing.webhook_bad_signature` (repeated = someone probing, or the wrong secret in Vercel), `billing.webhook_failed` (Stripe will retry), `billing.subscription_unmatched`, `billing.schema_missing` (migration 4 not applied) |
+| Billing | `billing.live_blocked` (live key without approval), `billing.control_unreadable` (kill-switch table missing: checkout closed), `billing.refunded`, `billing.dispute_opened` (act in Stripe), `billing.dispute_closed`, `billing.reconciled`, `billing.reconcile_failed`, `billing.checkout_started`, `billing.checkout_failed`, `billing.portal_failed`, `billing.synced`, `billing.payment_failed`, `billing.webhook_bad_signature` (repeated = someone probing, or the wrong secret in Vercel), `billing.webhook_failed` (Stripe will retry), `billing.subscription_unmatched`, `billing.schema_missing` (migration 4 not applied) |
 
 ---
 
 ## 9. Tests
 
 **Commands:**
-- `npm run test:e2e`: everything, 89 tests, about 6 minutes including the build.
+- `npm run test:e2e`: everything, 93 tests, about 6 minutes including the build.
 - `npm run test:auth`: the account-related subset.
 - `AUTH_TEST_SKIP_BUILD=1 npm run test:e2e`: rerun without rebuilding.
 

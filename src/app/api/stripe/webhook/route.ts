@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { NextResponse } from "next/server";
-import { billingEnabled, firstTimeEvent, forgetEvent, stripe, syncSubscription } from "@/lib/server/billing";
+import { billingEnabled, firstTimeEvent, forgetEvent, recordMoneyEvent, stripe, syncSubscription } from "@/lib/server/billing";
 import { log, requestId } from "@/lib/server/request";
 
 /**
@@ -9,7 +9,8 @@ import { log, requestId } from "@/lib/server/request";
  * subscription change is re-read from Stripe before it is saved.
  *
  * Stripe dashboard → Developers → Webhooks: endpoint https://gosearchproperty.com/api/stripe/webhook
- * with the events below.
+ * with the events below (list in docs/PLAYBOOK.md 3.19). Refunds and disputes are
+ * recorded in AuditLog; they don't change the plan (the subscription does).
  */
 const MAX_BYTES = 512 * 1024;
 
@@ -49,6 +50,27 @@ export async function POST(req: Request) {
       case "customer.subscription.resumed":
         subscriptionId = (event.data.object as Stripe.Subscription).id;
         break;
+      case "charge.refunded": {
+        const c = event.data.object as Stripe.Charge;
+        const customer = typeof c.customer === "string" ? c.customer : c.customer?.id ?? null;
+        const agentId = await recordMoneyEvent("billing.refunded", customer, { charge: c.id, amountRefunded: c.amount_refunded, currency: c.currency });
+        log("warn", "billing.refunded", { requestId: rid, agentId, charge: c.id });
+        break;
+      }
+      case "charge.dispute.created":
+      case "charge.dispute.closed": {
+        const d = event.data.object as Stripe.Dispute;
+        const chargeId = typeof d.charge === "string" ? d.charge : d.charge.id;
+        const charge = await stripe()!.charges.retrieve(chargeId);
+        const customer = typeof charge.customer === "string" ? charge.customer : charge.customer?.id ?? null;
+        const opened = event.type === "charge.dispute.created";
+        const agentId = await recordMoneyEvent(opened ? "billing.dispute_opened" : "billing.dispute_closed", customer, {
+          dispute: d.id, charge: chargeId, amount: d.amount, currency: d.currency, reason: d.reason, status: d.status,
+        });
+        // A new dispute has a deadline for evidence in the Stripe dashboard
+        log(opened ? "error" : "info", opened ? "billing.dispute_opened" : "billing.dispute_closed", { requestId: rid, agentId, dispute: d.id, status: d.status });
+        break;
+      }
       case "invoice.paid":
       case "invoice.payment_failed": {
         const inv = event.data.object as unknown as { subscription?: string | { id: string } | null; parent?: { subscription_details?: { subscription?: string } } };

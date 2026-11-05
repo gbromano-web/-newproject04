@@ -415,6 +415,8 @@ model Agent {
   subscriptionStatus   String? // Stripe subscription status: active, trialing, past_due, canceled...
   planRenewsAt         DateTime?
   planCancelsAt        DateTime?
+  overLimitSince       DateTime?
+  pendingCheckoutId    String?
   medianReplyMinutes  Int?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -781,4 +783,12 @@ model FinancingProgram {
   updatedAt         DateTime      @updatedAt
 
   @@index([type, isActive])
+}
+
+/// New Stripe checkouts per country (kill switch). Server-only; see migration 6_payment_controls.
+model PaymentControl {
+  country         String   @id
+  checkoutEnabled Boolean  @default(true)
+  note            String?
+  updatedAt       DateTime @default(now())
 }

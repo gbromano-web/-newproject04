@@ -48,6 +48,10 @@ export const authServer = {
   /** Pays a Checkout session, as the agent would on Stripe: returns the new subscription. */
   completeCheckout: async (session: string, status = "active"): Promise<{ id: string; customer: string }> =>
     (await fetch(`${AUTH}/__stripe/complete`, { method: "POST", body: JSON.stringify({ session, status }) })).json(),
+  createSubscription: async (customer: string, metadata: Record<string, string>): Promise<{ id: string }> =>
+    (await fetch(`${AUTH}/__stripe/subscription/create`, { method: "POST", body: JSON.stringify({ customer, metadata }) })).json(),
+  createCharge: async (customer: string): Promise<{ id: string }> =>
+    (await fetch(`${AUTH}/__stripe/charge`, { method: "POST", body: JSON.stringify({ customer }) })).json(),
   changeSubscription: (id: string, changes: Record<string, unknown>) =>
     fetch(`${AUTH}/__stripe/subscription`, { method: "POST", body: JSON.stringify({ id, changes }) }),
   storage: async (withData = false): Promise<{ key: string; type: string; bytes: number; owner: string; base64?: string }[]> =>
