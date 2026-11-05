@@ -36,7 +36,9 @@ test.describe("Country selector", () => {
     await page.keyboard.press("Escape");
     await expect(button).toHaveAttribute("aria-expanded", "false");
     await button.click();
-    await page.locator("main").click({ position: { x: 5, y: 5 } });
+    // A click anywhere outside the menu (a raw mouse click: the hero slideshow can make <main> "unstable" for locator clicks)
+    const box = (await page.locator("main").boundingBox())!;
+    await page.mouse.click(box.x + 8, box.y + box.height / 2);
     await expect(button).toHaveAttribute("aria-expanded", "false");
   });
 
