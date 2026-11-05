@@ -17,7 +17,7 @@ const cleanUp = async () => {
   await sql(`DELETE FROM "Property" WHERE id LIKE 'l\\_%'`);
   await sql(`DELETE FROM "StripeEvent"`);
   await sql(`UPDATE "Agent" SET plan = 'STARTER', "planInterval" = NULL, "stripeCustomerId" = NULL, "stripeSubscriptionId" = NULL,
-               "subscriptionStatus" = NULL, "planRenewsAt" = NULL, "planCancelsAt" = NULL, verification = 'VERIFIED'
+               "subscriptionStatus" = NULL, "planRenewsAt" = NULL, "planCancelsAt" = NULL, "overLimitSince" = NULL, verification = 'VERIFIED'
              WHERE id IN ('a_agent', 'a_uae')`);
 };
 test.beforeEach(async () => {
@@ -179,5 +179,49 @@ test.describe("agent billing", () => {
     await page.waitForURL(/\/__stripe\/pages\/checkout\/cs_test_\d+$/);
     const price = (await authServer.stripe()).calls.find((c) => c.path === "/v1/prices" && c.method === "POST")!;
     expect(price.body).toMatchObject({ currency: "aed", unit_amount: "999000", lookup_key: "gsp_broker_ae_year_9990", recurring: { interval: "year" } });
+  });
+
+  test("after a plan ends, the newest listings over the limit are paused once 14 days have passed", async ({ page }) => {
+    // An agent without Pro (licence not verified: Starter, 3 live listings) who has 5 live
+    const [src] = await sql<{ id: string }>(`SELECT id FROM "Property" WHERE "agentId" = 'a_agent' LIMIT 1`);
+    const [{ live }] = await sql<{ live: number }>(
+      `SELECT count(*)::int AS live FROM "Property" WHERE "agentId" = 'a_agent' AND status = 'ACTIVE' AND "publishedAt" IS NOT NULL AND ("expiresAt" IS NULL OR "expiresAt" > now())`);
+    await sql(
+      `INSERT INTO "Property" SELECT (jsonb_populate_record(NULL::"Property", to_jsonb(p) || jsonb_build_object(
+          'id', 'l_old' || g, 'slug', p.slug || '-old' || g, 'reference', 'GSP-OLD' || g, 'status', 'ACTIVE',
+          'publishedAt', now() - make_interval(mins => g), 'expiresAt', NULL))).*
+         FROM "Property" p, generate_series(1, $2::int) g WHERE p.id = $1`, [src.id, 5 - live]);
+    await sql(`UPDATE "Agent" SET verification = 'PENDING' WHERE id = 'a_agent'`);
+    const run = async () => (await sql<{ n: number }>(`SELECT public.enforce_plan_limits() AS n`))[0].n;
+
+    // Day 1: marked, nothing paused, the agent is told when
+    expect(await run()).toBe(0);
+    const [{ since }] = await sql<{ since: Date | null }>(`SELECT "overLimitSince" AS since FROM "Agent" WHERE id = 'a_agent'`);
+    expect(since).not.toBeNull();
+    await signIn(page, ACCOUNTS.agent.email, ACCOUNTS.agent.password);
+    await expect(page.locator("main [role=alert]")).toContainText("You have 5 live listings and your Starter plan includes 3.");
+    await page.goto("/dashboard/billing");
+    await expect(page.locator("main [role=alert]")).toContainText(/Starter plan includes 3\. On \d{1,2} \w+ \d{4} your newest 2 will be paused\./);
+
+    // 14 days later: the two newest are paused, the oldest three stay live
+    const before = await sql<{ id: string }>(
+      `SELECT id FROM "Property" WHERE "agentId" = 'a_agent' AND status = 'ACTIVE' ORDER BY "publishedAt" DESC, id DESC LIMIT 2`);
+    await sql(`UPDATE "Agent" SET "overLimitSince" = now() - interval '15 days' WHERE id = 'a_agent'`);
+    expect(await run()).toBe(2);
+    const paused = await sql<{ id: string }>(`SELECT id FROM "Property" WHERE "agentId" = 'a_agent' AND status = 'PAUSED' ORDER BY id`);
+    expect(paused.map((r) => r.id).sort()).toEqual(before.map((r) => r.id).sort());
+    expect((await sql<{ n: number }>(
+      `SELECT count(*)::int AS n FROM "AuditLog" WHERE action = 'listing.paused_over_plan_limit' AND "entityId" = ANY($1)`, [before.map((r) => r.id)]))[0].n).toBe(2);
+    expect((await sql<{ since: Date | null }>(`SELECT "overLimitSince" AS since FROM "Agent" WHERE id = 'a_agent'`))[0].since).toBeNull();
+    expect(await run()).toBe(0);
+    await page.goto("/dashboard/billing");
+    await expect(page.getByText("3 of 3")).toBeVisible();
+    await expect(page.locator("main [role=alert]")).toHaveCount(0);
+
+    // Not callable by the browser keys: no EXECUTE for PUBLIC (which includes anon and authenticated)
+    const [{ open }] = await sql<{ open: boolean }>(
+      `SELECT p.proacl IS NULL OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE') AS open
+         FROM pg_proc p WHERE p.proname = 'enforce_plan_limits'`);
+    expect(open).toBe(false);
   });
 });

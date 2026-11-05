@@ -67,6 +67,23 @@ const sections: [string, React.ReactNode][] = [
     </>,
   ],
   [
+    "Paid plans for agents",
+    <>
+      <p>
+        Agents can use the free Starter plan or a paid plan (Pro or Brokerage), described on the <Link href="/pricing" className="font-semibold text-sea-900 underline">pricing page</Link>. Paid plans are subscriptions billed monthly or yearly in advance, in Philippine pesos for Philippine accounts and UAE dirhams for UAE accounts, plus VAT where it applies. Payments are handled by Stripe; we never see or store card details.
+      </p>
+      <p>
+        A plan renews automatically at the end of each period until you cancel it. You can cancel at any time in Plan and billing, then Manage billing. Your plan then continues until the end of the period already paid, and the unused part is not refunded, except where the law requires a refund.
+      </p>
+      <p>
+        If a payment fails we try again for a short time. If it still fails, or a plan ends, your account moves to the free plan. If you then have more live listings than that plan allows, we tell you in your dashboard and pause the newest ones after 14 days, unless you pause some yourself or choose a plan. Paused listings are kept and can be published again.
+      </p>
+      <p>
+        We will email you at least 30 days before we change the price of your plan or end a free offer you are on.
+      </p>
+    </>,
+  ],
+  [
     "Our liability",
     <>
       <p>
@@ -93,5 +110,5 @@ const sections: [string, React.ReactNode][] = [
 ];
 
 export default function TermsPage() {
-  return <LegalPage title="Terms of use" intro="The rules for using Go Search Property." updated="31 October 2026" sections={sections} />;
+  return <LegalPage title="Terms of use" intro="The rules for using Go Search Property." updated="5 November 2026" sections={sections} />;
 }

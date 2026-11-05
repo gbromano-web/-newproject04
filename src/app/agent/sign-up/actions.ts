@@ -21,7 +21,7 @@ const PRC = /^\d{5,7}$/; // PRC real estate broker licence numbers
 const DHSUD = /^[A-Za-z0-9][A-Za-z0-9 -]{3,29}$/;
 const UAE_NUMBER = /^\d{3,10}$/;
 const NAME = /^[\p{L}\p{M}][\p{L}\p{M} .'-]{1,99}$/u;
-const TERMS_VERSION = "2026-10-31";
+const TERMS_VERSION = "2026-11-05";
 const HOUR = 60 * 60_000;
 const MAX_FORM_AGE_MS = 2 * HOUR;
 const minSeconds = () => Number(process.env.SIGNUP_MIN_SECONDS ?? 3);

@@ -61,7 +61,12 @@ export type AgentBilling = {
   subscriptionStatus: string | null;
   planRenewsAt: Date | null;
   planCancelsAt: Date | null;
+  /** Set by the daily enforce_plan_limits() job (migration 5_plan_limits) while over the live-listing limit. */
+  overLimitSince: Date | null;
 };
+
+/** Days an agent has, once over their plan's limit, before the newest listings are paused (enforce_plan_limits). */
+export const OVER_LIMIT_GRACE_DAYS = 14;
 
 export type EffectivePlan = { plan: Plan; source: "paid" | "launch" | "free"; billing: AgentBilling | null };
 
@@ -73,7 +78,7 @@ export async function agentBilling(agentId: string): Promise<AgentBilling | null
     const { rows } = await pool.query(
       `SELECT id AS "agentId", CASE WHEN "licenseType" = 'UAE_BROKER' THEN 'AE' ELSE 'PH' END AS country,
               verification = 'VERIFIED' AS verified, plan, "planInterval", "stripeCustomerId", "stripeSubscriptionId",
-              "subscriptionStatus", "planRenewsAt", "planCancelsAt"
+              "subscriptionStatus", "planRenewsAt", "planCancelsAt", "overLimitSince"
          FROM "Agent" WHERE id = $1`,
       [agentId],
     );
